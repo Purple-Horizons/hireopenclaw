@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HireOpenClaw — Hire an AI. Skip the interviews.</title>
-    <meta name="description" content="Pre-trained AI employees that actually do the work. No setup. No IT department. $49/month.">
+    <title>HireOpenClaw — Stop Configuring. Start Delegating.</title>
+    <meta name="description" content="Skip the 3-day AI setup nightmare. Get a pre-trained AI employee ready to work in 48 hours. Fixed pricing. No surprise bills.">
     
     <!-- Open Graph -->
-    <meta property="og:title" content="HireOpenClaw — Hire an AI. Skip the interviews.">
-    <meta property="og:description" content="Pre-trained AI employees that actually do the work. No setup. No IT department. $49/month.">
+    <meta property="og:title" content="HireOpenClaw — Stop Configuring. Start Delegating.">
+    <meta property="og:description" content="Skip the 3-day AI setup nightmare. Get a pre-trained AI employee ready to work in 48 hours.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://hireopenclaw.com">
     
@@ -25,22 +25,27 @@
         }
         
         :root {
-            --black: #0a0a0a;
+            --bg: #0a0a0a;
+            --bg-secondary: #141414;
+            --bg-card: #1a1a1a;
             --white: #ffffff;
-            --gray: #6b7280;
-            --light-gray: #f3f4f6;
-            --accent: #7c3aed;
+            --gray: #888888;
+            --light-gray: #333333;
+            --accent: #ff6b35;
+            --accent-dim: #ff6b3520;
+            --green: #10b981;
+            --yellow: #fbbf24;
         }
         
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--white);
-            color: var(--black);
+            background: var(--bg);
+            color: var(--white);
             line-height: 1.6;
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1100px;
             margin: 0 auto;
             padding: 0 24px;
         }
@@ -51,41 +56,67 @@
             border-bottom: 1px solid var(--light-gray);
         }
         
+        .header-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
         .logo {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 800;
-            color: var(--black);
+            color: var(--white);
             text-decoration: none;
+        }
+        
+        .logo span {
+            color: var(--accent);
+        }
+        
+        .nav-cta {
+            background: var(--accent);
+            color: var(--bg);
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 6px;
         }
         
         /* Hero */
         .hero {
-            padding: 80px 0 60px;
+            padding: 100px 0 80px;
             text-align: center;
+            background: linear-gradient(180deg, var(--bg) 0%, var(--bg-secondary) 100%);
         }
         
         .hero h1 {
-            font-size: clamp(40px, 8vw, 72px);
+            font-size: clamp(42px, 7vw, 68px);
             font-weight: 900;
-            line-height: 1.1;
+            line-height: 1.05;
             margin-bottom: 24px;
-            letter-spacing: -0.02em;
+            letter-spacing: -0.03em;
+        }
+        
+        .hero h1 span {
+            color: var(--accent);
         }
         
         .hero .subtitle {
-            font-size: clamp(18px, 3vw, 24px);
+            font-size: clamp(17px, 2.5vw, 20px);
             color: var(--gray);
-            max-width: 600px;
+            max-width: 650px;
             margin: 0 auto 40px;
+            line-height: 1.7;
         }
         
         .cta-button {
             display: inline-block;
-            background: var(--black);
-            color: var(--white);
-            padding: 18px 40px;
-            font-size: 18px;
-            font-weight: 600;
+            background: var(--accent);
+            color: var(--bg);
+            padding: 18px 36px;
+            font-size: 17px;
+            font-weight: 700;
             text-decoration: none;
             border-radius: 8px;
             transition: transform 0.2s, box-shadow 0.2s;
@@ -93,7 +124,7 @@
         
         .cta-button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 40px rgba(255, 107, 53, 0.3);
         }
         
         .hero-note {
@@ -102,110 +133,197 @@
             color: var(--gray);
         }
         
-        /* Problem Section */
-        .problem {
-            background: var(--light-gray);
-            padding: 80px 0;
+        /* Pain Section */
+        .pain {
+            padding: 100px 0;
+            background: var(--bg-secondary);
         }
         
-        .problem h2 {
-            font-size: 36px;
+        .pain h2 {
+            font-size: clamp(28px, 4vw, 40px);
             font-weight: 800;
-            margin-bottom: 32px;
+            margin-bottom: 48px;
             text-align: center;
         }
         
-        .problem-list {
-            max-width: 700px;
-            margin: 0 auto;
-            font-size: 18px;
-        }
-        
-        .problem-list p {
-            margin-bottom: 20px;
-            color: var(--gray);
-        }
-        
-        .problem-list .highlight {
-            background: #fef3c7;
-            padding: 2px 6px;
-            border-radius: 4px;
-            color: var(--black);
-        }
-        
-        .problem-punchline {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--black);
-            margin-top: 40px;
-            text-align: center;
-        }
-        
-        /* Solution Section */
-        .solution {
-            padding: 80px 0;
-        }
-        
-        .solution h2 {
-            font-size: 36px;
-            font-weight: 800;
-            margin-bottom: 16px;
-            text-align: center;
-        }
-        
-        .solution .subtitle {
-            font-size: 18px;
-            color: var(--gray);
-            text-align: center;
-            margin-bottom: 60px;
-        }
-        
-        /* Team Grid */
-        .team-grid {
+        .pain-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 32px;
-            margin-bottom: 60px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
         }
         
-        .team-card {
-            background: var(--light-gray);
+        .pain-card {
+            background: var(--bg-card);
+            border: 1px solid var(--light-gray);
             border-radius: 16px;
             padding: 32px;
         }
         
-        .team-card .emoji {
-            font-size: 48px;
+        .pain-card .icon {
+            font-size: 36px;
             margin-bottom: 16px;
+        }
+        
+        .pain-card h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--accent);
+        }
+        
+        .pain-card .quote {
+            font-style: italic;
+            color: var(--gray);
+            margin-bottom: 16px;
+            padding-left: 16px;
+            border-left: 3px solid var(--light-gray);
+        }
+        
+        .pain-card p {
+            color: #ccc;
+            font-size: 15px;
+        }
+        
+        .pain-card .solution {
+            margin-top: 16px;
+            padding: 12px 16px;
+            background: var(--accent-dim);
+            border-radius: 8px;
+            font-weight: 600;
+            color: var(--accent);
+            font-size: 14px;
+        }
+        
+        /* Team Section */
+        .team {
+            padding: 100px 0;
+        }
+        
+        .team h2 {
+            font-size: clamp(28px, 4vw, 40px);
+            font-weight: 800;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        
+        .team .subtitle {
+            font-size: 18px;
+            color: var(--gray);
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+        }
+        
+        .team-card {
+            background: var(--bg-card);
+            border: 1px solid var(--light-gray);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        
+        .team-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent);
+        }
+        
+        .team-card img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin-bottom: 16px;
+            object-fit: cover;
+            border: 3px solid var(--light-gray);
         }
         
         .team-card h3 {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 700;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }
         
         .team-card .role {
-            font-size: 14px;
+            font-size: 13px;
             color: var(--accent);
             font-weight: 600;
-            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 12px;
         }
         
         .team-card p {
             color: var(--gray);
-            font-size: 15px;
+            font-size: 14px;
+        }
+        
+        /* Comparison */
+        .comparison {
+            padding: 100px 0;
+            background: var(--bg-secondary);
+        }
+        
+        .comparison h2 {
+            font-size: clamp(28px, 4vw, 40px);
+            font-weight: 800;
+            margin-bottom: 48px;
+            text-align: center;
+        }
+        
+        .comparison-table {
+            max-width: 700px;
+            margin: 0 auto;
+            background: var(--bg-card);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--light-gray);
+        }
+        
+        .comparison-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            border-bottom: 1px solid var(--light-gray);
+        }
+        
+        .comparison-row:last-child {
+            border-bottom: none;
+        }
+        
+        .comparison-row.header {
+            background: var(--light-gray);
+            font-weight: 700;
+        }
+        
+        .comparison-cell {
+            padding: 16px 20px;
+            font-size: 14px;
+        }
+        
+        .comparison-cell:first-child {
+            color: var(--gray);
+        }
+        
+        .comparison-cell.bad {
+            color: #f87171;
+        }
+        
+        .comparison-cell.good {
+            color: var(--green);
+            font-weight: 600;
         }
         
         /* How it Works */
         .how-it-works {
-            background: var(--black);
-            color: var(--white);
-            padding: 80px 0;
+            padding: 100px 0;
         }
         
         .how-it-works h2 {
-            font-size: 36px;
+            font-size: clamp(28px, 4vw, 40px);
             font-weight: 800;
             margin-bottom: 60px;
             text-align: center;
@@ -215,8 +333,6 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 40px;
-            max-width: 900px;
-            margin: 0 auto;
         }
         
         .step {
@@ -227,14 +343,14 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 48px;
-            height: 48px;
-            background: var(--white);
-            color: var(--black);
-            font-size: 20px;
+            width: 56px;
+            height: 56px;
+            background: var(--accent);
+            color: var(--bg);
+            font-size: 24px;
             font-weight: 800;
             border-radius: 50%;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
         
         .step h3 {
@@ -244,17 +360,18 @@
         }
         
         .step p {
-            color: #9ca3af;
+            color: var(--gray);
             font-size: 15px;
         }
         
         /* Pricing */
         .pricing {
-            padding: 80px 0;
+            padding: 100px 0;
+            background: var(--bg-secondary);
         }
         
         .pricing h2 {
-            font-size: 36px;
+            font-size: clamp(28px, 4vw, 40px);
             font-weight: 800;
             margin-bottom: 16px;
             text-align: center;
@@ -271,11 +388,12 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 24px;
-            max-width: 900px;
+            max-width: 950px;
             margin: 0 auto;
         }
         
         .pricing-card {
+            background: var(--bg-card);
             border: 2px solid var(--light-gray);
             border-radius: 16px;
             padding: 32px;
@@ -283,7 +401,7 @@
         }
         
         .pricing-card.featured {
-            border-color: var(--black);
+            border-color: var(--accent);
             position: relative;
         }
         
@@ -293,24 +411,25 @@
             top: -12px;
             left: 50%;
             transform: translateX(-50%);
-            background: var(--black);
-            color: var(--white);
+            background: var(--accent);
+            color: var(--bg);
             padding: 4px 16px;
             font-size: 12px;
-            font-weight: 600;
+            font-weight: 700;
             border-radius: 20px;
         }
         
         .pricing-card h3 {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 700;
             margin-bottom: 8px;
         }
         
         .pricing-card .price {
-            font-size: 48px;
+            font-size: 52px;
             font-weight: 900;
             margin-bottom: 8px;
+            color: var(--white);
         }
         
         .pricing-card .price span {
@@ -322,6 +441,7 @@
         .pricing-card .description {
             color: var(--gray);
             margin-bottom: 24px;
+            font-size: 14px;
         }
         
         .pricing-card ul {
@@ -331,16 +451,18 @@
         }
         
         .pricing-card li {
-            padding: 8px 0;
+            padding: 10px 0;
             padding-left: 28px;
             position: relative;
+            color: #ccc;
+            font-size: 14px;
         }
         
         .pricing-card li::before {
             content: "✓";
             position: absolute;
             left: 0;
-            color: #10b981;
+            color: var(--green);
             font-weight: 700;
         }
         
@@ -351,12 +473,11 @@
         
         /* FAQ */
         .faq {
-            background: var(--light-gray);
-            padding: 80px 0;
+            padding: 100px 0;
         }
         
         .faq h2 {
-            font-size: 36px;
+            font-size: clamp(28px, 4vw, 40px);
             font-weight: 800;
             margin-bottom: 48px;
             text-align: center;
@@ -364,31 +485,40 @@
         
         .faq-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 32px;
             max-width: 900px;
             margin: 0 auto;
         }
         
+        .faq-item {
+            background: var(--bg-card);
+            border: 1px solid var(--light-gray);
+            border-radius: 12px;
+            padding: 24px;
+        }
+        
         .faq-item h3 {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 700;
             margin-bottom: 12px;
+            color: var(--white);
         }
         
         .faq-item p {
             color: var(--gray);
-            font-size: 15px;
+            font-size: 14px;
         }
         
         /* Final CTA */
         .final-cta {
-            padding: 100px 0;
+            padding: 120px 0;
             text-align: center;
+            background: linear-gradient(180deg, var(--bg) 0%, var(--bg-secondary) 100%);
         }
         
         .final-cta h2 {
-            font-size: clamp(32px, 5vw, 48px);
+            font-size: clamp(32px, 5vw, 52px);
             font-weight: 800;
             margin-bottom: 24px;
         }
@@ -397,6 +527,9 @@
             font-size: 18px;
             color: var(--gray);
             margin-bottom: 40px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
         }
         
         /* Footer */
@@ -417,7 +550,18 @@
         }
         
         footer a:hover {
-            color: var(--black);
+            color: var(--accent);
+        }
+        
+        .beta-badge {
+            display: inline-block;
+            background: var(--yellow);
+            color: var(--bg);
+            padding: 4px 12px;
+            font-size: 11px;
+            font-weight: 700;
+            border-radius: 4px;
+            margin-bottom: 16px;
         }
         
         /* Mobile */
@@ -429,6 +573,16 @@
             .faq-grid {
                 grid-template-columns: 1fr;
             }
+            
+            .comparison-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .comparison-cell:first-child {
+                font-weight: 600;
+                color: var(--white);
+                background: var(--light-gray);
+            }
         }
     </style>
 </head>
@@ -436,66 +590,136 @@
     <!-- Header -->
     <header>
         <div class="container">
-            <a href="/" class="logo">HireOpenClaw</a>
+            <div class="header-inner">
+                <a href="/" class="logo">Hire<span>OpenClaw</span></a>
+                <a href="#pricing" class="nav-cta">Get Started</a>
+            </div>
         </div>
     </header>
     
     <!-- Hero -->
     <section class="hero">
         <div class="container">
-            <h1>Hire an AI.<br>Skip the interviews.</h1>
-            <p class="subtitle">Pre-trained AI employees that actually do the work. No setup. No IT department. No existential dread.</p>
-            <a href="#pricing" class="cta-button">Get Your AI Employee →</a>
-            <p class="hero-note">Starting at $49/month. Cancel anytime.</p>
+            <span class="beta-badge">⚠️ BETA — We're small, scrappy, and improving fast</span>
+            <h1>Stop Configuring.<br><span>Start Delegating.</span></h1>
+            <p class="subtitle">You've seen what AI assistants can do. You've also seen what setting one up looks like — API keys, YAML files, and 3 days of Googling error messages.<br><br><strong style="color: #fff;">We did all that already. Your AI employee is ready now.</strong></p>
+            <a href="https://tally.so/r/hireopenclaw" class="cta-button">Get Your AI Employee →</a>
+            <p class="hero-note">$49/mo. Fixed price. No surprise bills. Cancel anytime.</p>
         </div>
     </section>
     
-    <!-- Problem -->
-    <section class="problem">
+    <!-- Pain Points -->
+    <section class="pain">
         <div class="container">
-            <h2>You've tried the AI thing.</h2>
-            <div class="problem-list">
-                <p>You've watched the YouTube tutorials. Signed up for <span class="highlight">14 free trials</span>. Spent a weekend "setting up automations."</p>
-                <p>And now you have: 47 open browser tabs, a half-configured Zapier account, and the lingering feeling that you're doing something wrong.</p>
-                <p>Here's the thing: <strong>You're not dumb. AI is just unnecessarily complicated.</strong></p>
+            <h2>We know what happened.</h2>
+            <div class="pain-grid">
+                <div class="pain-card">
+                    <div class="icon">🔥</div>
+                    <h3>3-Day Setup Hell</h3>
+                    <p class="quote">"I've been going in circles for 3 days and I'm going to frisbee my mac off the fucking balcony"</p>
+                    <p>Setting up AI is a nightmare. API keys, OAuth, YAML configs, random errors. Normal people give up.</p>
+                    <div class="solution">✓ We do all setup. You get a working bot in 48 hours.</div>
+                </div>
+                
+                <div class="pain-card">
+                    <div class="icon">💸</div>
+                    <h3>$50K Bill Terror</h3>
+                    <p class="quote">"Hope not get a $50k bill at the end of the month 😅"</p>
+                    <p>Usage-based pricing is terrifying. "Burning $5/day just on heartbeats." No idea what it will cost.</p>
+                    <div class="solution">✓ Fixed monthly price. $49, $149, or $299. That's it.</div>
+                </div>
+                
+                <div class="pain-card">
+                    <div class="icon">🤷</div>
+                    <h3>"What Do I Even Use This For?"</h3>
+                    <p class="quote">"My biggest issue is idk what to really use it for"</p>
+                    <p>Generic AI assistants are blank slates. You set them up, then stare at them wondering what to ask.</p>
+                    <div class="solution">✓ Pre-trained for actual jobs. They know what to do.</div>
+                </div>
+                
+                <div class="pain-card">
+                    <div class="icon">😰</div>
+                    <h3>Security Nightmares</h3>
+                    <p class="quote">"I want to love it, but the security implications are terrifying"</p>
+                    <p>Connecting AI to your email? Calendar? CRM? What if it sends the wrong email? What if it hallucinates?</p>
+                    <div class="solution">✓ We handle security. Approval workflows. Human oversight.</div>
+                </div>
             </div>
-            <p class="problem-punchline">What if you could just... hire someone who already figured it out?</p>
         </div>
     </section>
     
-    <!-- Solution / Team -->
-    <section class="solution">
+    <!-- Team -->
+    <section class="team">
         <div class="container">
             <h2>Meet your new AI employees.</h2>
             <p class="subtitle">They show up Day 1 ready to work. No training required.</p>
             
             <div class="team-grid">
                 <div class="team-card">
-                    <div class="emoji">🎯</div>
-                    <h3>Alex</h3>
-                    <div class="role">Your AI SDR</div>
-                    <p>Finds leads. Writes emails. Follows up until they surrender. You just close the deals.</p>
-                </div>
-                
-                <div class="team-card">
-                    <div class="emoji">📝</div>
+                    <img src="https://v3b.fal.media/files/b/0a8c7d15/cdE-CsM4D0oP8mfHNhM0R_A7q4Y7OC.png" alt="Morgan">
                     <h3>Morgan</h3>
-                    <div class="role">Your AI Content Creator</div>
-                    <p>Writes your posts so you can pretend you're a thought leader. LinkedIn, Twitter, newsletters — handled.</p>
+                    <div class="role">Content Creator</div>
+                    <p>Writes your posts, blogs, and newsletters. Sounds like you. You take the credit.</p>
                 </div>
                 
                 <div class="team-card">
-                    <div class="emoji">📊</div>
+                    <img src="https://v3b.fal.media/files/b/0a8c7d16/JXvuWQSmpq-NdxH46adsO_b9hTnrxy.png" alt="Alex">
+                    <h3>Alex</h3>
+                    <div class="role">SDR / Sales</div>
+                    <p>Finds leads. Writes outreach. Follows up until they reply. You just close.</p>
+                </div>
+                
+                <div class="team-card">
+                    <img src="https://v3b.fal.media/files/b/0a8c7d17/qU0mbMGFrE1ziGiQUqGVo_McBUkpYY.png" alt="Riley">
                     <h3>Riley</h3>
-                    <div class="role">Your AI Research Analyst</div>
-                    <p>Like Google, but actually helpful. Deep research, competitor intel, answers — not links.</p>
+                    <div class="role">Social Media</div>
+                    <p>Schedules posts. Tracks engagement. Tells you what's working. You stay relevant.</p>
                 </div>
                 
                 <div class="team-card">
-                    <div class="emoji">📅</div>
+                    <img src="https://v3b.fal.media/files/b/0a8c7d18/XtDyB-GyZg5YtWlgQG3Q__cCXoxXgf.png" alt="Casey">
                     <h3>Casey</h3>
-                    <div class="role">Your AI Executive Assistant</div>
-                    <p>Manages your chaos so you can create more chaos. Calendar, email, tasks — finally handled.</p>
+                    <div class="role">Executive Assistant</div>
+                    <p>Calendar. Email triage. Task tracking. Manages your chaos so you can make more.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Comparison -->
+    <section class="comparison">
+        <div class="container">
+            <h2>The math is simple.</h2>
+            <div class="comparison-table">
+                <div class="comparison-row header">
+                    <div class="comparison-cell"></div>
+                    <div class="comparison-cell">DIY Setup</div>
+                    <div class="comparison-cell">HireOpenClaw</div>
+                </div>
+                <div class="comparison-row">
+                    <div class="comparison-cell">Setup time</div>
+                    <div class="comparison-cell bad">3+ days</div>
+                    <div class="comparison-cell good">0 (we do it)</div>
+                </div>
+                <div class="comparison-row">
+                    <div class="comparison-cell">Monthly cost</div>
+                    <div class="comparison-cell bad">$50? $500? $5000?</div>
+                    <div class="comparison-cell good">$49-$299 fixed</div>
+                </div>
+                <div class="comparison-row">
+                    <div class="comparison-cell">Technical skill</div>
+                    <div class="comparison-cell bad">High</div>
+                    <div class="comparison-cell good">None</div>
+                </div>
+                <div class="comparison-row">
+                    <div class="comparison-cell">"Will I get a surprise bill?"</div>
+                    <div class="comparison-cell bad">Maybe</div>
+                    <div class="comparison-cell good">No</div>
+                </div>
+                <div class="comparison-row">
+                    <div class="comparison-cell">When things break</div>
+                    <div class="comparison-cell bad">Your problem</div>
+                    <div class="comparison-cell good">Our problem</div>
                 </div>
             </div>
         </div>
@@ -509,17 +733,17 @@
                 <div class="step">
                     <div class="step-number">1</div>
                     <h3>Tell us what you need</h3>
-                    <p>Quick form. 5 minutes. We ask the important questions so you don't have to figure them out.</p>
+                    <p>5-minute form. What's your business? What do you want help with? What tools do you use?</p>
                 </div>
                 <div class="step">
                     <div class="step-number">2</div>
                     <h3>We build your AI employee</h3>
-                    <p>24-48 hours. We connect your tools, configure everything, and make sure it doesn't embarrass you.</p>
+                    <p>24-48 hours. We do the part that makes normal people cry: API keys, configs, testing, all of it.</p>
                 </div>
                 <div class="step">
                     <div class="step-number">3</div>
                     <h3>Start chatting</h3>
-                    <p>Open Telegram or WhatsApp. Say "hey." Your AI employee is ready. No training montage required.</p>
+                    <p>Open WhatsApp or Telegram. Say "hey." Your AI employee is ready. No YouTube tutorials required.</p>
                 </div>
             </div>
         </div>
@@ -528,14 +752,14 @@
     <!-- Pricing -->
     <section class="pricing" id="pricing">
         <div class="container">
-            <h2>Simple pricing.</h2>
-            <p class="subtitle">No hidden fees. No "contact sales." No surprises.</p>
+            <h2>Fixed pricing. No surprises.</h2>
+            <p class="subtitle">No usage calculators. No "contact sales." No anxiety.</p>
             
             <div class="pricing-grid">
                 <div class="pricing-card">
                     <h3>Solo</h3>
                     <div class="price">$49<span>/mo</span></div>
-                    <p class="description">Perfect for getting started</p>
+                    <p class="description">Test the waters</p>
                     <ul>
                         <li>1 AI employee</li>
                         <li>Basic integrations</li>
@@ -548,7 +772,7 @@
                 <div class="pricing-card featured">
                     <h3>Team</h3>
                     <div class="price">$149<span>/mo</span></div>
-                    <p class="description">Most popular choice</p>
+                    <p class="description">Most popular</p>
                     <ul>
                         <li>2 AI employees</li>
                         <li>All integrations</li>
@@ -561,7 +785,7 @@
                 <div class="pricing-card">
                     <h3>Squad</h3>
                     <div class="price">$299<span>/mo</span></div>
-                    <p class="description">For serious operators</p>
+                    <p class="description">Serious operators</p>
                     <ul>
                         <li>4 AI employees</li>
                         <li>All integrations</li>
@@ -577,23 +801,23 @@
     <!-- FAQ -->
     <section class="faq">
         <div class="container">
-            <h2>Questions? We got answers.</h2>
+            <h2>Quick answers</h2>
             <div class="faq-grid">
                 <div class="faq-item">
-                    <h3>"Is this just ChatGPT with extra steps?"</h3>
-                    <p>No. ChatGPT is a chat window. This is an employee who knows your tools, your business, and your workflows. ChatGPT doesn't know your calendar. Alex does.</p>
+                    <h3>"Is this just ChatGPT?"</h3>
+                    <p>No. ChatGPT is a chat window. Your AI employee knows your tools, your voice, your schedule. It doesn't just answer questions — it does work.</p>
                 </div>
                 <div class="faq-item">
                     <h3>"What if it messes up?"</h3>
-                    <p>It might. So do human employees. Difference is, we can fix AI mistakes instantly and it learns not to do them again. Try that with Dave from accounting.</p>
+                    <p>It might. That's why we have approval workflows. You review important stuff before it goes out. And unlike humans, AI learns from every correction.</p>
                 </div>
                 <div class="faq-item">
-                    <h3>"Is my data safe?"</h3>
-                    <p>Yes. We're not training AI on your data or selling it to anyone. Your conversations stay yours. We're not that kind of company.</p>
+                    <h3>"What's the catch with pricing?"</h3>
+                    <p>No catch. We make money by charging you a monthly fee. That's it. No hidden usage costs. No "gotcha" tier limits.</p>
                 </div>
                 <div class="faq-item">
-                    <h3>"Can I cancel?"</h3>
-                    <p>Anytime. No questions asked. No guilt trip. No exit interview. (Though we'd love feedback.)</p>
+                    <h3>"I could figure this out myself..."</h3>
+                    <p>You probably could! The question is: do you want to spend 3 days doing that, or $49/month to skip it?</p>
                 </div>
             </div>
         </div>
@@ -602,8 +826,8 @@
     <!-- Final CTA -->
     <section class="final-cta">
         <div class="container">
-            <h2>Ready to stop doing everything yourself?</h2>
-            <p>Get an AI employee who actually does the work. No setup required.</p>
+            <h2>Ready to stop configuring?</h2>
+            <p>Your AI employee doesn't need onboarding. They're ready right now.</p>
             <a href="https://tally.so/r/hireopenclaw" class="cta-button">Get Your AI Employee →</a>
         </div>
     </section>
@@ -612,11 +836,9 @@
     <footer>
         <div class="container">
             <p><strong>HireOpenClaw</strong> — AI employees for people who have better things to do.</p>
-            <p style="margin-top: 12px;">A <a href="https://purplehorizons.io" target="_blank">Purple Horizons</a> experiment.</p>
+            <p style="margin-top: 12px;">A <a href="https://purplehorizons.io" target="_blank">Purple Horizons</a> experiment. Currently in beta.</p>
+            <p style="margin-top: 8px;"><a href="#">Terms</a> · <a href="#">Privacy</a> · <a href="#">FAQ</a></p>
         </div>
     </footer>
-    
-    <!-- Facebook Pixel (placeholder) -->
-    <!-- TODO: Add actual pixel code -->
 </body>
 </html>
