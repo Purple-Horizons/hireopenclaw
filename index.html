@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HireOpenClaw — Hire an AI. Skip the interviews.</title>
+    <meta name="description" content="Pre-trained AI employees that actually do the work. No setup. No IT department. $49/month.">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="HireOpenClaw — Hire an AI. Skip the interviews.">
+    <meta property="og:description" content="Pre-trained AI employees that actually do the work. No setup. No IT department. $49/month.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://hireopenclaw.com">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --black: #0a0a0a;
+            --white: #ffffff;
+            --gray: #6b7280;
+            --light-gray: #f3f4f6;
+            --accent: #7c3aed;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--white);
+            color: var(--black);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+        
+        /* Header */
+        header {
+            padding: 24px 0;
+            border-bottom: 1px solid var(--light-gray);
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--black);
+            text-decoration: none;
+        }
+        
+        /* Hero */
+        .hero {
+            padding: 80px 0 60px;
+            text-align: center;
+        }
+        
+        .hero h1 {
+            font-size: clamp(40px, 8vw, 72px);
+            font-weight: 900;
+            line-height: 1.1;
+            margin-bottom: 24px;
+            letter-spacing: -0.02em;
+        }
+        
+        .hero .subtitle {
+            font-size: clamp(18px, 3vw, 24px);
+            color: var(--gray);
+            max-width: 600px;
+            margin: 0 auto 40px;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: var(--black);
+            color: var(--white);
+            padding: 18px 40px;
+            font-size: 18px;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        
+        .hero-note {
+            margin-top: 16px;
+            font-size: 14px;
+            color: var(--gray);
+        }
+        
+        /* Problem Section */
+        .problem {
+            background: var(--light-gray);
+            padding: 80px 0;
+        }
+        
+        .problem h2 {
+            font-size: 36px;
+            font-weight: 800;
+            margin-bottom: 32px;
+            text-align: center;
+        }
+        
+        .problem-list {
+            max-width: 700px;
+            margin: 0 auto;
+            font-size: 18px;
+        }
+        
+        .problem-list p {
+            margin-bottom: 20px;
+            color: var(--gray);
+        }
+        
+        .problem-list .highlight {
+            background: #fef3c7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--black);
+        }
+        
+        .problem-punchline {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--black);
+            margin-top: 40px;
+            text-align: center;
+        }
+        
+        /* Solution Section */
+        .solution {
+            padding: 80px 0;
+        }
+        
+        .solution h2 {
+            font-size: 36px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        
+        .solution .subtitle {
+            font-size: 18px;
+            color: var(--gray);
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        
+        /* Team Grid */
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 32px;
+            margin-bottom: 60px;
+        }
+        
+        .team-card {
+            background: var(--light-gray);
+            border-radius: 16px;
+            padding: 32px;
+        }
+        
+        .team-card .emoji {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        
+        .team-card h3 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .team-card .role {
+            font-size: 14px;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        
+        .team-card p {
+            color: var(--gray);
+            font-size: 15px;
+        }
+        
+        /* How it Works */
+        .how-it-works {
+            background: var(--black);
+            color: var(--white);
+            padding: 80px 0;
+        }
+        
+        .how-it-works h2 {
+            font-size: 36px;
+            font-weight: 800;
+            margin-bottom: 60px;
+            text-align: center;
+        }
+        
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .step {
+            text-align: center;
+        }
+        
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            background: var(--white);
+            color: var(--black);
+            font-size: 20px;
+            font-weight: 800;
+            border-radius: 50%;
+            margin-bottom: 20px;
+        }
+        
+        .step h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        
+        .step p {
+            color: #9ca3af;
+            font-size: 15px;
+        }
+        
+        /* Pricing */
+        .pricing {
+            padding: 80px 0;
+        }
+        
+        .pricing h2 {
+            font-size: 36px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        
+        .pricing .subtitle {
+            font-size: 18px;
+            color: var(--gray);
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .pricing-card {
+            border: 2px solid var(--light-gray);
+            border-radius: 16px;
+            padding: 32px;
+            text-align: center;
+        }
+        
+        .pricing-card.featured {
+            border-color: var(--black);
+            position: relative;
+        }
+        
+        .pricing-card.featured::before {
+            content: "Most Popular";
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--black);
+            color: var(--white);
+            padding: 4px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 20px;
+        }
+        
+        .pricing-card h3 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .pricing-card .price {
+            font-size: 48px;
+            font-weight: 900;
+            margin-bottom: 8px;
+        }
+        
+        .pricing-card .price span {
+            font-size: 18px;
+            font-weight: 400;
+            color: var(--gray);
+        }
+        
+        .pricing-card .description {
+            color: var(--gray);
+            margin-bottom: 24px;
+        }
+        
+        .pricing-card ul {
+            list-style: none;
+            text-align: left;
+            margin-bottom: 24px;
+        }
+        
+        .pricing-card li {
+            padding: 8px 0;
+            padding-left: 28px;
+            position: relative;
+        }
+        
+        .pricing-card li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #10b981;
+            font-weight: 700;
+        }
+        
+        .pricing-card .cta-button {
+            width: 100%;
+            text-align: center;
+        }
+        
+        /* FAQ */
+        .faq {
+            background: var(--light-gray);
+            padding: 80px 0;
+        }
+        
+        .faq h2 {
+            font-size: 36px;
+            font-weight: 800;
+            margin-bottom: 48px;
+            text-align: center;
+        }
+        
+        .faq-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 32px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .faq-item h3 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        
+        .faq-item p {
+            color: var(--gray);
+            font-size: 15px;
+        }
+        
+        /* Final CTA */
+        .final-cta {
+            padding: 100px 0;
+            text-align: center;
+        }
+        
+        .final-cta h2 {
+            font-size: clamp(32px, 5vw, 48px);
+            font-weight: 800;
+            margin-bottom: 24px;
+        }
+        
+        .final-cta p {
+            font-size: 18px;
+            color: var(--gray);
+            margin-bottom: 40px;
+        }
+        
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--light-gray);
+            padding: 40px 0;
+            text-align: center;
+        }
+        
+        footer p {
+            color: var(--gray);
+            font-size: 14px;
+        }
+        
+        footer a {
+            color: var(--gray);
+            text-decoration: none;
+        }
+        
+        footer a:hover {
+            color: var(--black);
+        }
+        
+        /* Mobile */
+        @media (max-width: 768px) {
+            .hero {
+                padding: 60px 0 40px;
+            }
+            
+            .faq-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <a href="/" class="logo">HireOpenClaw</a>
+        </div>
+    </header>
+    
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container">
+            <h1>Hire an AI.<br>Skip the interviews.</h1>
+            <p class="subtitle">Pre-trained AI employees that actually do the work. No setup. No IT department. No existential dread.</p>
+            <a href="#pricing" class="cta-button">Get Your AI Employee →</a>
+            <p class="hero-note">Starting at $49/month. Cancel anytime.</p>
+        </div>
+    </section>
+    
+    <!-- Problem -->
+    <section class="problem">
+        <div class="container">
+            <h2>You've tried the AI thing.</h2>
+            <div class="problem-list">
+                <p>You've watched the YouTube tutorials. Signed up for <span class="highlight">14 free trials</span>. Spent a weekend "setting up automations."</p>
+                <p>And now you have: 47 open browser tabs, a half-configured Zapier account, and the lingering feeling that you're doing something wrong.</p>
+                <p>Here's the thing: <strong>You're not dumb. AI is just unnecessarily complicated.</strong></p>
+            </div>
+            <p class="problem-punchline">What if you could just... hire someone who already figured it out?</p>
+        </div>
+    </section>
+    
+    <!-- Solution / Team -->
+    <section class="solution">
+        <div class="container">
+            <h2>Meet your new AI employees.</h2>
+            <p class="subtitle">They show up Day 1 ready to work. No training required.</p>
+            
+            <div class="team-grid">
+                <div class="team-card">
+                    <div class="emoji">🎯</div>
+                    <h3>Alex</h3>
+                    <div class="role">Your AI SDR</div>
+                    <p>Finds leads. Writes emails. Follows up until they surrender. You just close the deals.</p>
+                </div>
+                
+                <div class="team-card">
+                    <div class="emoji">📝</div>
+                    <h3>Morgan</h3>
+                    <div class="role">Your AI Content Creator</div>
+                    <p>Writes your posts so you can pretend you're a thought leader. LinkedIn, Twitter, newsletters — handled.</p>
+                </div>
+                
+                <div class="team-card">
+                    <div class="emoji">📊</div>
+                    <h3>Riley</h3>
+                    <div class="role">Your AI Research Analyst</div>
+                    <p>Like Google, but actually helpful. Deep research, competitor intel, answers — not links.</p>
+                </div>
+                
+                <div class="team-card">
+                    <div class="emoji">📅</div>
+                    <h3>Casey</h3>
+                    <div class="role">Your AI Executive Assistant</div>
+                    <p>Manages your chaos so you can create more chaos. Calendar, email, tasks — finally handled.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- How it Works -->
+    <section class="how-it-works">
+        <div class="container">
+            <h2>How it works</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Tell us what you need</h3>
+                    <p>Quick form. 5 minutes. We ask the important questions so you don't have to figure them out.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>We build your AI employee</h3>
+                    <p>24-48 hours. We connect your tools, configure everything, and make sure it doesn't embarrass you.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>Start chatting</h3>
+                    <p>Open Telegram or WhatsApp. Say "hey." Your AI employee is ready. No training montage required.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Pricing -->
+    <section class="pricing" id="pricing">
+        <div class="container">
+            <h2>Simple pricing.</h2>
+            <p class="subtitle">No hidden fees. No "contact sales." No surprises.</p>
+            
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <h3>Solo</h3>
+                    <div class="price">$49<span>/mo</span></div>
+                    <p class="description">Perfect for getting started</p>
+                    <ul>
+                        <li>1 AI employee</li>
+                        <li>Basic integrations</li>
+                        <li>Telegram or WhatsApp</li>
+                        <li>Email support</li>
+                    </ul>
+                    <a href="https://tally.so/r/hireopenclaw" class="cta-button">Get Started</a>
+                </div>
+                
+                <div class="pricing-card featured">
+                    <h3>Team</h3>
+                    <div class="price">$149<span>/mo</span></div>
+                    <p class="description">Most popular choice</p>
+                    <ul>
+                        <li>2 AI employees</li>
+                        <li>All integrations</li>
+                        <li>All messaging channels</li>
+                        <li>Priority support</li>
+                    </ul>
+                    <a href="https://tally.so/r/hireopenclaw" class="cta-button">Get Started</a>
+                </div>
+                
+                <div class="pricing-card">
+                    <h3>Squad</h3>
+                    <div class="price">$299<span>/mo</span></div>
+                    <p class="description">For serious operators</p>
+                    <ul>
+                        <li>4 AI employees</li>
+                        <li>All integrations</li>
+                        <li>All messaging channels</li>
+                        <li>Dedicated support</li>
+                    </ul>
+                    <a href="https://tally.so/r/hireopenclaw" class="cta-button">Get Started</a>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- FAQ -->
+    <section class="faq">
+        <div class="container">
+            <h2>Questions? We got answers.</h2>
+            <div class="faq-grid">
+                <div class="faq-item">
+                    <h3>"Is this just ChatGPT with extra steps?"</h3>
+                    <p>No. ChatGPT is a chat window. This is an employee who knows your tools, your business, and your workflows. ChatGPT doesn't know your calendar. Alex does.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>"What if it messes up?"</h3>
+                    <p>It might. So do human employees. Difference is, we can fix AI mistakes instantly and it learns not to do them again. Try that with Dave from accounting.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>"Is my data safe?"</h3>
+                    <p>Yes. We're not training AI on your data or selling it to anyone. Your conversations stay yours. We're not that kind of company.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>"Can I cancel?"</h3>
+                    <p>Anytime. No questions asked. No guilt trip. No exit interview. (Though we'd love feedback.)</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Final CTA -->
+    <section class="final-cta">
+        <div class="container">
+            <h2>Ready to stop doing everything yourself?</h2>
+            <p>Get an AI employee who actually does the work. No setup required.</p>
+            <a href="https://tally.so/r/hireopenclaw" class="cta-button">Get Your AI Employee →</a>
+        </div>
+    </section>
+    
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p><strong>HireOpenClaw</strong> — AI employees for people who have better things to do.</p>
+            <p style="margin-top: 12px;">A <a href="https://purplehorizons.io" target="_blank">Purple Horizons</a> experiment.</p>
+        </div>
+    </footer>
+    
+    <!-- Facebook Pixel (placeholder) -->
+    <!-- TODO: Add actual pixel code -->
+</body>
+</html>
