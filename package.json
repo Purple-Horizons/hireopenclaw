@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/Purple-Horizons/hireopenclaw#readme",
   "dependencies": {
-    "@vercel/analytics": "^1.6.1"
+    "@vercel/analytics": "^1.6.1",
+    "stripe": "^14.14.0"
   }
 }
