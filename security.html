@@ -189,10 +189,44 @@
         }
         footer a { color: var(--gray); text-decoration: none; }
         footer a:hover { color: var(--accent); }
-        @media (max-width: 600px) {
+        .table-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 24px 0;
+        }
+        .attack-cards {
+            display: none;
+        }
+        @media (max-width: 768px) {
             h1 { font-size: 32px; }
             h2 { font-size: 22px; }
             .principle-grid { grid-template-columns: 1fr; }
+            .security-table { display: none; }
+            .attack-cards { display: block; }
+            .attack-card {
+                background: var(--bg-card);
+                border: 1px solid var(--light-gray);
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 16px;
+            }
+            .attack-card h4 {
+                font-size: 16px;
+                font-weight: 700;
+                margin-bottom: 8px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .attack-card .risk {
+                font-size: 14px;
+                color: var(--gray);
+                margin-bottom: 8px;
+            }
+            .attack-card .protection {
+                font-size: 14px;
+                color: #ccc;
+            }
         }
     </style>
 </head>
@@ -300,6 +334,35 @@
                     </tr>
                 </tbody>
             </table>
+
+            <!-- Mobile cards version -->
+            <div class="attack-cards">
+                <div class="attack-card">
+                    <h4>API Key Theft <span class="badge green">Protected</span></h4>
+                    <p class="risk">Attacker steals your AI provider credentials</p>
+                    <p class="protection">✓ Zero-trust keyring — AI never has keys</p>
+                </div>
+                <div class="attack-card">
+                    <h4>Cross-Customer Data <span class="badge green">Protected</span></h4>
+                    <p class="risk">One customer accesses another's data</p>
+                    <p class="protection">✓ Isolated containers per customer</p>
+                </div>
+                <div class="attack-card">
+                    <h4>Runaway Actions <span class="badge green">Protected</span></h4>
+                    <p class="risk">AI sends thousands of emails or posts</p>
+                    <p class="protection">✓ Daily limits + confirmation for bulk actions</p>
+                </div>
+                <div class="attack-card">
+                    <h4>Account Compromise <span class="badge green">Protected</span></h4>
+                    <p class="risk">Bad actor gains control of your AI</p>
+                    <p class="protection">✓ Isolated personas limit blast radius</p>
+                </div>
+                <div class="attack-card">
+                    <h4>Prompt Injection <span class="badge yellow">Mitigated</span></h4>
+                    <p class="risk">Attacker manipulates AI behavior via input</p>
+                    <p class="protection">✓ Private channels only + anomaly detection</p>
+                </div>
+            </div>
 
             <h2>Architecture Overview</h2>
 
