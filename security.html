@@ -303,36 +303,9 @@
 
             <h2>Architecture Overview</h2>
 
-            <div class="architecture-diagram">
-<pre>
-┌─────────────────────────────────────────────────────────────────────┐
-│  <span class="highlight">YOUR PRIVATE CHANNELS</span> (Telegram, WhatsApp, Slack)                   │
-│                              │                                      │
-│                              ▼                                      │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │                    YOUR AI EMPLOYEE                           │  │
-│  │                                                               │  │
-│  │   • Isolated container (your data only)                       │  │
-│  │   • No public exposure                                        │  │
-│  │   • Talks only to authorized channels                         │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-│                              │                                      │
-│              ┌───────────────┼───────────────┐                      │
-│              ▼               ▼               ▼                      │
-│     ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
-│     │  <span class="highlight">KEYRING</span>    │  │  <span class="highlight">ISOLATED</span>   │  │   <span class="highlight">DRAFT</span>    │              │
-│     │   PROXY     │  │   EMAIL     │  │   MODE      │              │
-│     │             │  │             │  │             │              │
-│     │ Real keys   │  │ Dedicated   │  │ Content     │              │
-│     │ never in    │  │ sending     │  │ reviewed    │              │
-│     │ your AI     │  │ accounts    │  │ before      │              │
-│     │             │  │             │  │ publish     │              │
-│     └─────────────┘  └─────────────┘  └─────────────┘              │
-│              │               │               │                      │
-│              ▼               ▼               ▼                      │
-│         AI APIs         Email APIs      Social APIs                 │
-└─────────────────────────────────────────────────────────────────────┘
-</pre>
+            <div class="architecture-visual">
+                <img src="/security-diagram.jpg" alt="HireOpenClaw Security Architecture - Private channels connect to your isolated AI employee through a secure keyring proxy to external APIs" style="width: 100%; border-radius: 12px; border: 1px solid var(--light-gray);">
+                <p style="text-align: center; color: var(--gray); font-size: 14px; margin-top: 12px;">Private channels → Isolated AI → Keyring proxy → External APIs</p>
             </div>
 
             <h2>What We're Honest About</h2>
@@ -369,9 +342,7 @@
 
             <h2>Questions?</h2>
 
-            <p>Security concerns? We take them seriously.</p>
-            <p>Email: <a href="mailto:security@hireopenclaw.com">security@hireopenclaw.com</a></p>
-            <p>For responsible disclosure of vulnerabilities, please email us directly. We appreciate the help keeping our customers safe.</p>
+            <p>Security concerns? We take them seriously. Reach out through your account dashboard or the main contact form.</p>
 
         </div>
     </main>
