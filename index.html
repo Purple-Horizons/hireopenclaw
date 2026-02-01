@@ -274,6 +274,50 @@
             font-size: 14px;
         }
         
+        /* Security Callout */
+        .security-callout {
+            padding: 40px 0;
+            background: var(--bg);
+        }
+        .security-banner {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            background: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(255, 107, 53, 0.05) 100%);
+            border: 1px solid rgba(255, 107, 53, 0.3);
+            border-radius: 16px;
+            padding: 32px;
+        }
+        .security-icon {
+            font-size: 48px;
+            flex-shrink: 0;
+        }
+        .security-content h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--white);
+        }
+        .security-content p {
+            color: var(--gray);
+            font-size: 15px;
+            margin: 0;
+        }
+        .security-content a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .security-content a:hover {
+            text-decoration: underline;
+        }
+        @media (max-width: 600px) {
+            .security-banner {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+        
         /* Comparison */
         .comparison {
             padding: 100px 0;
@@ -878,6 +922,19 @@
                     <h3>Casey</h3>
                     <div class="role">Executive Assistant</div>
                     <p>Calendar. Email triage. Task tracking. Manages your chaos so you can make more.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Security Callout -->
+    <section class="security-callout">
+        <div class="container">
+            <div class="security-banner">
+                <div class="security-icon">🔐</div>
+                <div class="security-content">
+                    <h3>Private-First. Zero-Trust. Your Data Stays Yours.</h3>
+                    <p>Your AI employee talks only to you. API keys are never exposed. External actions use isolated accounts. <a href="/security.html">See how we keep you protected →</a></p>
                 </div>
             </div>
         </div>
