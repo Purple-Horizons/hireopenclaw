@@ -40,7 +40,7 @@ export default async function handler(req, res) {
 
     // Format the email
     const emailHtml = `
-      <h2>🎯 New HireOpenClaw Lead</h2>
+      <h2>🎯 New ClawOps Lead</h2>
       
       <h3>Contact Info</h3>
       <ul>
@@ -74,11 +74,11 @@ export default async function handler(req, res) {
       ${anything ? `<h3>Additional Notes</h3><p>${anything}</p>` : ''}
 
       <hr>
-      <p><em>Submitted from hireopenclaw.com</em></p>
+      <p><em>Submitted from clawops.com</em></p>
     `;
 
     const emailText = `
-New HireOpenClaw Lead
+New ClawOps Lead
 
 Name: ${name}
 Business: ${business || 'Not provided'}
@@ -108,7 +108,7 @@ Additional Notes: ${anything || 'None'}
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'HireOpenClaw <leads@hireopenclaw.com>',
+        from: 'ClawOps <leads@clawops.com>',
         to: ['g@purplehorizons.io'],
         subject: `🎯 New Lead: ${business || name}`,
         html: emailHtml,
