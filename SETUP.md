@@ -16,20 +16,20 @@ Add these to your Vercel project settings:
 | Variable | Description | Where to get it |
 |----------|-------------|-----------------|
 | `STRIPE_SECRET_KEY` | Server-side Stripe | [dashboard.stripe.com/apikeys](https://dashboard.stripe.com/apikeys) |
-| `STRIPE_PRICE_SOLO` | Solo plan price ID ($49/mo) | Create in Stripe Dashboard |
-| `STRIPE_PRICE_TEAM` | Team plan price ID ($149/mo) | Create in Stripe Dashboard |
-| `STRIPE_PRICE_SQUAD` | Squad plan price ID ($299/mo) | Create in Stripe Dashboard |
-| `STRIPE_PRICE_SETUP` | Setup fee price ID ($99) | Create in Stripe Dashboard |
+| `STRIPE_PRICE_STARTER` | Starter plan price ID ($299/mo) | Create in Stripe Dashboard |
+| `STRIPE_PRICE_TEAM` | Team plan price ID ($799/mo) | Create in Stripe Dashboard |
+| `STRIPE_PRICE_ENTERPRISE` | Enterprise plan price ID (custom) | Create in Stripe Dashboard |
+| `STRIPE_PRICE_SETUP` | Setup fee price ID (optional) | Create in Stripe Dashboard |
 | `SITE_URL` | Your site URL | `https://hireopenclaw.com` |
 
 ## Stripe Setup
 
 1. Go to [Stripe Dashboard](https://dashboard.stripe.com)
 2. Create Products:
-   - **Solo** - $49/month (recurring)
-   - **Team** - $149/month (recurring)
-   - **Squad** - $299/month (recurring)
-   - **Setup Fee** - $99 one-time
+   - **Starter** - $299/month (recurring)
+   - **Team** - $799/month (recurring)
+   - **Enterprise** - Custom (recurring)
+   - **Setup Fee** - Optional one-time
 3. Copy each Price ID (starts with `price_`)
 4. Add to Vercel env vars
 

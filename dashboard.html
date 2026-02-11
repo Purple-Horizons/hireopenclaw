@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — HireOpenClaw</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0a0a0a;
+            --bg-card: #1a1a1a;
+            --bg-card-hover: #222;
+            --white: #ffffff;
+            --gray: #888;
+            --light-gray: #333;
+            --accent: #ff6b35;
+            --green: #10b981;
+            --yellow: #fbbf24;
+            --red: #ef4444;
+            --blue: #3b82f6;
+        }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--white);
+            line-height: 1.6;
+        }
+        .dashboard {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        .dash-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0 32px;
+            border-bottom: 1px solid var(--light-gray);
+            margin-bottom: 32px;
+        }
+        .dash-header .logo {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--white);
+            text-decoration: none;
+        }
+        .dash-header .logo span { color: var(--accent); }
+        .dash-header .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--gray);
+            font-size: 14px;
+        }
+        .dash-header .user-info .plan-badge {
+            background: var(--accent);
+            color: var(--bg);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* Stats Row */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--light-gray);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .stat-card .label {
+            font-size: 13px;
+            color: var(--gray);
+            margin-bottom: 4px;
+        }
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .stat-card .sub {
+            font-size: 12px;
+            color: var(--gray);
+            margin-top: 4px;
+        }
+
+        /* Usage Bar */
+        .usage-bar-container {
+            background: var(--light-gray);
+            border-radius: 8px;
+            height: 8px;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+        .usage-bar {
+            height: 100%;
+            border-radius: 8px;
+            transition: width 0.5s ease;
+        }
+        .usage-bar.green { background: var(--green); }
+        .usage-bar.yellow { background: var(--yellow); }
+        .usage-bar.red { background: var(--red); }
+
+        /* Bots Section */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .section-header h2 {
+            font-size: 20px;
+            font-weight: 700;
+        }
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: var(--bg);
+        }
+        .btn-secondary {
+            background: var(--light-gray);
+            color: var(--white);
+        }
+        .btn-danger {
+            background: transparent;
+            color: var(--red);
+            border: 1px solid var(--red);
+        }
+        .btn:hover { opacity: 0.9; }
+
+        /* Bot Cards */
+        .bots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 16px;
+            margin-bottom: 40px;
+        }
+        .bot-card {
+            background: var(--bg-card);
+            border: 1px solid var(--light-gray);
+            border-radius: 12px;
+            padding: 24px;
+            transition: border-color 0.2s;
+        }
+        .bot-card:hover {
+            border-color: var(--accent);
+        }
+        .bot-card .bot-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+        .bot-card .bot-name {
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .bot-card .bot-role {
+            font-size: 13px;
+            color: var(--gray);
+            margin-top: 2px;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-dot.active { background: var(--green); }
+        .status-dot.paused { background: var(--yellow); }
+        .status-dot.error { background: var(--red); }
+
+        .bot-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 16px 0;
+            padding: 12px 0;
+            border-top: 1px solid var(--light-gray);
+            border-bottom: 1px solid var(--light-gray);
+        }
+        .bot-stat .label { font-size: 12px; color: var(--gray); }
+        .bot-stat .value { font-size: 16px; font-weight: 600; }
+
+        .bot-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        .bot-actions .btn { font-size: 13px; padding: 6px 12px; }
+
+        /* Add Bot Card */
+        .add-bot-card {
+            background: transparent;
+            border: 2px dashed var(--light-gray);
+            border-radius: 12px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .add-bot-card:hover {
+            border-color: var(--accent);
+            background: rgba(255, 107, 53, 0.05);
+        }
+        .add-bot-card .icon { font-size: 32px; margin-bottom: 8px; }
+        .add-bot-card .text { color: var(--gray); font-size: 14px; }
+
+        /* Activity Log */
+        .activity-log {
+            background: var(--bg-card);
+            border: 1px solid var(--light-gray);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 32px;
+        }
+        .activity-log h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        .log-entry {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--light-gray);
+            font-size: 14px;
+        }
+        .log-entry:last-child { border-bottom: none; }
+        .log-entry .time { color: var(--gray); white-space: nowrap; font-size: 12px; min-width: 80px; }
+        .log-entry .event { color: var(--white); }
+
+        /* Billing Section */
+        .billing-card {
+            background: var(--bg-card);
+            border: 1px solid var(--light-gray);
+            border-radius: 12px;
+            padding: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .billing-info .plan-name { font-size: 18px; font-weight: 700; }
+        .billing-info .next-billing { font-size: 14px; color: var(--gray); margin-top: 4px; }
+
+        /* Login Screen */
+        .login-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
+        }
+        .login-box {
+            background: var(--bg-card);
+            border: 1px solid var(--light-gray);
+            border-radius: 16px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        .login-box h1 { font-size: 24px; margin-bottom: 8px; }
+        .login-box p { color: var(--gray); margin-bottom: 24px; font-size: 14px; }
+        .login-box input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg);
+            border: 1px solid var(--light-gray);
+            border-radius: 8px;
+            color: var(--white);
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+        .login-box input:focus { outline: none; border-color: var(--accent); }
+        .login-box .btn { width: 100%; justify-content: center; padding: 12px; font-size: 16px; }
+
+        @media (max-width: 768px) {
+            .stats-row { grid-template-columns: 1fr 1fr; }
+            .bots-grid { grid-template-columns: 1fr; }
+            .billing-card { flex-direction: column; gap: 16px; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen (shown by default, hidden when authenticated) -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-box">
+            <a href="/" class="logo" style="display:block;margin-bottom:24px;text-decoration:none;">Hire<span style="color:#ff6b35;">OpenClaw</span></a>
+            <h1>Client Dashboard</h1>
+            <p>Enter your email to access your AI employees</p>
+            <input type="email" id="loginEmail" placeholder="you@company.com" autocomplete="email">
+            <button class="btn btn-primary" onclick="handleLogin()">Sign In</button>
+            <p style="margin-top:16px;font-size:12px;color:#555;">We'll send a magic link to your email</p>
+        </div>
+    </div>
+
+    <!-- Dashboard (hidden by default, shown when authenticated) -->
+    <div id="dashboardScreen" class="dashboard" style="display:none;">
+        <header class="dash-header">
+            <a href="/" class="logo">Hire<span>OpenClaw</span></a>
+            <div class="user-info">
+                <span class="plan-badge">Team Plan</span>
+                <span id="userEmail">client@company.com</span>
+                <button class="btn btn-secondary" onclick="handleLogout()" style="padding:6px 12px;font-size:12px;">Log Out</button>
+            </div>
+        </header>
+
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="label">Active Employees</div>
+                <div class="value" style="color:var(--green);">2</div>
+                <div class="sub">of 3 available</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Tokens Used</div>
+                <div class="value">842K</div>
+                <div class="sub">of 2M this month</div>
+                <div class="usage-bar-container">
+                    <div class="usage-bar green" style="width:42%"></div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Messages Today</div>
+                <div class="value">127</div>
+                <div class="sub">+23% vs yesterday</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Uptime</div>
+                <div class="value" style="color:var(--green);">99.9%</div>
+                <div class="sub">Last 30 days</div>
+            </div>
+        </div>
+
+        <!-- Bots -->
+        <div class="section-header">
+            <h2>Your AI Employees</h2>
+            <button class="btn btn-primary" onclick="showAddBot()">+ Add Employee</button>
+        </div>
+
+        <div class="bots-grid">
+            <div class="bot-card">
+                <div class="bot-header">
+                    <div>
+                        <div class="bot-name">Morgan</div>
+                        <div class="bot-role">Content Creator</div>
+                    </div>
+                    <span class="status-dot active" title="Active"></span>
+                </div>
+                <div class="bot-stats">
+                    <div class="bot-stat">
+                        <div class="label">Messages today</div>
+                        <div class="value">84</div>
+                    </div>
+                    <div class="bot-stat">
+                        <div class="label">Tokens used</div>
+                        <div class="value">523K</div>
+                    </div>
+                    <div class="bot-stat">
+                        <div class="label">Last active</div>
+                        <div class="value">2m ago</div>
+                    </div>
+                    <div class="bot-stat">
+                        <div class="label">Health</div>
+                        <div class="value" style="color:var(--green);">Healthy</div>
+                    </div>
+                </div>
+                <div class="bot-actions">
+                    <button class="btn btn-secondary">View Logs</button>
+                    <button class="btn btn-secondary">Configure</button>
+                    <button class="btn btn-danger">Pause</button>
+                </div>
+            </div>
+
+            <div class="bot-card">
+                <div class="bot-header">
+                    <div>
+                        <div class="bot-name">Alex</div>
+                        <div class="bot-role">Sales Development</div>
+                    </div>
+                    <span class="status-dot active" title="Active"></span>
+                </div>
+                <div class="bot-stats">
+                    <div class="bot-stat">
+                        <div class="label">Messages today</div>
+                        <div class="value">43</div>
+                    </div>
+                    <div class="bot-stat">
+                        <div class="label">Tokens used</div>
+                        <div class="value">319K</div>
+                    </div>
+                    <div class="bot-stat">
+                        <div class="label">Last active</div>
+                        <div class="value">5m ago</div>
+                    </div>
+                    <div class="bot-stat">
+                        <div class="label">Health</div>
+                        <div class="value" style="color:var(--green);">Healthy</div>
+                    </div>
+                </div>
+                <div class="bot-actions">
+                    <button class="btn btn-secondary">View Logs</button>
+                    <button class="btn btn-secondary">Configure</button>
+                    <button class="btn btn-danger">Pause</button>
+                </div>
+            </div>
+
+            <div class="add-bot-card" onclick="showAddBot()">
+                <div class="icon">+</div>
+                <div class="text">Add another AI employee</div>
+                <div class="text" style="font-size:12px;margin-top:4px;">1 slot available on your plan</div>
+            </div>
+        </div>
+
+        <!-- Activity Log -->
+        <div class="activity-log">
+            <h3>Recent Activity</h3>
+            <div class="log-entry">
+                <span class="time">2:14 PM</span>
+                <span class="event">Morgan posted 3 LinkedIn articles for review</span>
+            </div>
+            <div class="log-entry">
+                <span class="time">1:45 PM</span>
+                <span class="event">Alex sent 12 outreach emails (8 personalized, 4 follow-ups)</span>
+            </div>
+            <div class="log-entry">
+                <span class="time">11:30 AM</span>
+                <span class="event">Morgan drafted weekly newsletter</span>
+            </div>
+            <div class="log-entry">
+                <span class="time">9:15 AM</span>
+                <span class="event">Alex researched 5 new prospects from LinkedIn</span>
+            </div>
+            <div class="log-entry">
+                <span class="time">8:00 AM</span>
+                <span class="event">System: Daily health check passed for all employees</span>
+            </div>
+        </div>
+
+        <!-- Billing -->
+        <div class="section-header">
+            <h2>Billing</h2>
+        </div>
+        <div class="billing-card">
+            <div class="billing-info">
+                <div class="plan-name">Team Plan - $799/mo</div>
+                <div class="next-billing">Next billing date: March 11, 2026</div>
+            </div>
+            <div>
+                <button class="btn btn-secondary" onclick="manageBilling()">Manage Billing</button>
+                <button class="btn btn-primary" style="margin-left:8px;" onclick="upgradePlan()">Upgrade Plan</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simple auth state (replace with real auth later)
+        function handleLogin() {
+            const email = document.getElementById('loginEmail').value;
+            if (!email) return;
+            // TODO: Send magic link via API
+            // For now, just show dashboard
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('dashboardScreen').style.display = 'block';
+            document.getElementById('userEmail').textContent = email;
+        }
+
+        function handleLogout() {
+            document.getElementById('dashboardScreen').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'flex';
+        }
+
+        function showAddBot() {
+            alert('Choose a role for your new AI employee:\n\n- Content Creator (blogs, social, newsletters)\n- Sales Development (outreach, leads, CRM)\n- Social Media Manager (scheduling, engagement)\n- Executive Assistant (email, calendar, tasks)\n- Customer Support (tickets, FAQ, chat)\n- Custom (blank canvas)\n\nThis feature is coming soon!');
+        }
+
+        function manageBilling() {
+            // TODO: Redirect to Stripe Customer Portal
+            alert('Redirecting to billing portal...');
+        }
+
+        function upgradePlan() {
+            window.location.href = '/#pricing';
+        }
+
+        // Allow Enter key for login
+        document.getElementById('loginEmail').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleLogin();
+        });
+    </script>
+</body>
+</html>

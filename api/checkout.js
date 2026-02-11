@@ -19,10 +19,10 @@ export default async function handler(req, res) {
 
   // Price IDs - set these in Stripe Dashboard, then add to Vercel env
   const PRICES = {
-    solo: process.env.STRIPE_PRICE_SOLO,      // $49/mo
-    team: process.env.STRIPE_PRICE_TEAM,      // $149/mo
-    squad: process.env.STRIPE_PRICE_SQUAD,    // $299/mo
-    setup: process.env.STRIPE_PRICE_SETUP     // $99 one-time (optional)
+    starter: process.env.STRIPE_PRICE_STARTER,         // $299/mo
+    team: process.env.STRIPE_PRICE_TEAM,               // $799/mo
+    enterprise: process.env.STRIPE_PRICE_ENTERPRISE,   // custom
+    setup: process.env.STRIPE_PRICE_SETUP              // one-time (optional)
   };
 
   try {
