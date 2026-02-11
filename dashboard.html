@@ -481,36 +481,106 @@
     </div>
 
     <script>
-        // Simple auth state (replace with real auth later)
-        function handleLogin() {
+        let currentEmail = '';
+
+        async function handleLogin() {
             const email = document.getElementById('loginEmail').value;
             if (!email) return;
-            // TODO: Send magic link via API
-            // For now, just show dashboard
+            currentEmail = email;
+            
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('dashboardScreen').style.display = 'block';
             document.getElementById('userEmail').textContent = email;
+            
+            // Load real data from API
+            await loadDashboard(email);
         }
 
         function handleLogout() {
+            currentEmail = '';
             document.getElementById('dashboardScreen').style.display = 'none';
             document.getElementById('loginScreen').style.display = 'flex';
         }
 
-        function showAddBot() {
-            alert('Choose a role for your new AI employee:\n\n- Content Creator (blogs, social, newsletters)\n- Sales Development (outreach, leads, CRM)\n- Social Media Manager (scheduling, engagement)\n- Executive Assistant (email, calendar, tasks)\n- Customer Support (tickets, FAQ, chat)\n- Custom (blank canvas)\n\nThis feature is coming soon!');
+        async function loadDashboard(email) {
+            try {
+                const res = await fetch(`/api/dashboard/bots?email=${encodeURIComponent(email)}`);
+                const data = await res.json();
+                
+                if (data.bots) {
+                    // Update stats
+                    document.querySelector('.stats-row').children[0].querySelector('.value').textContent = 
+                        data.bots.filter(b => b.status === 'active').length;
+                    document.querySelector('.stats-row').children[0].querySelector('.sub').textContent = 
+                        `of ${data.maxBots} available`;
+                    
+                    const tokenPct = Math.round((data.totalTokensUsed / data.totalTokensLimit) * 100);
+                    const tokenK = Math.round(data.totalTokensUsed / 1000);
+                    const limitM = (data.totalTokensLimit / 1000000).toFixed(0);
+                    document.querySelector('.stats-row').children[1].querySelector('.value').textContent = `${tokenK}K`;
+                    document.querySelector('.stats-row').children[1].querySelector('.sub').textContent = `of ${limitM}M this month`;
+                    
+                    const bar = document.querySelector('.usage-bar');
+                    bar.style.width = `${tokenPct}%`;
+                    bar.className = `usage-bar ${tokenPct > 90 ? 'red' : tokenPct > 70 ? 'yellow' : 'green'}`;
+                }
+            } catch (err) {
+                console.log('API not connected yet, using mock data');
+            }
         }
 
-        function manageBilling() {
-            // TODO: Redirect to Stripe Customer Portal
-            alert('Redirecting to billing portal...');
+        function showAddBot() {
+            alert('Choose a role for your new AI employee:\\n\\n' +
+                '📣 Content Creator (blogs, social, newsletters)\\n' +
+                '💼 Sales Development (outreach, leads, CRM)\\n' +
+                '📱 Social Media Manager (scheduling, engagement)\\n' +
+                '📅 Executive Assistant (email, calendar, tasks)\\n' +
+                '🎧 Customer Support (tickets, FAQ, chat)\\n' +
+                '🧪 Custom (blank canvas)\\n\\n' +
+                'Contact us to add a new employee to your plan!');
+        }
+
+        async function manageBilling() {
+            try {
+                const res = await fetch('/api/dashboard/billing', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: currentEmail })
+                });
+                const data = await res.json();
+                if (data.url) {
+                    window.location.href = data.url;
+                } else {
+                    alert('Could not load billing portal. Contact support.');
+                }
+            } catch (err) {
+                alert('Billing portal not available yet. Contact support@hireopenclaw.com');
+            }
+        }
+
+        async function botAction(tenantId, action) {
+            if (action === 'pause' && !confirm('Pause this AI employee? They will stop responding until resumed.')) return;
+            
+            try {
+                const res = await fetch('/api/dashboard/bot-action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tenantId, action, email: currentEmail })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`Employee ${action}d successfully.`);
+                    await loadDashboard(currentEmail);
+                }
+            } catch (err) {
+                alert('Action failed. Try again.');
+            }
         }
 
         function upgradePlan() {
             window.location.href = '/#pricing';
         }
 
-        // Allow Enter key for login
         document.getElementById('loginEmail').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') handleLogin();
         });
