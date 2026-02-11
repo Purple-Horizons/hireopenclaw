@@ -1,5 +1,5 @@
 // Vercel Serverless Function - Stripe Checkout
-// Creates checkout session for ClawOps plans
+// Creates checkout session for HireOpenClaw plans
 
 export default async function handler(req, res) {
   // CORS headers
@@ -19,10 +19,10 @@ export default async function handler(req, res) {
 
   // Price IDs - set these in Stripe Dashboard, then add to Vercel env
   const PRICES = {
-    starter: process.env.STRIPE_PRICE_STARTER,         // $299/mo
-    professional: process.env.STRIPE_PRICE_PROFESSIONAL, // $799/mo
-    enterprise: process.env.STRIPE_PRICE_ENTERPRISE,     // custom
-    setup: process.env.STRIPE_PRICE_SETUP               // one-time (optional)
+    solo: process.env.STRIPE_PRICE_SOLO,      // $49/mo
+    team: process.env.STRIPE_PRICE_TEAM,      // $149/mo
+    squad: process.env.STRIPE_PRICE_SQUAD,    // $299/mo
+    setup: process.env.STRIPE_PRICE_SETUP     // $99 one-time (optional)
   };
 
   try {
@@ -52,11 +52,11 @@ export default async function handler(req, res) {
       payment_method_types: ['card'],
       line_items: lineItems,
       customer_email: email || undefined,
-      success_url: `${process.env.SITE_URL || 'https://clawops.com'}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.SITE_URL || 'https://clawops.com'}?canceled=true`,
+      success_url: `${process.env.SITE_URL || 'https://hireopenclaw.com'}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.SITE_URL || 'https://hireopenclaw.com'}?canceled=true`,
       metadata: {
         plan: plan,
-        source: 'clawops'
+        source: 'hireopenclaw'
       },
       subscription_data: {
         metadata: {
