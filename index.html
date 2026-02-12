@@ -834,7 +834,7 @@
             <div class="header-inner">
                 <a href="/" class="logo">Hire<span>OpenClaw</span></a>
                 <a href="/dashboard" style="color:#888;text-decoration:none;font-size:14px;margin-right:16px;">Dashboard</a>
-                <a href="#pricing" class="nav-cta">Get Started</a>
+                <a href="#" class="nav-cta" onclick="window.scrollTo({top:0,behavior:'smooth'});document.querySelector('#signup-form input[name=name]').focus();return false;">Get Started</a>
             </div>
         </div>
     </header>
@@ -1051,7 +1051,7 @@
                         <li>Telegram or WhatsApp</li>
                         <li>Email support</li>
                     </ul>
-                    <a href="#apply" class="cta-button">Get Started</a>
+                    <a href="#" class="cta-button" onclick="window.scrollTo({top:0,behavior:'smooth'});document.querySelector('#signup-form input[name=name]').focus();return false;">Get Started</a>
                 </div>
                 
                 <div class="pricing-card featured">
@@ -1066,7 +1066,7 @@
                         <li>Custom personalities</li>
                         <li>Priority support</li>
                     </ul>
-                    <a href="#apply" class="cta-button">Get Started</a>
+                    <a href="#" class="cta-button" onclick="window.scrollTo({top:0,behavior:'smooth'});document.querySelector('#signup-form input[name=name]').focus();return false;">Get Started</a>
                 </div>
                 
                 <div class="pricing-card">
@@ -1081,7 +1081,7 @@
                         <li>Customer-managed encryption</li>
                         <li>White-glove onboarding</li>
                     </ul>
-                    <a href="#apply" class="cta-button">Contact Us</a>
+                    <a href="#" class="cta-button" onclick="window.scrollTo({top:0,behavior:'smooth'});document.querySelector('#signup-form input[name=name]').focus();return false;">Contact Us</a>
                 </div>
             </div>
         </div>
@@ -1162,7 +1162,7 @@
                     throw new Error('Signup failed');
                 }
             } catch (error) {
-                alert('Something went wrong. Please try again or email us at hello@hireopenclaw.com');
+                alert('Something went wrong. Please try again.');
                 btnText.style.display = 'inline';
                 btnLoading.style.display = 'none';
                 btn.disabled = false;
