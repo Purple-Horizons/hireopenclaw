@@ -844,8 +844,17 @@
         <div class="container">
             <span class="beta-badge">⚠️ BETA — We're small, scrappy, and improving fast</span>
             <h1>Stop Configuring.<br><span>Start Delegating.</span></h1>
-            <p class="subtitle">You've seen what AI assistants can do. You've also seen what setting one up looks like — API keys, YAML files, and 3 days of Googling error messages.<br><br><strong style="color: #fff;">We did all that already. Your AI employee is ready now.</strong></p>
-            <a href="#apply" class="cta-button">Get Your AI Employee →</a>
+            <p class="subtitle">Get a pre-trained AI employee ready to work in 48 hours. No setup. Fixed pricing.</p>
+            
+            <form id="signup-form" style="max-width:420px;margin:0 auto 20px;display:flex;flex-direction:column;gap:12px;">
+                <input type="text" name="name" required placeholder="Your name" style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:14px 16px;font-size:15px;color:var(--white);font-family:inherit;width:100%;" />
+                <input type="email" name="email" required placeholder="Email address" style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:14px 16px;font-size:15px;color:var(--white);font-family:inherit;width:100%;" />
+                <input type="tel" name="phone" required placeholder="Phone number" style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:14px 16px;font-size:15px;color:var(--white);font-family:inherit;width:100%;" />
+                <button type="submit" class="cta-button" style="border:none;cursor:pointer;font-family:inherit;width:100%;text-align:center;">
+                    <span class="btn-text">Get Started →</span>
+                    <span class="btn-loading" style="display:none;">Sending...</span>
+                </button>
+            </form>
             <p class="hero-note">Starting at $299/mo. Fixed price. No surprise bills. Cancel anytime.</p>
         </div>
     </section>
@@ -1103,150 +1112,12 @@
         </div>
     </section>
     
-    <!-- Application Form -->
+    <!-- CTA Section (replaces old form) -->
     <section class="apply" id="apply">
-        <div class="container">
-            <h2>Get Your AI Employee</h2>
-            <p class="subtitle">5 minutes. We'll be in touch within 24 hours.</p>
-            
-            <form id="intake-form" class="intake-form">
-                <!-- Step 1: Basics -->
-                <div class="form-section">
-                    <h3>The Basics</h3>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="name">Your name *</label>
-                            <input type="text" id="name" name="name" required placeholder="Jane Smith">
-                        </div>
-                        <div class="form-group">
-                            <label for="business">Business name</label>
-                            <input type="text" id="business" name="business" placeholder="Acme Corp">
-                        </div>
-                        <div class="form-group">
-                            <label for="email">Email *</label>
-                            <input type="email" id="email" name="email" required placeholder="you@company.com">
-                        </div>
-                        <div class="form-group">
-                            <label for="phone">Phone * <span class="hint">(for WhatsApp/Telegram)</span></label>
-                            <input type="tel" id="phone" name="phone" required placeholder="+1 555 123 4567">
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="website">Website</label>
-                            <input type="url" id="website" name="website" placeholder="https://yoursite.com">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Step 2: Needs -->
-                <div class="form-section">
-                    <h3>What do you need help with?</h3>
-                    <div class="checkbox-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="needs" value="content">
-                            <span>✏️ Content creation (posts, blogs, newsletters)</span>
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="needs" value="social">
-                            <span>📱 Social media management</span>
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="needs" value="sales">
-                            <span>🎯 Lead research & sales outreach</span>
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="needs" value="admin">
-                            <span>📅 Calendar & email management</span>
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="needs" value="research">
-                            <span>🔍 Research & competitive intel</span>
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="needs" value="support">
-                            <span>🎧 Customer support & FAQ handling</span>
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="needs" value="unsure">
-                            <span>🤷 Not sure yet — help me figure it out</span>
-                        </label>
-                    </div>
-                    <div class="form-group" style="margin-top: 20px;">
-                        <label for="details">Tell us more</label>
-                        <textarea id="details" name="details" rows="3" placeholder="What would your AI employee do on a typical day? What tasks eat up your time?"></textarea>
-                    </div>
-                </div>
-
-                <!-- Step 3: Voice -->
-                <div class="form-section">
-                    <h3>Your vibe</h3>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="platforms">What platforms do you use?</label>
-                            <input type="text" id="platforms" name="platforms" placeholder="LinkedIn, Twitter, Instagram...">
-                        </div>
-                        <div class="form-group">
-                            <label for="brandVoice">Describe your brand in 3 words</label>
-                            <input type="text" id="brandVoice" name="brandVoice" placeholder="Professional, friendly, direct">
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="voiceExamples">Link posts or accounts whose style you like</label>
-                            <textarea id="voiceExamples" name="voiceExamples" rows="2" placeholder="This helps us match your voice"></textarea>
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="avoidTopics">Topics to AVOID</label>
-                            <input type="text" id="avoidTopics" name="avoidTopics" placeholder="Politics, competitors, etc.">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Step 4: Preferences -->
-                <div class="form-section">
-                    <h3>Almost done</h3>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="approvalPref">Approval preference</label>
-                            <select id="approvalPref" name="approvalPref">
-                                <option value="">Select...</option>
-                                <option value="review-all">Review everything before it goes out</option>
-                                <option value="trust-ai">Trust the AI, I'll check weekly</option>
-                                <option value="discuss">Not sure — let's discuss</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="budget">Budget *</label>
-                            <select id="budget" name="budget" required>
-                                <option value="">Select...</option>
-                                <option value="starter">Starter — $299/mo (1 AI employee)</option>
-                                <option value="team">Team — $799/mo (up to 3 AI employees)</option>
-                                <option value="enterprise">Enterprise — Custom (unlimited AI employees)</option>
-                                <option value="exploring">Just exploring for now</option>
-                            </select>
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="anything">Anything else?</label>
-                            <textarea id="anything" name="anything" rows="2" placeholder="Questions, concerns, specific requests..."></textarea>
-                        </div>
-                    </div>
-                </div>
-
-                <button type="submit" class="cta-button submit-btn">
-                    <span class="btn-text">Get Your AI Employee →</span>
-                    <span class="btn-loading" style="display: none;">Sending...</span>
-                </button>
-            </form>
-
-            <div id="form-success" class="form-success" style="display: none;">
-                <div class="success-icon">🎉</div>
-                <h3>You're in!</h3>
-                <p>We'll review your info and reach out within 24 hours to get your AI employee started.</p>
-                <p class="success-steps">
-                    <strong>What happens next:</strong><br>
-                    1. We'll schedule a quick call (15 min)<br>
-                    2. We build your AI employee (24-48 hrs)<br>
-                    3. You start chatting!
-                </p>
-                <p style="margin-top: 20px; color: var(--gray);">Questions? <a href="mailto:hello@hireopenclaw.com">hello@hireopenclaw.com</a></p>
-            </div>
+        <div class="container" style="text-align:center;">
+            <h2>Ready to get started?</h2>
+            <p class="subtitle">Scroll up and enter your info, or click below.</p>
+            <a href="#" class="cta-button" onclick="window.scrollTo({top:0,behavior:'smooth'});return false;">Get Your AI Employee →</a>
         </div>
     </section>
     
@@ -1260,61 +1131,41 @@
     </footer>
 
     <script>
-        document.getElementById('intake-form').addEventListener('submit', async (e) => {
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             const form = e.target;
-            const submitBtn = form.querySelector('.submit-btn');
-            const btnText = submitBtn.querySelector('.btn-text');
-            const btnLoading = submitBtn.querySelector('.btn-loading');
+            const btn = form.querySelector('button');
+            const btnText = btn.querySelector('.btn-text');
+            const btnLoading = btn.querySelector('.btn-loading');
             
-            // Show loading
             btnText.style.display = 'none';
             btnLoading.style.display = 'inline';
-            submitBtn.disabled = true;
+            btn.disabled = true;
 
-            // Gather form data
             const formData = new FormData(form);
-            const needs = formData.getAll('needs');
-            
             const data = {
                 name: formData.get('name'),
-                business: formData.get('business'),
                 email: formData.get('email'),
-                phone: formData.get('phone'),
-                website: formData.get('website'),
-                needs: needs,
-                details: formData.get('details'),
-                platforms: formData.get('platforms'),
-                voiceExamples: formData.get('voiceExamples'),
-                brandVoice: formData.get('brandVoice'),
-                avoidTopics: formData.get('avoidTopics'),
-                approvalPref: formData.get('approvalPref'),
-                budget: formData.get('budget'),
-                anything: formData.get('anything')
+                phone: formData.get('phone')
             };
 
             try {
-                const response = await fetch('/api/submit', {
+                const response = await fetch('/api/signup', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
 
                 if (response.ok) {
-                    // Show success
-                    form.style.display = 'none';
-                    document.getElementById('form-success').style.display = 'block';
-                    // Scroll to success message
-                    document.getElementById('form-success').scrollIntoView({ behavior: 'smooth' });
+                    window.location.href = '/onboarding';
                 } else {
-                    throw new Error('Submission failed');
+                    throw new Error('Signup failed');
                 }
             } catch (error) {
                 alert('Something went wrong. Please try again or email us at hello@hireopenclaw.com');
                 btnText.style.display = 'inline';
                 btnLoading.style.display = 'none';
-                submitBtn.disabled = false;
+                btn.disabled = false;
             }
         });
     </script>
