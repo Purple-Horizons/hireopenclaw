@@ -302,9 +302,29 @@
         .login-box .btn { width: 100%; justify-content: center; padding: 12px; font-size: 16px; }
 
         @media (max-width: 768px) {
+            .dash-header {
+                flex-direction: column;
+                gap: 12px;
+                align-items: flex-start;
+                padding: 12px 0 20px;
+            }
+            .dash-header .user-info {
+                flex-wrap: wrap;
+                gap: 8px;
+                font-size: 13px;
+            }
+            .dash-header .user-info .plan-badge {
+                order: -1;
+            }
             .stats-row { grid-template-columns: 1fr 1fr; }
             .bots-grid { grid-template-columns: 1fr; }
             .billing-card { flex-direction: column; gap: 16px; text-align: center; }
+            .bot-actions { flex-wrap: wrap; }
+            .section-header { flex-direction: column; gap: 8px; align-items: flex-start; }
+        }
+        @media (max-width: 400px) {
+            .stats-row { grid-template-columns: 1fr; }
+            .dash-header .user-info { font-size: 12px; }
         }
     </style>
 </head>
