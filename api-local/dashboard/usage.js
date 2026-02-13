@@ -1,6 +1,7 @@
 /**
- * Usage API - LocalStack Version
- * GET /api/dashboard/usage?email=user@example.com&days=30
+ * Usage API - LocalStack Version (REAL DATA)
+ * GET /api/dashboard/usage?email=user@example.com&days=7
+ * Reads from clawops-usage table
  */
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
@@ -30,41 +31,88 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // For local dev, return mock usage data
-    // TODO: Query clawops-usage table for real data
+    const tenantsTable = process.env.DYNAMODB_TABLE || 'clawops-tenants';
     const usageTable = process.env.DYNAMODB_USAGE_TABLE || 'clawops-usage';
 
-    // Generate mock daily usage for the last N days
-    const numDays = parseInt(days) || 30;
+    // Get tenant IDs for this email
+    let tenantIds = [];
+    if (tenantId) {
+      tenantIds = [tenantId];
+    } else {
+      const tenantsResult = await docClient.send(new QueryCommand({
+        TableName: tenantsTable,
+        IndexName: 'email-index',
+        KeyConditionExpression: 'email = :email',
+        ExpressionAttributeValues: {
+          ':email': email
+        }
+      }));
+      tenantIds = (tenantsResult.Items || []).map(t => t.tenantId);
+    }
+
+    if (tenantIds.length === 0) {
+      return res.status(200).json({ dailyUsage: [], totals: { totalTokens: 0 } });
+    }
+
+    // Generate date range
+    const numDays = parseInt(days) || 7;
+    const dates = [];
+    const today = new Date();
+    for (let i = numDays - 1; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      dates.push(date.toISOString().split('T')[0]);
+    }
+
+    // Fetch usage for each date
     const dailyUsage = [];
 
-    for (let i = numDays - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
+    for (const dateStr of dates) {
+      let dayInput = 0;
+      let dayOutput = 0;
+
+      for (const tid of tenantIds) {
+        try {
+          const result = await docClient.send(new QueryCommand({
+            TableName: usageTable,
+            KeyConditionExpression: 'tenantId = :tid AND #d = :date',
+            ExpressionAttributeNames: {
+              '#d': 'date'
+            },
+            ExpressionAttributeValues: {
+              ':tid': tid,
+              ':date': dateStr
+            }
+          }));
+
+          if (result.Items && result.Items.length > 0) {
+            const usage = result.Items[0];
+            dayInput += usage.inputTokens || 0;
+            dayOutput += usage.outputTokens || 0;
+          }
+        } catch (err) {
+          console.error(`Usage query failed for ${tid} on ${dateStr}:`, err.message);
+        }
+      }
 
       dailyUsage.push({
         date: dateStr,
-        inputTokens: Math.floor(Math.random() * 5000) + 1000,
-        outputTokens: Math.floor(Math.random() * 2000) + 500,
-        apiCalls: Math.floor(Math.random() * 50) + 10,
-        computeMinutes: Math.floor(Math.random() * 120) + 30
+        inputTokens: dayInput,
+        outputTokens: dayOutput
       });
     }
 
     return res.status(200).json({
-      tenantId: tenantId || 'unknown',
+      tenantId: tenantId || tenantIds[0],
       period: {
-        start: dailyUsage[0].date,
-        end: dailyUsage[dailyUsage.length - 1].date
+        start: dailyUsage[0]?.date || dates[0],
+        end: dailyUsage[dailyUsage.length - 1]?.date || dates[dates.length - 1]
       },
       dailyUsage,
       totals: {
         inputTokens: dailyUsage.reduce((sum, d) => sum + d.inputTokens, 0),
         outputTokens: dailyUsage.reduce((sum, d) => sum + d.outputTokens, 0),
-        totalTokens: dailyUsage.reduce((sum, d) => sum + d.inputTokens + d.outputTokens, 0),
-        apiCalls: dailyUsage.reduce((sum, d) => sum + d.apiCalls, 0),
-        computeMinutes: dailyUsage.reduce((sum, d) => sum + d.computeMinutes, 0)
+        totalTokens: dailyUsage.reduce((sum, d) => sum + d.inputTokens + d.outputTokens, 0)
       }
     });
 

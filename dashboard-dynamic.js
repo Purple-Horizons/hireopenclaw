@@ -67,9 +67,9 @@ function updateStats(data) {
         ? Math.round((data.totalTokensUsed / data.totalTokensLimit) * 100) 
         : 0;
     
-    document.querySelector('.stat-card:nth-child(2) .label').textContent = 'Tokens Used (mock)';
+    document.querySelector('.stat-card:nth-child(2) .label').textContent = 'Tokens Used';
     document.querySelector('.stat-card:nth-child(2) .value').textContent = `${tokenK}K`;
-    document.querySelector('.stat-card:nth-child(2) .sub').textContent = `of ${limitM}M this month (not tracked yet)`;
+    document.querySelector('.stat-card:nth-child(2) .sub').textContent = `of ${limitM}M this month`;
     
     // Usage bar
     const bar = document.querySelector('.usage-bar');
