@@ -388,6 +388,17 @@
         .modal .steps li {
             margin: 8px 0;
         }
+        .modal .steps li strong {
+            color: var(--accent);
+        }
+        .modal .hint {
+            background: var(--bg);
+            border-left: 3px solid var(--yellow);
+            padding: 12px 16px;
+            margin: 16px 0;
+            font-size: 13px;
+            color: var(--gray);
+        }
         .modal-actions {
             display: flex;
             gap: 12px;
@@ -513,21 +524,33 @@
     <div id="modalOverlay" class="modal-overlay" onclick="closeModal(event)">
         <div class="modal" id="pairingModal" onclick="event.stopPropagation()">
             <h3>🔐 First-Time Pairing Required</h3>
-            <p>Your bot will open in a new tab. When it loads, you'll see a pairing prompt.</p>
+            <p>Your bot will open in a new tab. Follow these steps to connect:</p>
+            
+            <div class="hint">
+                💡 <strong>Look for the ⚙️ Settings/Gear icon</strong> in the top-right corner of the bot window
+            </div>
             
             <div class="steps">
                 <ol>
-                    <li>Click <strong>"Pair Device"</strong></li>
-                    <li>Paste the token shown below</li>
-                    <li>Click <strong>"Pair"</strong></li>
+                    <li>Click the <strong>⚙️ Settings icon</strong> (top-right corner)</li>
+                    <li>Select <strong>"Pair This Device"</strong> or <strong>"Pair Device"</strong></li>
+                    <li><strong>Paste the token</strong> (already copied to clipboard)</li>
+                    <li>Click <strong>"Pair"</strong> or <strong>"Connect"</strong></li>
                 </ol>
             </div>
             
-            <div class="token-display" id="modalToken"></div>
+            <div style="margin: 16px 0; padding: 12px; background: var(--bg); border-radius: 8px;">
+                <div style="font-size: 11px; color: var(--gray); margin-bottom: 6px;">YOUR PAIRING TOKEN:</div>
+                <div class="token-display" id="modalToken" style="margin: 0;"></div>
+            </div>
+            
+            <p style="font-size: 12px; color: var(--yellow); margin: 12px 0; padding: 8px; background: rgba(251, 191, 36, 0.1); border-radius: 6px;">
+                ✓ Token auto-copied to clipboard — just <strong>Ctrl+V</strong> (or Cmd+V on Mac) to paste
+            </p>
             
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="proceedToBot()">Open Bot →</button>
+                <button class="btn btn-primary" onclick="proceedToBot()">Got It, Open Bot →</button>
             </div>
         </div>
     </div>
