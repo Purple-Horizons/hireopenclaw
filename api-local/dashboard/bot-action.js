@@ -39,8 +39,7 @@ module.exports = async (req, res) => {
         cmd = `cd ${clawopsPath} && bin/clawops resume ${tenantId}`;
         break;
       case 'restart':
-        // No restart command yet, so pause then resume
-        cmd = `cd ${clawopsPath} && bin/clawops pause ${tenantId} && sleep 2 && bin/clawops resume ${tenantId}`;
+        cmd = `cd ${clawopsPath} && bin/clawops restart ${tenantId}`;
         break;
       case 'terminate':
         cmd = `cd ${clawopsPath} && bin/clawops terminate ${tenantId} --force`;
