@@ -441,6 +441,226 @@
         </div>
     </div>
 
+    <script>
+        let currentEmail = '';
+        let sessionToken = '';
+
+        // Check for magic link token in URL on load
+        (async function checkAuth() {
+            const params = new URLSearchParams(window.location.search);
+            const token = params.get('token');
+            const saved = localStorage.getItem('hoc_session');
+
+            if (token) {
+                // Verify magic link token
+                try {
+                    const res = await fetch(`/api/auth/verify?token=${encodeURIComponent(token)}`);
+                    const data = await res.json();
+                    if (data.ok) {
+                        sessionToken = data.sessionToken;
+                        currentEmail = data.email;
+                        localStorage.setItem('hoc_session', JSON.stringify({ token: sessionToken, email: currentEmail }));
+                        // Clean URL
+                        window.history.replaceState({}, '', '/dashboard');
+                        showDashboard();
+                    }
+                } catch (e) {
+                    console.log('Token verification failed:', e);
+                }
+            } else if (saved) {
+                try {
+                    const { token: t, email: e } = JSON.parse(saved);
+                    // Check expiry client-side
+                    const payload = JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+                    if (payload.exp > Date.now() / 1000) {
+                        sessionToken = t;
+                        currentEmail = e;
+                        showDashboard();
+                    } else {
+                        localStorage.removeItem('hoc_session');
+                    }
+                } catch (e) {
+                    localStorage.removeItem('hoc_session');
+                }
+            }
+        })();
+
+        function showDashboard() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('dashboardScreen').style.display = 'block';
+            document.getElementById('userEmail').textContent = currentEmail;
+            loadDashboard(currentEmail);
+            loadUsageChart();
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById('loginEmail').value;
+            if (!email) return;
+            
+            const btn = document.querySelector('.login-box .btn');
+            btn.textContent = 'Sending…';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/auth/send-link', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    btn.textContent = '✓ Check your email';
+                    btn.style.background = '#10b981';
+                } else {
+                    btn.textContent = 'Sign In';
+                    btn.disabled = false;
+                    alert(data.error || 'Failed to send link');
+                }
+            } catch (e) {
+                // Fallback: direct login for local dev
+                currentEmail = email;
+                showDashboard();
+            }
+        }
+
+        function handleLogout() {
+            currentEmail = '';
+            sessionToken = '';
+            localStorage.removeItem('hoc_session');
+            document.getElementById('dashboardScreen').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'flex';
+        }
+
+        async function loadDashboard(email) {
+            try {
+                const res = await fetch(`/api/dashboard/bots?email=${encodeURIComponent(email)}`);
+                const data = await res.json();
+                
+                if (data.bots) {
+                    // Update stats
+                    document.querySelector('.stats-row').children[0].querySelector('.value').textContent = 
+                        data.bots.filter(b => b.status === 'active').length;
+                    document.querySelector('.stats-row').children[0].querySelector('.sub').textContent = 
+                        `of ${data.maxBots} available`;
+                    
+                    const tokenPct = Math.round((data.totalTokensUsed / data.totalTokensLimit) * 100);
+                    const tokenK = Math.round(data.totalTokensUsed / 1000);
+                    const limitM = (data.totalTokensLimit / 1000000).toFixed(0);
+                    document.querySelector('.stats-row').children[1].querySelector('.value').textContent = `${tokenK}K`;
+                    document.querySelector('.stats-row').children[1].querySelector('.sub').textContent = `of ${limitM}M this month`;
+                    
+                    const bar = document.querySelector('.usage-bar');
+                    bar.style.width = `${tokenPct}%`;
+                    bar.className = `usage-bar ${tokenPct > 90 ? 'red' : tokenPct > 70 ? 'yellow' : 'green'}`;
+                }
+            } catch (err) {
+                console.log('API not connected yet, using mock data');
+            }
+        }
+
+        function showAddBot() {
+            alert('Choose a role for your new AI employee:\\n\\n' +
+                '📣 Content Creator (blogs, social, newsletters)\\n' +
+                '💼 Sales Development (outreach, leads, CRM)\\n' +
+                '📱 Social Media Manager (scheduling, engagement)\\n' +
+                '📅 Executive Assistant (email, calendar, tasks)\\n' +
+                '🎧 Customer Support (tickets, FAQ, chat)\\n' +
+                '🧪 Custom (blank canvas)\\n\\n' +
+                'Contact us to add a new employee to your plan!');
+        }
+
+        async function manageBilling() {
+            try {
+                const res = await fetch('/api/dashboard/billing', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: currentEmail })
+                });
+                const data = await res.json();
+                if (data.url) {
+                    window.location.href = data.url;
+                } else {
+                    alert('Could not load billing portal. Contact support.');
+                }
+            } catch (err) {
+                alert('Billing portal not available yet. Contact support@hireopenclaw.com');
+            }
+        }
+
+        async function botAction(tenantId, action) {
+            if (action === 'pause' && !confirm('Pause this AI employee? They will stop responding until resumed.')) return;
+            
+            try {
+                const res = await fetch('/api/dashboard/bot-action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tenantId, action, email: currentEmail })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`Employee ${action}d successfully.`);
+                    await loadDashboard(currentEmail);
+                }
+            } catch (err) {
+                alert('Action failed. Try again.');
+            }
+        }
+
+        function upgradePlan() {
+            window.location.href = '/#pricing';
+        }
+
+        async function loadUsageChart() {
+            let days;
+            try {
+                const res = await fetch(`/api/dashboard/usage?tenantId=tenant-001`);
+                const data = await res.json();
+                days = data.daily.slice(-7);
+            } catch (e) {
+                // Mock data fallback
+                days = [];
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date(); d.setDate(d.getDate() - i);
+                    days.push({
+                        date: d.toISOString().split('T')[0],
+                        tokens: Math.floor(Math.random() * 40000) + 15000
+                    });
+                }
+            }
+            renderUsageChart(days);
+        }
+
+        function renderUsageChart(days) {
+            const svg = document.getElementById('usageChart');
+            const W = 700, H = 220, PAD_L = 60, PAD_R = 20, PAD_T = 20, PAD_B = 40;
+            const chartW = W - PAD_L - PAD_R;
+            const chartH = H - PAD_T - PAD_B;
+            const maxTokens = Math.max(...days.map(d => d.tokens));
+            const barW = Math.min(60, (chartW / days.length) * 0.7);
+            const gap = chartW / days.length;
+
+            let html = '';
+            // Y-axis labels
+            for (let i = 0; i <= 4; i++) {
+                const y = PAD_T + chartH - (chartH * i / 4);
+                const val = Math.round(maxTokens * i / 4 / 1000);
+                html += `<line x1="${PAD_L}" y1="${y}" x2="${W - PAD_R}" y2="${y}" stroke="#333" stroke-width="1"/>`;
+                html += `<text x="${PAD_L - 8}" y="${y + 4}" text-anchor="end" fill="#888" font-size="11" font-family="Inter,sans-serif">${val}K</text>`;
+            }
+            // Bars
+            days.forEach((d, i) => {
+                const x = PAD_L + gap * i + (gap - barW) / 2;
+                const h = (d.tokens / maxTokens) * chartH;
+                const y = PAD_T + chartH - h;
+                const label = d.date.slice(5); // MM-DD
+                html += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="4" fill="#ff6b35" opacity="0.85"/>`;
+                html += `<text x="${x + barW/2}" y="${y - 6}" text-anchor="middle" fill="#ccc" font-size="10" font-family="Inter,sans-serif">${Math.round(d.tokens/1000)}K</text>`;
+                html += `<text x="${x + barW/2}" y="${H - 8}" text-anchor="middle" fill="#888" font-size="11" font-family="Inter,sans-serif">${label}</text>`;
+            });
+            svg.innerHTML = html;
+        }
+
+    </script>
     
     <!-- Dynamic dashboard functionality -->
     <script src="/dashboard-dynamic.js"></script>

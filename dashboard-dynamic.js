@@ -42,8 +42,8 @@ async function loadDashboard(email) {
             loadUsageChart(email);
             
             // Show dashboard, hide login
-            document.querySelector('.login-screen').style.display = 'none';
-            document.querySelector('.dashboard').style.display = 'block';
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('dashboardScreen').style.display = 'block';
         }
     } catch (err) {
         console.error('Failed to load dashboard:', err);
@@ -105,6 +105,9 @@ function createBotCard(bot) {
                        bot.health === 'unhealthy' ? 'var(--red)' : 'var(--yellow)';
     
     const lastActiveText = formatLastActive(bot.lastActive);
+    const tokenDisplay = bot.gatewayToken 
+        ? `${bot.gatewayToken.substring(0, 8)}...` 
+        : 'Not set';
     
     card.innerHTML = `
         <div class="bot-header">
@@ -132,9 +135,18 @@ function createBotCard(bot) {
                 <div class="value" style="color:${healthColor};">${bot.health}</div>
             </div>
         </div>
+        <div class="bot-stats" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--light-gray);">
+            <div class="bot-stat" style="grid-column:1/-1;">
+                <div class="label">Gateway Token</div>
+                <div class="value" style="font-size:12px;font-family:monospace;">
+                    ${tokenDisplay}
+                    ${bot.gatewayToken ? `<button class="btn" style="padding:2px 8px;font-size:10px;margin-left:8px;" onclick="copyToken('${bot.gatewayToken}', '${escapeHtml(bot.name)}')">Copy</button>` : ''}
+                </div>
+            </div>
+        </div>
         <div class="bot-actions">
-            <button class="btn btn-primary" onclick="openBot('${bot.id}', '${bot.endpoint}')">Chat</button>
-            <button class="btn btn-secondary" onclick="configurBot('${bot.id}')">Configure</button>
+            <button class="btn btn-primary" onclick="openBot('${bot.id}', '${bot.endpoint}', '${bot.gatewayToken || ''}')">Chat</button>
+            <button class="btn btn-secondary" onclick="configureBot('${bot.id}')">Configure</button>
             ${bot.status === 'active' 
                 ? `<button class="btn btn-secondary" onclick="botAction('${bot.id}', 'pause')">Pause</button>`
                 : `<button class="btn btn-primary" onclick="botAction('${bot.id}', 'resume')">Resume</button>`
@@ -205,12 +217,23 @@ async function botAction(tenantId, action) {
 }
 
 // Open bot chat interface
-function openBot(botId, endpoint) {
+function openBot(botId, endpoint, token) {
     if (endpoint) {
-        window.open(endpoint, '_blank');
+        // Open with token if available
+        const url = token ? `${endpoint}?token=${token}` : endpoint;
+        window.open(url, '_blank');
     } else {
         alert('Bot endpoint not available yet. Try again in a moment.');
     }
+}
+
+// Copy token to clipboard
+function copyToken(token, botName) {
+    navigator.clipboard.writeText(token).then(() => {
+        alert(`Token for ${botName} copied to clipboard!`);
+    }).catch(() => {
+        prompt('Copy this token:', token);
+    });
 }
 
 // Configure bot
@@ -291,8 +314,8 @@ function renderUsageChart(days) {
 
 // Login prompt
 function showLoginPrompt() {
-    document.querySelector('.dashboard').style.display = 'none';
-    document.querySelector('.login-screen').style.display = 'flex';
+    document.getElementById('dashboardScreen').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
 }
 
 // Handle login

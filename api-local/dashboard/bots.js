@@ -61,7 +61,8 @@ module.exports = async (req, res) => {
         messagesToday: t.messagesToday || 0,
         lastActive: t.lastActive || t.createdAt,
         createdAt: t.createdAt,
-        endpoint: t.endpoint || `http://localhost:${18790 + parseInt(t.tenantId.split('-')[1] || '1') % 10}`
+        endpoint: t.endpoint || `http://localhost:${18790 + parseInt(t.tenantId.split('-')[1] || '1') % 10}`,
+        gatewayToken: t.gatewayToken || null
       }));
 
     // Aggregate stats
