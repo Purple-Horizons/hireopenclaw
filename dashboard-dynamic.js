@@ -223,36 +223,52 @@ async function botAction(tenantId, action) {
     }
 }
 
+// State for modal
+let pendingBotUrl = null;
+let pendingBotToken = null;
+
 // Open bot chat interface
 function openBot(botId, endpoint, token) {
     if (endpoint) {
         if (token) {
-            // Show pairing instructions before opening
-            const proceed = confirm(
-                `🔐 First-time pairing required\n\n` +
-                `Your bot will open in a new tab. When prompted:\n\n` +
-                `1. Click "Pair Device"\n` +
-                `2. Paste this token: ${token.substring(0, 12)}...\n` +
-                `3. Click "Pair"\n\n` +
-                `The token has been copied to your clipboard.\n\n` +
-                `Ready to proceed?`
-            );
+            // Show modal with pairing instructions
+            pendingBotUrl = endpoint;
+            pendingBotToken = token;
             
-            if (proceed) {
-                // Copy token to clipboard
-                navigator.clipboard.writeText(token).catch(() => {
-                    // Fallback: just proceed
-                });
-                
-                // Open bot UI
-                window.open(endpoint, '_blank');
-            }
+            document.getElementById('modalToken').textContent = token;
+            document.getElementById('modalOverlay').classList.add('active');
+            
+            // Auto-copy token to clipboard
+            navigator.clipboard.writeText(token).catch(() => {
+                console.log('Clipboard copy failed');
+            });
         } else {
             window.open(endpoint, '_blank');
         }
     } else {
-        alert('Bot endpoint not available yet. Try again in a moment.');
+        showAlert('Bot endpoint not available yet. Try again in a moment.');
     }
+}
+
+function proceedToBot() {
+    if (pendingBotUrl) {
+        window.open(pendingBotUrl, '_blank');
+        closeModal();
+    }
+}
+
+function closeModal(event) {
+    // Only close if clicking overlay or close button (not modal content)
+    if (!event || event.target.id === 'modalOverlay') {
+        document.getElementById('modalOverlay').classList.remove('active');
+        pendingBotUrl = null;
+        pendingBotToken = null;
+    }
+}
+
+function showAlert(message) {
+    // Simple alert replacement - could be fancier
+    alert(message);
 }
 
 // Copy token to clipboard

@@ -326,6 +326,74 @@
             .stats-row { grid-template-columns: 1fr; }
             .dash-header .user-info { font-size: 12px; }
         }
+
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--light-gray);
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 480px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+        .modal h3 {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+        .modal p {
+            color: var(--gray);
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        .modal .token-display {
+            background: var(--bg);
+            border: 1px solid var(--light-gray);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin: 16px 0;
+            color: var(--accent);
+            word-break: break-all;
+        }
+        .modal .steps {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .modal .steps ol {
+            margin-left: 20px;
+            color: var(--gray);
+            font-size: 14px;
+        }
+        .modal .steps li {
+            margin: 8px 0;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 24px;
+        }
     </style>
 </head>
 <body>
@@ -441,6 +509,28 @@
         </div>
     </div>
 
+    <!-- Modals -->
+    <div id="modalOverlay" class="modal-overlay" onclick="closeModal(event)">
+        <div class="modal" id="pairingModal" onclick="event.stopPropagation()">
+            <h3>🔐 First-Time Pairing Required</h3>
+            <p>Your bot will open in a new tab. When it loads, you'll see a pairing prompt.</p>
+            
+            <div class="steps">
+                <ol>
+                    <li>Click <strong>"Pair Device"</strong></li>
+                    <li>Paste the token shown below</li>
+                    <li>Click <strong>"Pair"</strong></li>
+                </ol>
+            </div>
+            
+            <div class="token-display" id="modalToken"></div>
+            
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="proceedToBot()">Open Bot →</button>
+            </div>
+        </div>
+    </div>
     
     <!-- Dynamic dashboard functionality -->
     <script src="/dashboard-dynamic.js"></script>
