@@ -235,11 +235,17 @@ function openBot(botId, endpoint, token) {
             pendingBotUrl = endpoint;
             pendingBotToken = token;
             
+            // Set token display
             document.getElementById('modalToken').textContent = token;
+            
+            // Set console command
+            const consoleCmd = `localStorage.setItem('openclaw_gateway_token', '${token}'); location.reload();`;
+            document.getElementById('consoleCommand').textContent = consoleCmd;
+            
             document.getElementById('modalOverlay').classList.add('active');
             
-            // Auto-copy token to clipboard
-            navigator.clipboard.writeText(token).catch(() => {
+            // Auto-copy console command to clipboard
+            navigator.clipboard.writeText(consoleCmd).catch(() => {
                 console.log('Clipboard copy failed');
             });
         } else {
@@ -251,7 +257,8 @@ function openBot(botId, endpoint, token) {
 }
 
 function proceedToBot() {
-    if (pendingBotUrl) {
+    if (pendingBotUrl && pendingBotToken) {
+        // Just open the bot - user will manually pair using the token we copied
         window.open(pendingBotUrl, '_blank');
         closeModal();
     }

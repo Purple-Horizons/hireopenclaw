@@ -523,34 +523,34 @@
     <!-- Modals -->
     <div id="modalOverlay" class="modal-overlay" onclick="closeModal(event)">
         <div class="modal" id="pairingModal" onclick="event.stopPropagation()">
-            <h3>🔐 First-Time Pairing Required</h3>
-            <p>Your bot will open in a new tab. Follow these steps to connect:</p>
-            
-            <div class="hint">
-                💡 <strong>Look for the ⚙️ Settings/Gear icon</strong> in the top-right corner of the bot window
-            </div>
+            <h3>🔐 Quick Setup (One Time Only)</h3>
+            <p>Your bot will open in a new tab. Use the browser console to authorize:</p>
             
             <div class="steps">
                 <ol>
-                    <li>Click the <strong>⚙️ Settings icon</strong> (top-right corner)</li>
-                    <li>Select <strong>"Pair This Device"</strong> or <strong>"Pair Device"</strong></li>
-                    <li><strong>Paste the token</strong> (already copied to clipboard)</li>
-                    <li>Click <strong>"Pair"</strong> or <strong>"Connect"</strong></li>
+                    <li>Bot window opens → Press <strong>F12</strong> (or Cmd+Option+J on Mac)</li>
+                    <li>Click the <strong>"Console"</strong> tab</li>
+                    <li>Paste this command and press <strong>Enter</strong>:</li>
                 </ol>
             </div>
             
-            <div style="margin: 16px 0; padding: 12px; background: var(--bg); border-radius: 8px;">
-                <div style="font-size: 11px; color: var(--gray); margin-bottom: 6px;">YOUR PAIRING TOKEN:</div>
-                <div class="token-display" id="modalToken" style="margin: 0;"></div>
+            <div style="margin: 12px 0; padding: 12px; background: #000; border-radius: 8px; border: 1px solid var(--light-gray);">
+                <div style="font-size: 10px; color: var(--gray); margin-bottom: 6px; text-transform: uppercase;">Copy & Paste in Console:</div>
+                <code id="consoleCommand" style="display: block; font-family: 'Courier New', monospace; font-size: 12px; color: #4ade80; word-break: break-all; line-height: 1.5;"></code>
             </div>
             
-            <p style="font-size: 12px; color: var(--yellow); margin: 12px 0; padding: 8px; background: rgba(251, 191, 36, 0.1); border-radius: 6px;">
-                ✓ Token auto-copied to clipboard — just <strong>Ctrl+V</strong> (or Cmd+V on Mac) to paste
-            </p>
+            <div class="hint" style="margin-top: 12px;">
+                <strong>After pasting:</strong> Refresh the page (F5 or Cmd+R) and your bot will be ready!
+            </div>
+            
+            <div style="margin: 16px 0; padding: 12px; background: var(--bg); border-radius: 8px; border-top: 2px solid var(--accent);">
+                <div style="font-size: 11px; color: var(--gray); margin-bottom: 6px;">YOUR TOKEN (for reference):</div>
+                <div class="token-display" id="modalToken" style="margin: 0; font-size: 11px;"></div>
+            </div>
             
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="proceedToBot()">Got It, Open Bot →</button>
+                <button class="btn btn-primary" onclick="proceedToBot()">Open Bot & Set Up →</button>
             </div>
         </div>
     </div>
