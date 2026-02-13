@@ -55,24 +55,31 @@ async function loadDashboard(email) {
 function updateStats(data) {
     const activeBots = data.bots.filter(b => b.status === 'active').length;
     
-    // Active bots stat
+    // Active bots stat (REAL DATA)
+    document.querySelector('.stat-card:nth-child(1) .label').textContent = 'Active Employees';
     document.querySelector('.stat-card:nth-child(1) .value').textContent = activeBots;
     document.querySelector('.stat-card:nth-child(1) .sub').textContent = `of ${data.maxBots} available`;
     
-    // Token usage stat
+    // Token usage stat (MOCK DATA for now)
     const tokenK = Math.round(data.totalTokensUsed / 1000);
     const limitM = (data.totalTokensLimit / 1000000).toFixed(1);
     const tokenPct = data.totalTokensLimit > 0 
         ? Math.round((data.totalTokensUsed / data.totalTokensLimit) * 100) 
         : 0;
     
+    document.querySelector('.stat-card:nth-child(2) .label').textContent = 'Tokens Used (mock)';
     document.querySelector('.stat-card:nth-child(2) .value').textContent = `${tokenK}K`;
-    document.querySelector('.stat-card:nth-child(2) .sub').textContent = `of ${limitM}M this month`;
+    document.querySelector('.stat-card:nth-child(2) .sub').textContent = `of ${limitM}M this month (not tracked yet)`;
     
     // Usage bar
     const bar = document.querySelector('.usage-bar');
     bar.style.width = `${tokenPct}%`;
     bar.className = `usage-bar ${tokenPct > 90 ? 'red' : tokenPct > 70 ? 'yellow' : 'green'}`;
+    
+    // Hide mock stats (messages, uptime)
+    const statCards = document.querySelectorAll('.stat-card');
+    if (statCards[2]) statCards[2].style.opacity = '0.5';
+    if (statCards[3]) statCards[3].style.opacity = '0.5';
 }
 
 // Render bots grid
@@ -238,26 +245,108 @@ function copyToken(token, botName) {
 
 // Configure bot
 function configureBot(botId) {
-    alert('Bot configuration coming soon!');
-    // TODO: Open configuration modal
+    const bot = currentBots.find(b => b.id === botId);
+    if (!bot) return;
+    
+    const config = prompt(
+        `Configure ${bot.name}\n\n` +
+        `Current settings:\n` +
+        `- Name: ${bot.name}\n` +
+        `- Role: ${bot.role}\n` +
+        `- Template: ${bot.template}\n` +
+        `- Status: ${bot.status}\n\n` +
+        `Available actions:\n` +
+        `1 - Rename bot\n` +
+        `2 - View credentials\n` +
+        `3 - Restart bot\n` +
+        `4 - Cancel\n\n` +
+        `Enter 1-4:`,
+        '4'
+    );
+    
+    switch (config) {
+        case '1':
+            const newName = prompt('New name:', bot.name);
+            if (newName && newName !== bot.name) {
+                alert('Rename feature coming soon! For now, you can recreate the bot with a new name.');
+            }
+            break;
+        case '2':
+            const creds = `Bot Credentials:\n\n` +
+                `Endpoint: ${bot.endpoint}\n` +
+                `Token: ${bot.gatewayToken || 'Not set'}\n\n` +
+                `Full URL:\n${bot.endpoint}?token=${bot.gatewayToken}`;
+            prompt('Copy these credentials:', creds);
+            break;
+        case '3':
+            if (confirm(`Restart ${bot.name}?`)) {
+                botAction(botId, 'restart');
+            }
+            break;
+    }
 }
 
 // Show add bot dialog
-function showAddBot() {
-    const roles = [
-        '📣 Content Creator (blogs, social, newsletters)',
-        '💼 Sales Development (outreach, leads, CRM)',
-        '📱 Social Media Manager (scheduling, engagement)',
-        '📅 Executive Assistant (email, calendar, tasks)',
-        '🎧 Customer Support (tickets, FAQ, chat)',
-        '🧪 Custom (blank canvas)'
-    ];
+async function showAddBot() {
+    const botName = prompt('What should we call your new AI employee?', 'MyBot');
+    if (!botName) return;
     
-    alert('Choose a role for your new AI employee:\n\n' + 
-          roles.join('\n') + 
-          '\n\nContact us to add a new employee to your plan!');
+    const roles = {
+        '1': { name: 'Content Creator', template: 'marketing' },
+        '2': { name: 'Sales Development', template: 'sales' },
+        '3': { name: 'Customer Support', template: 'support' },
+        '4': { name: 'Custom (blank canvas)', template: 'blank' }
+    };
     
-    // TODO: Redirect to onboarding or upgrade flow
+    const choice = prompt(
+        'Choose a role:\n\n' +
+        '1 - 📣 Content Creator (blogs, social, newsletters)\n' +
+        '2 - 💼 Sales Development (outreach, leads, CRM)\n' +
+        '3 - 🎧 Customer Support (tickets, FAQ, chat)\n' +
+        '4 - 🧪 Custom (blank canvas)\n\n' +
+        'Enter 1-4:',
+        '4'
+    );
+    
+    const role = roles[choice];
+    if (!role) {
+        alert('Invalid choice. Please try again.');
+        return;
+    }
+    
+    // Generate tenant ID
+    const timestamp = Date.now().toString().slice(-6);
+    const random = Math.random().toString(36).substring(2, 6);
+    const tenantId = `tenant-${timestamp}-${random}`;
+    
+    alert(`Creating ${botName} (${role.name})...\n\nThis will take ~30 seconds.`);
+    
+    try {
+        const res = await fetch('/api/dashboard/create-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: currentEmail,
+                tenantId: tenantId,
+                botName: botName,
+                botRole: role.name,
+                template: role.template,
+                plan: 'starter'
+            })
+        });
+        
+        const data = await res.json();
+        
+        if (data.ok) {
+            alert(`✓ ${botName} is ready!\n\nRefreshing dashboard...`);
+            await loadDashboard(currentEmail);
+        } else {
+            alert(`Failed to create bot:\n${data.error || 'Unknown error'}`);
+        }
+    } catch (err) {
+        console.error('Create bot failed:', err);
+        alert('Failed to create bot. Check console for errors.');
+    }
 }
 
 // Load usage chart
