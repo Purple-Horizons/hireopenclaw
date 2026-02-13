@@ -144,15 +144,15 @@ function createBotCard(bot) {
         </div>
         <div class="bot-stats" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--light-gray);">
             <div class="bot-stat" style="grid-column:1/-1;">
-                <div class="label">Gateway Token</div>
-                <div class="value" style="font-size:12px;font-family:monospace;">
-                    ${tokenDisplay}
-                    ${bot.gatewayToken ? `<button class="btn" style="padding:2px 8px;font-size:10px;margin-left:8px;" onclick="copyToken('${bot.gatewayToken}', '${escapeHtml(bot.name)}')">Copy</button>` : ''}
+                <div class="label">Gateway Token ${bot.gatewayToken ? '(for first-time pairing)' : ''}</div>
+                <div class="value" style="font-size:12px;font-family:monospace;display:flex;align-items:center;gap:8px;">
+                    <span style="flex:1;">${tokenDisplay}</span>
+                    ${bot.gatewayToken ? `<button class="btn btn-primary" style="padding:4px 12px;font-size:11px;" onclick="copyToken('${bot.gatewayToken}', '${escapeHtml(bot.name)}'); return false;">📋 Copy Token</button>` : ''}
                 </div>
             </div>
         </div>
         <div class="bot-actions">
-            <button class="btn btn-primary" onclick="openBot('${bot.id}', '${bot.endpoint}', '${bot.gatewayToken || ''}')">Chat</button>
+            <button class="btn btn-primary" onclick="openBot('${bot.id}', '${bot.endpoint}', '${bot.gatewayToken || ''}')">💬 Open Chat</button>
             <button class="btn btn-secondary" onclick="configureBot('${bot.id}')">Configure</button>
             ${bot.status === 'active' 
                 ? `<button class="btn btn-secondary" onclick="botAction('${bot.id}', 'pause')">Pause</button>`
@@ -226,9 +226,30 @@ async function botAction(tenantId, action) {
 // Open bot chat interface
 function openBot(botId, endpoint, token) {
     if (endpoint) {
-        // Open with token if available
-        const url = token ? `${endpoint}?token=${token}` : endpoint;
-        window.open(url, '_blank');
+        if (token) {
+            // Show pairing instructions before opening
+            const proceed = confirm(
+                `🔐 First-time pairing required\n\n` +
+                `Your bot will open in a new tab. When prompted:\n\n` +
+                `1. Click "Pair Device"\n` +
+                `2. Paste this token: ${token.substring(0, 12)}...\n` +
+                `3. Click "Pair"\n\n` +
+                `The token has been copied to your clipboard.\n\n` +
+                `Ready to proceed?`
+            );
+            
+            if (proceed) {
+                // Copy token to clipboard
+                navigator.clipboard.writeText(token).catch(() => {
+                    // Fallback: just proceed
+                });
+                
+                // Open bot UI
+                window.open(endpoint, '_blank');
+            }
+        } else {
+            window.open(endpoint, '_blank');
+        }
     } else {
         alert('Bot endpoint not available yet. Try again in a moment.');
     }
@@ -237,9 +258,18 @@ function openBot(botId, endpoint, token) {
 // Copy token to clipboard
 function copyToken(token, botName) {
     navigator.clipboard.writeText(token).then(() => {
-        alert(`Token for ${botName} copied to clipboard!`);
+        // Show success feedback (non-blocking)
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        btn.style.background = 'var(--green)';
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.style.background = '';
+        }, 2000);
     }).catch(() => {
-        prompt('Copy this token:', token);
+        // Fallback: show prompt
+        prompt('Copy this token manually:', token);
     });
 }
 

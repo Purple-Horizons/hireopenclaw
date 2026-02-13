@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connecting to your bot...</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: white;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+    }
+    .spinner {
+      border: 4px solid rgba(255,255,255,0.3);
+      border-top: 4px solid white;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1.5rem;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    h1 {
+      font-size: 1.75rem;
+      margin: 0 0 0.5rem;
+      font-weight: 600;
+    }
+    p {
+      font-size: 1rem;
+      opacity: 0.9;
+      margin: 0;
+    }
+    .error {
+      background: rgba(255, 0, 0, 0.2);
+      border: 1px solid rgba(255, 0, 0, 0.5);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 1rem;
+      max-width: 400px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="spinner"></div>
+    <h1 id="status">Connecting to your bot...</h1>
+    <p id="message">Setting up secure connection</p>
+    <div id="error" class="error" style="display:none;"></div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const endpoint = urlParams.get('endpoint');
+    const token = urlParams.get('token');
+
+    const statusEl = document.getElementById('status');
+    const messageEl = document.getElementById('message');
+    const errorEl = document.getElementById('error');
+
+    function showError(msg) {
+      statusEl.textContent = 'Connection Failed';
+      messageEl.textContent = '';
+      errorEl.textContent = msg;
+      errorEl.style.display = 'block';
+    }
+
+    async function autopair() {
+      if (!endpoint || !token) {
+        showError('Missing endpoint or token. Please use the dashboard link.');
+        return;
+      }
+
+      try {
+        // Parse the endpoint URL
+        const url = new URL(endpoint);
+        const targetOrigin = url.origin;
+
+        // Store token in localStorage for the target origin
+        // This is tricky - we can't directly write to another origin's localStorage
+        // We need to use postMessage or iframe approach
+
+        messageEl.textContent = 'Preparing secure token...';
+
+        // Open the bot UI in a hidden iframe to set localStorage
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = `${endpoint}/autopair-receiver.html`;
+        document.body.appendChild(iframe);
+
+        // Wait for iframe to load
+        await new Promise((resolve) => {
+          iframe.onload = resolve;
+          setTimeout(() => {
+            // Fallback: just redirect with token in URL
+            // The Control UI should read it from ?token= param
+            window.location.href = `${endpoint}?token=${encodeURIComponent(token)}`;
+          }, 2000);
+        });
+
+        // Send token via postMessage
+        iframe.contentWindow.postMessage({
+          type: 'OPENCLAW_AUTOPAIR',
+          token: token
+        }, targetOrigin);
+
+        // Give it a moment, then redirect
+        setTimeout(() => {
+          window.location.href = endpoint;
+        }, 1000);
+
+      } catch (err) {
+        showError(`Error: ${err.message}`);
+      }
+    }
+
+    // Start auto-pairing
+    autopair();
+  </script>
+</body>
+</html>
