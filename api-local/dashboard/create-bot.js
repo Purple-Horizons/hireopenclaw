@@ -83,7 +83,7 @@ module.exports = async (req, res) => {
     // Call MasterControl to provision bot locally
     // This runs the clawops CLI to provision a local Docker container
     const clawopsPath = '/Users/giannidalerta/.openclaw/workspace/repos/clawops';
-    const cmd = `cd ${clawopsPath} && bin/clawops provision ${finalTenantId} ${email} ${plan || 'starter'} --template ${template || 'blank'} --mode managed`;
+    const cmd = `cd ${clawopsPath} && bin/clawops provision --tenant-id ${finalTenantId} --email ${email} --plan ${plan || 'starter'} --template ${template || 'blank'} --mode managed`;
 
     console.log(`[Create Bot] Running: ${cmd}`);
 

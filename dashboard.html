@@ -346,8 +346,8 @@
         <header class="dash-header">
             <a href="/" class="logo">Hire<span>OpenClaw</span></a>
             <div class="user-info">
-                <span class="plan-badge">Team Plan</span>
-                <span id="userEmail">client@company.com</span>
+                <span class="plan-badge">STARTER</span>
+                <span class="email">Loading...</span>
                 <button class="btn btn-secondary" onclick="handleLogout()" style="padding:6px 12px;font-size:12px;">Log Out</button>
             </div>
         </header>
@@ -386,77 +386,8 @@
         </div>
 
         <div class="bots-grid">
-            <div class="bot-card">
-                <div class="bot-header">
-                    <div>
-                        <div class="bot-name">Morgan</div>
-                        <div class="bot-role">Content Creator</div>
-                    </div>
-                    <span class="status-dot active" title="Active"></span>
-                </div>
-                <div class="bot-stats">
-                    <div class="bot-stat">
-                        <div class="label">Messages today</div>
-                        <div class="value">84</div>
-                    </div>
-                    <div class="bot-stat">
-                        <div class="label">Tokens used</div>
-                        <div class="value">523K</div>
-                    </div>
-                    <div class="bot-stat">
-                        <div class="label">Last active</div>
-                        <div class="value">2m ago</div>
-                    </div>
-                    <div class="bot-stat">
-                        <div class="label">Health</div>
-                        <div class="value" style="color:var(--green);">Healthy</div>
-                    </div>
-                </div>
-                <div class="bot-actions">
-                    <button class="btn btn-secondary">View Logs</button>
-                    <button class="btn btn-secondary">Configure</button>
-                    <button class="btn btn-danger">Pause</button>
-                </div>
-            </div>
-
-            <div class="bot-card">
-                <div class="bot-header">
-                    <div>
-                        <div class="bot-name">Alex</div>
-                        <div class="bot-role">Sales Development</div>
-                    </div>
-                    <span class="status-dot active" title="Active"></span>
-                </div>
-                <div class="bot-stats">
-                    <div class="bot-stat">
-                        <div class="label">Messages today</div>
-                        <div class="value">43</div>
-                    </div>
-                    <div class="bot-stat">
-                        <div class="label">Tokens used</div>
-                        <div class="value">319K</div>
-                    </div>
-                    <div class="bot-stat">
-                        <div class="label">Last active</div>
-                        <div class="value">5m ago</div>
-                    </div>
-                    <div class="bot-stat">
-                        <div class="label">Health</div>
-                        <div class="value" style="color:var(--green);">Healthy</div>
-                    </div>
-                </div>
-                <div class="bot-actions">
-                    <button class="btn btn-secondary">View Logs</button>
-                    <button class="btn btn-secondary">Configure</button>
-                    <button class="btn btn-danger">Pause</button>
-                </div>
-            </div>
-
-            <div class="add-bot-card" onclick="showAddBot()">
-                <div class="icon">+</div>
-                <div class="text">Add another AI employee</div>
-                <div class="text" style="font-size:12px;margin-top:4px;">1 slot available on your plan</div>
-            </div>
+            <!-- Bots will be populated dynamically by dashboard-dynamic.js -->
+            <p style="color: var(--gray); text-align: center; padding: 40px;">Loading your AI employees...</p>
         </div>
 
         <!-- Activity Log -->
@@ -729,9 +660,9 @@
             svg.innerHTML = html;
         }
 
-        document.getElementById('loginEmail').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleLogin();
-        });
     </script>
+    
+    <!-- Dynamic dashboard functionality -->
+    <script src="/dashboard-dynamic.js"></script>
 </body>
 </html>
