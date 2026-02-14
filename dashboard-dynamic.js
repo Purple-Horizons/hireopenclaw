@@ -407,6 +407,14 @@ function handleLogin() {
     }
 }
 
+// Handle logout
+function handleLogout() {
+    currentEmail = null;
+    localStorage.removeItem('clawops_email');
+    document.getElementById('dashboardScreen').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+}
+
 // Manage billing
 async function manageBilling() {
     alert('Billing portal coming soon! Contact support@hireopenclaw.com for billing inquiries.');
