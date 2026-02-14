@@ -33,7 +33,8 @@ const apiRoutes = [
   'dashboard/rename-bot',
   'dashboard/container-stats',
   'dashboard/billing',
-  'dashboard/usage'
+  'dashboard/usage',
+  'dashboard/margin'
 ];
 
 apiRoutes.forEach(route => {
