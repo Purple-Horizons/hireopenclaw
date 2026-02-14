@@ -36,7 +36,9 @@ const apiRoutes = [
   'dashboard/container-stats',
   'dashboard/billing',
   'dashboard/usage',
-  'dashboard/margin'
+  'dashboard/margin',
+  'settings/api-keys',
+  'settings/team'
 ];
 
 apiRoutes.forEach(route => {

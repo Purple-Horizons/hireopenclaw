@@ -270,16 +270,35 @@ function downloadInvoice() {
 }
 
 // Settings Tab
-function loadSettingsTab() {
+async function loadSettingsTab() {
     const container = document.getElementById('settings-details');
     if (!container) return;
+    
+    // Fetch current API keys and team members
+    let apiKeys = [];
+    let teamMembers = [];
+    
+    try {
+        const [keysRes, teamRes] = await Promise.all([
+            fetch(`/api/settings/api-keys?email=${encodeURIComponent(currentEmail)}`),
+            fetch(`/api/settings/team?email=${encodeURIComponent(currentEmail)}`)
+        ]);
+        
+        const keysData = await keysRes.json();
+        const teamData = await teamRes.json();
+        
+        if (keysData.ok) apiKeys = keysData.keys || [];
+        if (teamData.ok) teamMembers = teamData.members || [];
+    } catch (err) {
+        console.error('Failed to load settings data:', err);
+    }
     
     container.innerHTML = `
         <div class="settings-section">
             <h3>Account Settings</h3>
             <div class="settings-form">
                 <label>Email</label>
-                <input type="email" value="${currentEmail}" disabled style="opacity:0.5;">
+                <input type="email" value="${currentEmail}" disabled style="opacity:0.5;background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:12px;color:var(--white);width:100%;margin-bottom:16px;">
                 
                 <label>Notification Preferences</label>
                 <div class="checkbox-group">
@@ -291,15 +310,49 @@ function loadSettingsTab() {
         </div>
         
         <div class="settings-section">
-            <h3>Team Members</h3>
-            <p style="color:#aaa;">Invite team members to manage your AI employees.</p>
-            <button class="btn btn-primary" onclick="showToast('Team management coming soon!', 'info')">Invite Team Member</button>
+            <h3>Team Members (${teamMembers.length})</h3>
+            <p style="color:#aaa;margin-bottom:16px;">Invite team members to manage your AI employees.</p>
+            
+            <div style="margin-bottom:16px;">
+                ${teamMembers.map(member => `
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;margin-bottom:8px;">
+                        <div>
+                            <div style="font-weight:600;">${member.email}</div>
+                            <div style="font-size:12px;color:var(--gray);text-transform:uppercase;">${member.role}</div>
+                        </div>
+                        ${member.memberId !== 'owner' ? `
+                            <button class="btn btn-danger" style="padding:6px 12px;font-size:12px;" onclick="removeTeamMember('${member.memberId}')">Remove</button>
+                        ` : '<span style="color:var(--green);font-size:12px;">●  You</span>'}
+                    </div>
+                `).join('')}
+            </div>
+            
+            <button class="btn btn-primary" onclick="showInviteTeamModal()">+ Invite Team Member</button>
         </div>
         
         <div class="settings-section">
-            <h3>API Access</h3>
-            <p style="color:#aaa;">Connect external tools to your AI employees.</p>
-            <button class="btn btn-secondary" onclick="showToast('API keys coming soon!', 'info')">Generate API Key</button>
+            <h3>API Keys (${apiKeys.length})</h3>
+            <p style="color:#aaa;margin-bottom:16px;">Connect external tools to your AI employees.</p>
+            
+            ${apiKeys.length > 0 ? `
+                <div style="margin-bottom:16px;">
+                    ${apiKeys.map(key => `
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;margin-bottom:8px;">
+                            <div style="flex:1;">
+                                <div style="font-weight:600;">${key.name}</div>
+                                <div style="font-size:11px;color:var(--gray);font-family:monospace;">${key.preview}</div>
+                                <div style="font-size:11px;color:var(--gray);margin-top:4px;">
+                                    Created: ${new Date(key.createdAt).toLocaleDateString()}
+                                    ${key.lastUsed ? ` • Last used: ${new Date(key.lastUsed).toLocaleDateString()}` : ''}
+                                </div>
+                            </div>
+                            <button class="btn btn-danger" style="padding:6px 12px;font-size:12px;" onclick="revokeApiKey('${key.keyId}')">Revoke</button>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : '<p style="color:var(--gray);font-size:14px;margin-bottom:16px;">No API keys yet.</p>'}
+            
+            <button class="btn btn-primary" onclick="showGenerateApiKeyModal()">+ Generate API Key</button>
         </div>
         
         <div class="settings-section">
@@ -307,6 +360,200 @@ function loadSettingsTab() {
             <button class="btn btn-danger" onclick="confirmDeleteAccount()">Delete Account</button>
         </div>
     `;
+}
+
+// Team management functions
+async function showInviteTeamModal() {
+    const result = await showPromptDialog('Invite Team Member', 'Enter email address:');
+    if (!result) return;
+    
+    const role = await showSelectDialog('Select role:', ['admin', 'member', 'viewer']);
+    if (!role) return;
+    
+    try {
+        const res = await fetch('/api/settings/team', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: currentEmail,
+                inviteEmail: result,
+                role: role
+            })
+        });
+        
+        const data = await res.json();
+        
+        if (data.ok) {
+            showToast(`Invitation sent to ${result}`, 'success');
+            loadSettingsTab();
+        } else {
+            showToast(`Failed to invite: ${data.error}`, 'error');
+        }
+    } catch (err) {
+        showToast('Failed to send invitation', 'error');
+    }
+}
+
+async function removeTeamMember(memberId) {
+    const confirmed = await showConfirmDialog('Remove this team member?', 'Remove Team Member', 'Remove', 'Cancel');
+    if (!confirmed) return;
+    
+    try {
+        const res = await fetch('/api/settings/team', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: currentEmail, memberId })
+        });
+        
+        const data = await res.json();
+        
+        if (data.ok) {
+            showToast('Team member removed', 'success');
+            loadSettingsTab();
+        } else {
+            showToast(`Failed to remove: ${data.error}`, 'error');
+        }
+    } catch (err) {
+        showToast('Failed to remove team member', 'error');
+    }
+}
+
+// API key management functions
+async function showGenerateApiKeyModal() {
+    const name = await showPromptDialog('Generate API Key', 'Enter key name (e.g., "Production Server"):');
+    if (!name) return;
+    
+    try {
+        const res = await fetch('/api/settings/api-keys', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: currentEmail,
+                name: name,
+                scopes: ['read', 'write']
+            })
+        });
+        
+        const data = await res.json();
+        
+        if (data.ok) {
+            // Show the API key (only shown once!)
+            showApiKeyModal(data.apiKey, name);
+            loadSettingsTab();
+        } else {
+            showToast(`Failed to generate key: ${data.error}`, 'error');
+        }
+    } catch (err) {
+        showToast('Failed to generate API key', 'error');
+    }
+}
+
+function showApiKeyModal(apiKey, name) {
+    const modal = document.getElementById('genericModal');
+    if (!modal) return;
+    
+    document.getElementById('genericModalTitle').textContent = '🔑 API Key Generated';
+    document.getElementById('genericModalMessage').innerHTML = `
+        <div style="margin-bottom:16px;">
+            <strong>${name}</strong>
+        </div>
+        <div style="background:var(--bg);padding:16px;border-radius:8px;margin-bottom:16px;">
+            <code style="word-break:break-all;font-size:12px;">${apiKey}</code>
+        </div>
+        <p style="color:var(--yellow);font-size:14px;margin-bottom:8px;">⚠️ Save this key now!</p>
+        <p style="color:var(--gray);font-size:13px;">This is the only time you'll see this key. Store it somewhere safe.</p>
+    `;
+    
+    document.getElementById('genericModalActions').innerHTML = `
+        <button class="btn btn-secondary" onclick="navigator.clipboard.writeText('${apiKey}');showToast('Copied to clipboard!','success')">📋 Copy</button>
+        <button class="btn btn-primary" onclick="closeModal()">Done</button>
+    `;
+    
+    openModal('genericModal');
+}
+
+async function revokeApiKey(keyId) {
+    const confirmed = await showConfirmDialog('Revoke this API key? Apps using it will stop working.', 'Revoke API Key', 'Revoke', 'Cancel');
+    if (!confirmed) return;
+    
+    try {
+        const res = await fetch('/api/settings/api-keys', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: currentEmail, keyId })
+        });
+        
+        const data = await res.json();
+        
+        if (data.ok) {
+            showToast('API key revoked', 'success');
+            loadSettingsTab();
+        } else {
+            showToast(`Failed to revoke: ${data.error}`, 'error');
+        }
+    } catch (err) {
+        showToast('Failed to revoke API key', 'error');
+    }
+}
+
+// Helper functions for prompts/selects
+function showPromptDialog(title, message) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('genericModal');
+        if (!modal) {
+            resolve(null);
+            return;
+        }
+        
+        document.getElementById('genericModalTitle').textContent = title;
+        document.getElementById('genericModalMessage').innerHTML = `
+            <p style="margin-bottom:12px;">${message}</p>
+            <input type="text" id="promptInput" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--light-gray);border-radius:8px;color:var(--white);">
+        `;
+        
+        document.getElementById('genericModalActions').innerHTML = `
+            <button class="btn btn-secondary" onclick="genericModalResolve(null)">Cancel</button>
+            <button class="btn btn-primary" onclick="genericModalResolve(document.getElementById('promptInput').value)">OK</button>
+        `;
+        
+        window.genericModalResolveFunc = resolve;
+        openModal('genericModal');
+        
+        setTimeout(() => document.getElementById('promptInput')?.focus(), 100);
+    });
+}
+
+function showSelectDialog(title, options) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('genericModal');
+        if (!modal) {
+            resolve(null);
+            return;
+        }
+        
+        document.getElementById('genericModalTitle').textContent = title;
+        document.getElementById('genericModalMessage').innerHTML = `
+            <select id="selectInput" style="width:100%;padding:12px;background:var(--bg);border:1px solid var(--light-gray);border-radius:8px;color:var(--white);">
+                ${options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+            </select>
+        `;
+        
+        document.getElementById('genericModalActions').innerHTML = `
+            <button class="btn btn-secondary" onclick="genericModalResolve(null)">Cancel</button>
+            <button class="btn btn-primary" onclick="genericModalResolve(document.getElementById('selectInput').value)">OK</button>
+        `;
+        
+        window.genericModalResolveFunc = resolve;
+        openModal('genericModal');
+    });
+}
+
+function genericModalResolve(value) {
+    if (window.genericModalResolveFunc) {
+        window.genericModalResolveFunc(value);
+        window.genericModalResolveFunc = null;
+    }
+    closeModal();
 }
 
 function confirmDeleteAccount() {
