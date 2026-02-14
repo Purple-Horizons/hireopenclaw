@@ -47,7 +47,7 @@ async function loadDashboard(email) {
         }
     } catch (err) {
         console.error('Failed to load dashboard:', err);
-        alert('Failed to load dashboard. Check console for errors.');
+        showAlert('Failed to load dashboard. Check console for errors.', 'Error');
     }
 }
 
@@ -153,11 +153,11 @@ function createBotCard(bot) {
         </div>
         <div class="bot-actions">
             <button class="btn btn-primary" onclick="openBot('${bot.id}', '${bot.endpoint}', '${bot.gatewayToken || ''}')">💬 Open Chat</button>
-            <button class="btn btn-secondary" onclick="configureBot('${bot.id}')">Configure</button>
             ${bot.status === 'active' 
                 ? `<button class="btn btn-secondary" onclick="botAction('${bot.id}', 'pause')">Pause</button>`
                 : `<button class="btn btn-primary" onclick="botAction('${bot.id}', 'resume')">Resume</button>`
             }
+            <button class="btn btn-danger" onclick="showDeleteModal('${bot.id}', '${escapeHtml(bot.name)}')">Delete</button>
         </div>
     `;
     
@@ -198,8 +198,13 @@ function formatLastActive(isoString) {
 
 // Bot actions
 async function botAction(tenantId, action) {
-    if (action === 'pause' && !confirm('Pause this AI employee? They will stop responding until resumed.')) {
-        return;
+    // Confirm pause action
+    if (action === 'pause') {
+        const confirmed = await showConfirm(
+            'Pause this AI employee? They will stop responding until resumed.',
+            'Confirm Pause'
+        );
+        if (!confirmed) return;
     }
     
     try {
@@ -212,70 +217,28 @@ async function botAction(tenantId, action) {
         const data = await res.json();
         
         if (data.ok) {
-            alert(`Bot ${action}d successfully.`);
-            await loadDashboard(currentEmail);
+            showAlert(`Bot ${action}d successfully.`, 'Success');
+            setTimeout(() => {
+                closeModal();
+                loadDashboard(currentEmail);
+            }, 1500);
         } else {
-            alert(`Failed to ${action} bot: ${data.error}`);
+            showAlert(`Failed to ${action} bot: ${data.error}`, 'Error');
         }
     } catch (err) {
         console.error('Bot action failed:', err);
-        alert('Action failed. Try again.');
+        showAlert('Action failed. Try again.', 'Error');
     }
 }
-
-// State for modal
-let pendingBotUrl = null;
-let pendingBotToken = null;
 
 // Open bot chat interface
 function openBot(botId, endpoint, token) {
     if (endpoint) {
-        if (token) {
-            // Show modal with pairing instructions
-            pendingBotUrl = endpoint;
-            pendingBotToken = token;
-            
-            // Set token display
-            document.getElementById('modalToken').textContent = token;
-            
-            // Set console command
-            const consoleCmd = `localStorage.setItem('openclaw_gateway_token', '${token}'); location.reload();`;
-            document.getElementById('consoleCommand').textContent = consoleCmd;
-            
-            document.getElementById('modalOverlay').classList.add('active');
-            
-            // Auto-copy console command to clipboard
-            navigator.clipboard.writeText(consoleCmd).catch(() => {
-                console.log('Clipboard copy failed');
-            });
-        } else {
-            window.open(endpoint, '_blank');
-        }
+        // Just open bot - pairing disabled for now (auth issues)
+        window.open(endpoint, '_blank');
     } else {
-        showAlert('Bot endpoint not available yet. Try again in a moment.');
+        showAlert('Bot endpoint not available yet. Try again in a moment.', 'Not Ready');
     }
-}
-
-function proceedToBot() {
-    if (pendingBotUrl && pendingBotToken) {
-        // Just open the bot - user will manually pair using the token we copied
-        window.open(pendingBotUrl, '_blank');
-        closeModal();
-    }
-}
-
-function closeModal(event) {
-    // Only close if clicking overlay or close button (not modal content)
-    if (!event || event.target.id === 'modalOverlay') {
-        document.getElementById('modalOverlay').classList.remove('active');
-        pendingBotUrl = null;
-        pendingBotToken = null;
-    }
-}
-
-function showAlert(message) {
-    // Simple alert replacement - could be fancier
-    alert(message);
 }
 
 // Copy token to clipboard
@@ -296,111 +259,12 @@ function copyToken(token, botName) {
     });
 }
 
-// Configure bot
+// Configure bot - disabled for now (will be a proper modal later)
 function configureBot(botId) {
-    const bot = currentBots.find(b => b.id === botId);
-    if (!bot) return;
-    
-    const config = prompt(
-        `Configure ${bot.name}\n\n` +
-        `Current settings:\n` +
-        `- Name: ${bot.name}\n` +
-        `- Role: ${bot.role}\n` +
-        `- Template: ${bot.template}\n` +
-        `- Status: ${bot.status}\n\n` +
-        `Available actions:\n` +
-        `1 - Rename bot\n` +
-        `2 - View credentials\n` +
-        `3 - Restart bot\n` +
-        `4 - Cancel\n\n` +
-        `Enter 1-4:`,
-        '4'
-    );
-    
-    switch (config) {
-        case '1':
-            const newName = prompt('New name:', bot.name);
-            if (newName && newName !== bot.name) {
-                alert('Rename feature coming soon! For now, you can recreate the bot with a new name.');
-            }
-            break;
-        case '2':
-            const creds = `Bot Credentials:\n\n` +
-                `Endpoint: ${bot.endpoint}\n` +
-                `Token: ${bot.gatewayToken || 'Not set'}\n\n` +
-                `Full URL:\n${bot.endpoint}?token=${bot.gatewayToken}`;
-            prompt('Copy these credentials:', creds);
-            break;
-        case '3':
-            if (confirm(`Restart ${bot.name}?`)) {
-                botAction(botId, 'restart');
-            }
-            break;
-    }
+    showAlert('Configuration panel coming soon!', 'Not Available');
 }
 
-// Show add bot dialog
-async function showAddBot() {
-    const botName = prompt('What should we call your new AI employee?', 'MyBot');
-    if (!botName) return;
-    
-    const roles = {
-        '1': { name: 'Content Creator', template: 'marketing' },
-        '2': { name: 'Sales Development', template: 'sales' },
-        '3': { name: 'Customer Support', template: 'support' },
-        '4': { name: 'Custom (blank canvas)', template: 'blank' }
-    };
-    
-    const choice = prompt(
-        'Choose a role:\n\n' +
-        '1 - 📣 Content Creator (blogs, social, newsletters)\n' +
-        '2 - 💼 Sales Development (outreach, leads, CRM)\n' +
-        '3 - 🎧 Customer Support (tickets, FAQ, chat)\n' +
-        '4 - 🧪 Custom (blank canvas)\n\n' +
-        'Enter 1-4:',
-        '4'
-    );
-    
-    const role = roles[choice];
-    if (!role) {
-        alert('Invalid choice. Please try again.');
-        return;
-    }
-    
-    // Generate tenant ID
-    const timestamp = Date.now().toString().slice(-6);
-    const random = Math.random().toString(36).substring(2, 6);
-    const tenantId = `tenant-${timestamp}-${random}`;
-    
-    alert(`Creating ${botName} (${role.name})...\n\nThis will take ~30 seconds.`);
-    
-    try {
-        const res = await fetch('/api/dashboard/create-bot', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                email: currentEmail,
-                tenantId: tenantId,
-                botName: botName,
-                botRole: role.name,
-                template: role.template,
-                plan: 'starter'
-            })
-        });
-        
-        const data = await res.json();
-        
-        if (data.ok) {
-            alert(`✓ ${botName} is ready!\n\nRefreshing dashboard...`);
-            await loadDashboard(currentEmail);
-        } else {
-            alert(`Failed to create bot:\n${data.error || 'Unknown error'}`);
-        }
-    } catch (err) {
-        console.error('Create bot failed:', err);
-        alert('Failed to create bot. Check console for errors.');
-    }
-}
+// showAddBot() is now in modal.js
 
 // Load usage chart
 async function loadUsageChart(email) {
