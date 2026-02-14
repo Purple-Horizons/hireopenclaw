@@ -48,7 +48,9 @@ const apiRoutes = [
   'keys/revoke',
   'analytics/overview',
   'analytics/timeseries',
-  'analytics/compare'
+  'analytics/compare',
+  'billing/checkout',
+  'billing/webhook'
 ];
 
 apiRoutes.forEach(route => {
