@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Launching OpenClaw...</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .loader {
+            text-align: center;
+            max-width: 400px;
+            padding: 40px;
+        }
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #333;
+            border-top-color: #ff6b35;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 24px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        p {
+            color: #888;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .error {
+            background: #ef4444;
+            color: white;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+        .success {
+            color: #10b981;
+            margin-top: 12px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="loader">
+        <div class="spinner"></div>
+        <h1>Launching your OpenClaw bot...</h1>
+        <p id="status">Authenticating with gateway token...</p>
+        <p class="success" id="success">✅ Authentication successful!</p>
+        <div class="error" id="error"></div>
+    </div>
+
+    <script>
+        (function() {
+            const params = new URLSearchParams(window.location.search);
+            const endpoint = params.get('endpoint');
+            const token = params.get('token');
+            const exp = params.get('exp');
+            
+            const statusEl = document.getElementById('status');
+            const successEl = document.getElementById('success');
+            const errorEl = document.getElementById('error');
+            
+            // Validate parameters
+            if (!endpoint) {
+                showError('Missing bot endpoint. Please try again from the dashboard.');
+                return;
+            }
+            
+            if (!token) {
+                // No token provided, just redirect to endpoint
+                statusEl.textContent = 'Redirecting to bot...';
+                setTimeout(() => {
+                    window.location.href = endpoint;
+                }, 1000);
+                return;
+            }
+            
+            // Validate token format
+            if (token.length < 20 || !/^[a-zA-Z0-9_-]+$/.test(token)) {
+                showError('Invalid token format.');
+                return;
+            }
+            
+            // Check expiry if present
+            if (exp) {
+                const expiryTime = parseInt(exp, 10);
+                if (isNaN(expiryTime)) {
+                    showError('Invalid expiry timestamp.');
+                    return;
+                }
+                
+                if (Date.now() > expiryTime) {
+                    showError('Magic link expired. Please launch again from the dashboard.');
+                    return;
+                }
+            }
+            
+            // Store token in localStorage for the bot's domain
+            // Note: This works if launch.html is served from same origin as bot
+            // For cross-origin, we need to open bot and use postMessage
+            try {
+                localStorage.setItem('openclaw_gateway_token', token);
+                localStorage.setItem('openclaw_auth_method', 'token');
+                
+                console.log('[launch] Token stored:', token.substring(0, 10) + '...');
+                
+                statusEl.textContent = 'Token configured. Redirecting to bot...';
+                successEl.style.display = 'block';
+                
+                // Redirect to bot endpoint after short delay
+                setTimeout(() => {
+                    window.location.href = endpoint;
+                }, 1500);
+                
+            } catch (err) {
+                console.error('[launch] localStorage error:', err);
+                showError('Failed to configure authentication. Try opening the bot manually.');
+            }
+            
+            function showError(message) {
+                errorEl.textContent = '❌ ' + message;
+                errorEl.style.display = 'block';
+                statusEl.style.display = 'none';
+                document.querySelector('.spinner').style.display = 'none';
+            }
+        })();
+    </script>
+</body>
+</html>

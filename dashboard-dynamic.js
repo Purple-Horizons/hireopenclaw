@@ -233,12 +233,80 @@ async function botAction(tenantId, action) {
 
 // Open bot chat interface
 function openBot(botId, endpoint, token) {
-    if (endpoint) {
-        // Just open bot - pairing disabled for now (auth issues)
-        window.open(endpoint, '_blank');
-    } else {
+    if (!endpoint) {
         showAlert('Bot endpoint not available yet. Try again in a moment.', 'Not Ready');
+        return;
     }
+    
+    // If we have a token, use launch page for auto-auth
+    if (token && token.length >= 20) {
+        // Generate expiry timestamp (5 minutes from now)
+        const expiryMs = Date.now() + (5 * 60 * 1000);
+        
+        // Construct launch URL (query params, not hash)
+        // Launch page will inject token into localStorage then redirect
+        const launchUrl = `/launch?endpoint=${encodeURIComponent(endpoint)}&token=${encodeURIComponent(token)}&exp=${expiryMs}`;
+        
+        // Open in new tab
+        window.open(launchUrl, '_blank');
+        
+        // Show info toast
+        showTemporaryMessage('🚀 Launching bot with auto-authentication...', 'info', 3000);
+    } else {
+        // No token available, just open endpoint
+        window.open(endpoint, '_blank');
+        showTemporaryMessage('ℹ️ Opened bot - you may need to pair manually', 'info', 3000);
+    }
+}
+
+// Show temporary message (non-blocking toast)
+function showTemporaryMessage(text, type = 'info', duration = 3000) {
+    const toast = document.createElement('div');
+    const bgColor = type === 'success' ? 'var(--green)' : 
+                    type === 'error' ? 'var(--red)' : 
+                    type === 'warning' ? 'var(--yellow)' : 
+                    'var(--blue)';
+    
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background: ${bgColor};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 10000;
+        animation: slideUp 0.3s ease-out;
+    `;
+    toast.textContent = text;
+    
+    // Add animation if not exists
+    if (!document.getElementById('toast-styles')) {
+        const style = document.createElement('style');
+        style.id = 'toast-styles';
+        style.textContent = `
+            @keyframes slideUp {
+                from { transform: translateY(100px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+            }
+            @keyframes slideDown {
+                from { transform: translateY(0); opacity: 1; }
+                to { transform: translateY(100px); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    document.body.appendChild(toast);
+    
+    // Auto-remove
+    setTimeout(() => {
+        toast.style.animation = 'slideDown 0.3s ease-out';
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
 }
 
 // Copy token to clipboard
