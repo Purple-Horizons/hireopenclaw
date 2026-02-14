@@ -103,12 +103,21 @@ function showConfirmDialog(message, title = 'Confirm', confirmText = 'Confirm', 
         
         const actions = document.getElementById('genericModalActions');
         actions.innerHTML = `
-            <button class="btn btn-secondary" onclick="closeModal(); currentModalResolve?.(false);">${cancelText}</button>
-            <button class="btn btn-primary" onclick="closeModal(); currentModalResolve?.(true);">${confirmText}</button>
+            <button class="btn btn-secondary" onclick="confirmDialogResolve(false)">${cancelText}</button>
+            <button class="btn btn-primary" onclick="confirmDialogResolve(true)">${confirmText}</button>
         `;
         
         openModal('genericModal');
     });
+}
+
+// Helper function for confirm dialog buttons
+function confirmDialogResolve(value) {
+    if (currentModalResolve) {
+        currentModalResolve(value);
+        currentModalResolve = null;
+    }
+    closeModal();
 }
 
 // Add bot modal
