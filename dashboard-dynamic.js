@@ -140,6 +140,7 @@ function createBotCard(bot) {
             </div>
             <span class="status-dot ${statusClass}" title="${bot.status}"></span>
         </div>
+        
         <div class="bot-stats">
             <div class="bot-stat">
                 <div class="label">Tokens used</div>
@@ -154,22 +155,24 @@ function createBotCard(bot) {
                 <div class="value" style="color:${healthColor};">${bot.health}</div>
             </div>
         </div>
-        <div class="bot-stats" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--light-gray);">
-            <div class="bot-stat" style="grid-column:1/-1;">
-                <div class="label">Gateway Token ${bot.gatewayToken ? '(for first-time pairing)' : ''}</div>
-                <div class="value" style="font-size:12px;font-family:monospace;display:flex;align-items:center;gap:8px;">
-                    <span style="flex:1;">${tokenDisplay}</span>
-                    ${bot.gatewayToken ? `<button class="btn btn-primary" style="padding:4px 12px;font-size:11px;" onclick="copyToken('${bot.gatewayToken}', '${escapeHtml(bot.name)}'); return false;">📋 Copy Token</button>` : ''}
-                </div>
+        
+        ${bot.gatewayToken ? `
+        <div style="margin-top:16px;padding:12px;background:rgba(255,107,53,0.1);border-radius:8px;">
+            <div style="font-size:11px;color:var(--gray);margin-bottom:6px;">🔑 Gateway Token (first-time pairing)</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <code style="flex:1;font-size:11px;color:var(--white);word-break:break-all;">${tokenDisplay}</code>
+                <button class="btn btn-primary" style="padding:4px 12px;font-size:11px;white-space:nowrap;" onclick="copyToken('${bot.gatewayToken}', '${escapeHtml(bot.name)}'); return false;">📋 Copy</button>
             </div>
         </div>
+        ` : ''}
+        
         <div class="bot-actions">
             <button class="btn btn-primary" onclick="openBot('${bot.id}', '${bot.endpoint}', '${bot.gatewayToken || ''}')">💬 Open Chat</button>
             ${bot.status === 'active' 
-                ? `<button class="btn btn-secondary" onclick="botAction('${bot.id}', 'pause')">Pause</button>`
-                : `<button class="btn btn-primary" onclick="botAction('${bot.id}', 'resume')">Resume</button>`
+                ? `<button class="btn btn-secondary" onclick="botAction('${bot.id}', 'pause')">⏸ Pause</button>`
+                : `<button class="btn btn-primary" onclick="botAction('${bot.id}', 'resume')">▶ Resume</button>`
             }
-            <button class="btn btn-danger" onclick="showDeleteModal('${bot.id}', '${escapeHtml(bot.name)}')">Delete</button>
+            <button class="btn btn-danger" onclick="showDeleteModal('${bot.id}', '${escapeHtml(bot.name)}')">🗑 Delete</button>
         </div>
     `;
     
@@ -349,7 +352,40 @@ function configureBot(botId) {
     showAlert('Configuration panel coming soon!', 'Not Available');
 }
 
-// showAddBot() is now in modal.js
+// Show Add Bot form
+async function showAddBot() {
+    const botName = prompt('Enter bot name:');
+    if (!botName || !botName.trim()) return;
+    
+    const template = prompt('Select template (blank/sales/support/marketing/invoice):', 'blank');
+    if (!template || !template.trim()) return;
+    
+    try {
+        const res = await fetch('/api/dashboard/create-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: currentEmail,
+                botName: botName.trim(),
+                template: template.trim()
+            })
+        });
+        
+        const data = await res.json();
+        
+        if (data.ok) {
+            showAlert(`Bot "${botName}" created successfully!`, 'Success');
+            setTimeout(() => {
+                loadDashboard(currentEmail);
+            }, 1500);
+        } else {
+            showAlert(`Failed to create bot: ${data.error}`, 'Error');
+        }
+    } catch (err) {
+        console.error('Create bot failed:', err);
+        showAlert('Failed to create bot. Try again.', 'Error');
+    }
+}
 
 // Load usage chart
 async function loadUsageChart(email) {
