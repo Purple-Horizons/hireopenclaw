@@ -60,7 +60,7 @@ module.exports = async (req, res) => {
     await docClient.send(new UpdateCommand({
       TableName: tableName,
       Key: { tenantId: finalTenantId },
-      UpdateExpression: 'SET #name = :name, #role = :role, #template = :template, #status = :status, #plan = :plan, updatedAt = :now',
+      UpdateExpression: 'SET #name = :name, #role = :role, #template = :template, #status = :status, #plan = :plan, email = :email, createdAt = if_not_exists(createdAt, :now), updatedAt = :now',
       ExpressionAttributeNames: {
         '#name': 'name',
         '#role': 'role',
@@ -74,7 +74,8 @@ module.exports = async (req, res) => {
         ':template': template || 'blank',
         ':status': 'provisioning',
         ':plan': plan || 'starter',
-        ':now': new Date().toISOString()
+        ':email': email,
+        ':now': Math.floor(Date.now() / 1000)  // Unix timestamp in seconds
       }
     }));
 
@@ -83,7 +84,7 @@ module.exports = async (req, res) => {
     // Call MasterControl to provision bot locally
     // This runs the clawops CLI to provision a local Docker container
     const clawopsPath = '/Users/giannidalerta/.openclaw/workspace/repos/clawops';
-    const cmd = `cd ${clawopsPath} && bin/clawops provision --tenant-id ${finalTenantId} --email ${email} --plan ${plan || 'starter'} --template ${template || 'blank'} --mode managed`;
+    const cmd = `cd ${clawopsPath} && bin/clawops provision --tenant-id ${finalTenantId} --email ${email} --name "${botName}" --plan ${plan || 'starter'} --template ${template || 'blank'} --mode managed`;
 
     console.log(`[Create Bot] Running: ${cmd}`);
 
@@ -104,18 +105,22 @@ module.exports = async (req, res) => {
       console.log('[Create Bot] Provision output:', stdout);
       if (stderr) console.error('[Create Bot] Provision errors:', stderr);
 
+      // Parse endpoint from provision output (format: "  ✓ Endpoint registered: http://localhost:XXXXX")
+      const endpointMatch = stdout.match(/Endpoint registered:\s+(http:\/\/localhost:\d+)/);
+      const endpoint = endpointMatch ? endpointMatch[1] : `http://localhost:18791`;
+
       // Update status to active
       await docClient.send(new UpdateCommand({
         TableName: tableName,
         Key: { tenantId: finalTenantId },
-        UpdateExpression: 'SET #status = :status, healthStatus = :health, provisionedAt = :now',
+        UpdateExpression: 'SET #status = :status, healthStatus = :health, provisionedAt = :now, lastActive = :now',
         ExpressionAttributeNames: {
           '#status': 'status'
         },
         ExpressionAttributeValues: {
           ':status': 'active',
           ':health': 'healthy',
-          ':now': new Date().toISOString()
+          ':now': Math.floor(Date.now() / 1000)  // Unix timestamp in seconds
         }
       }));
 
@@ -126,7 +131,7 @@ module.exports = async (req, res) => {
         botName,
         status: 'active',
         message: 'Bot provisioned successfully',
-        endpoint: `http://localhost:18791`  // TODO: Assign dynamic port
+        endpoint
       });
 
     } catch (provisionError) {

@@ -3,6 +3,17 @@
  * Replaces ugly browser alert()/confirm()/prompt() dialogs
  */
 
+// Helper: Get role label from template
+function getRoleLabel(template) {
+    const labels = {
+        'marketing': 'Content Creator',
+        'sales': 'Sales Development',
+        'support': 'Customer Support',
+        'blank': 'Assistant'
+    };
+    return labels[template] || 'Assistant';
+}
+
 // Toast Notifications
 function showToast(message, type = 'info', duration = 3000) {
     const container = document.getElementById('toastContainer') || createToastContainer();
@@ -125,6 +136,7 @@ async function confirmAddBot() {
             body: JSON.stringify({
                 email: currentEmail,
                 botName: name,
+                botRole: getRoleLabel(role),
                 template: role
             })
         });
