@@ -4,20 +4,17 @@
 let currentEmail = null;
 let currentBots = [];
 
-// Modal/Alert Functions
-function showAlert(message, title = 'Notice') {
-    alert(`${title}: ${message}`);
+// Modal/Alert Functions (use modal.js toast system)
+function showAlert(message, type = 'info') {
+    showToast(message, type);
 }
 
 function showConfirm(message, title = 'Confirm') {
-    return Promise.resolve(confirm(`${title}\n\n${message}`));
+    return showConfirmDialog(message, title);
 }
 
 function showDeleteModal(botId, botName) {
-    const confirmed = confirm(`Delete "${botName}"?\n\nThis will permanently remove the bot and all its data. This action cannot be undone.`);
-    if (confirmed) {
-        botAction(botId, 'terminate');
-    }
+    showDeleteBotModal(botId, botName);
 }
 
 // Get email from URL parameter or localStorage
@@ -63,7 +60,7 @@ async function loadDashboard(email) {
         }
     } catch (err) {
         console.error('Failed to load dashboard:', err);
-        showAlert('Failed to load dashboard. Check console for errors.', 'Error');
+        showToast('Failed to load dashboard. Check console for errors.', 'error');
     }
 }
 
@@ -237,24 +234,24 @@ async function botAction(tenantId, action) {
         const data = await res.json();
         
         if (data.ok) {
-            showAlert(`Bot ${action}d successfully.`, 'Success');
+            showToast(`Bot ${action}d successfully`, 'success');
             setTimeout(() => {
                 closeModal();
                 loadDashboard(currentEmail);
             }, 1500);
         } else {
-            showAlert(`Failed to ${action} bot: ${data.error}`, 'Error');
+            showToast(`Failed to ${action} bot: ${data.error}`, 'error');
         }
     } catch (err) {
         console.error('Bot action failed:', err);
-        showAlert('Action failed. Try again.', 'Error');
+        showToast('Action failed. Try again.', 'error');
     }
 }
 
 // Open bot chat interface
 function openBot(botId, endpoint, token) {
     if (!endpoint) {
-        showAlert('Bot endpoint not available yet. Try again in a moment.', 'Not Ready');
+        showToast('Bot endpoint not available yet. Try again in a moment.', 'warning');
         return;
     }
     
@@ -342,49 +339,19 @@ function copyToken(token, botName) {
             btn.style.background = '';
         }, 2000);
     }).catch(() => {
-        // Fallback: show prompt
-        prompt('Copy this token manually:', token);
+        // Fallback: show toast with manual copy instruction
+        showToast('Failed to copy. Please select and copy the token manually.', 'warning');
     });
 }
 
 // Configure bot - disabled for now (will be a proper modal later)
 function configureBot(botId) {
-    showAlert('Configuration panel coming soon!', 'Not Available');
+    showToast('Configuration panel coming soon!', 'info');
 }
 
-// Show Add Bot form
-async function showAddBot() {
-    const botName = prompt('Enter bot name:');
-    if (!botName || !botName.trim()) return;
-    
-    const template = prompt('Select template (blank/sales/support/marketing/invoice):', 'blank');
-    if (!template || !template.trim()) return;
-    
-    try {
-        const res = await fetch('/api/dashboard/create-bot', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                email: currentEmail,
-                botName: botName.trim(),
-                template: template.trim()
-            })
-        });
-        
-        const data = await res.json();
-        
-        if (data.ok) {
-            showAlert(`Bot "${botName}" created successfully!`, 'Success');
-            setTimeout(() => {
-                loadDashboard(currentEmail);
-            }, 1500);
-        } else {
-            showAlert(`Failed to create bot: ${data.error}`, 'Error');
-        }
-    } catch (err) {
-        console.error('Create bot failed:', err);
-        showAlert('Failed to create bot. Try again.', 'Error');
-    }
+// Show Add Bot form (uses modal from modal.js)
+function showAddBot() {
+    showAddBotModal();
 }
 
 // Load usage chart
@@ -451,7 +418,7 @@ function handleLogin() {
     if (email && email.includes('@')) {
         loadDashboard(email);
     } else {
-        alert('Please enter a valid email address.');
+        showToast('Please enter a valid email address', 'error');
     }
 }
 
@@ -465,7 +432,7 @@ function handleLogout() {
 
 // Manage billing
 async function manageBilling() {
-    alert('Billing portal coming soon! Contact support@hireopenclaw.com for billing inquiries.');
+    showToast('Billing portal coming soon! Contact support@hireopenclaw.com for billing inquiries.', 'info', 5000);
 }
 
 // Upgrade plan
