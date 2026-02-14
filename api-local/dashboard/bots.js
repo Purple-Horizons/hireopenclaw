@@ -59,7 +59,7 @@ module.exports = async (req, res) => {
         tokensUsed: t.tokensUsed || 0,
         tokensLimit: getTokenLimit(t.plan),
         messagesToday: t.messagesToday || 0,
-        lastActive: t.lastActive || t.createdAt,
+        lastActive: t.lastActive ? (t.lastActive * 1000) : (t.createdAt * 1000), // Convert seconds to milliseconds
         createdAt: t.createdAt,
         endpoint: t.endpoint || `http://localhost:${18790 + parseInt(t.tenantId.split('-')[1] || '1') % 10}`,
         gatewayToken: t.gatewayToken || null
