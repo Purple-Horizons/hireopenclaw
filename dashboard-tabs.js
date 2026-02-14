@@ -67,10 +67,32 @@ async function loadUsageTab() {
     if (!currentEmail) return;
     
     try {
-        const res = await fetch(`/api/dashboard/usage?email=${encodeURIComponent(currentEmail)}&days=30`);
-        const data = await res.json();
+        // Fetch both usage API and analytics overview
+        const [usageRes, analyticsRes] = await Promise.all([
+            fetch(`/api/dashboard/usage?email=${encodeURIComponent(currentEmail)}&days=30`),
+            fetch(`/api/analytics/overview?userId=${encodeURIComponent(currentEmail)}&period=30d`).catch(() => null)
+        ]);
         
-        renderUsageDetails(data);
+        const usageData = await usageRes.json();
+        
+        // Update top-level stats if analytics available
+        if (analyticsRes) {
+            try {
+                const analytics = await analyticsRes.json();
+                const el = id => document.getElementById(id);
+                if (analytics.summary) {
+                    const s = analytics.summary;
+                    if (el('usageTotalTokens')) el('usageTotalTokens').textContent = Math.round((s.tokensIn + s.tokensOut) / 1000) + 'K';
+                    if (el('usageTotalMessages')) el('usageTotalMessages').textContent = s.messages.toLocaleString();
+                    if (el('usageAvgTokens')) el('usageAvgTokens').textContent = Math.round((s.tokensIn + s.tokensOut) / 30 / 1000) + 'K';
+                    if (el('usageTotalCost')) el('usageTotalCost').textContent = '$' + s.cost.toFixed(2);
+                }
+            } catch (e) {
+                console.warn('Analytics not available:', e);
+            }
+        }
+        
+        renderUsageDetails(usageData);
     } catch (err) {
         console.error('Failed to load usage data:', err);
     }
@@ -143,46 +165,118 @@ function renderUsageDetails(data) {
 }
 
 function renderDetailedUsageChart(days) {
-    const svg = document.getElementById('detailedUsageChart');
-    if (!svg || days.length === 0) return;
+    // Use Chart.js if available, fallback to SVG
+    const chartContainer = document.getElementById('detailedUsageChart');
+    if (!chartContainer || days.length === 0) return;
     
-    const W = svg.clientWidth || 900;
-    const H = 300;
-    const PAD_L = 60, PAD_R = 20, PAD_T = 20, PAD_B = 60;
-    const chartW = W - PAD_L - PAD_R;
-    const chartH = H - PAD_T - PAD_B;
-    
-    const maxTokens = Math.max(...days.map(d => (d.inputTokens || 0) + (d.outputTokens || 0)), 1000);
-    const barW = Math.min(20, (chartW / days.length) * 0.6);
-    const gap = chartW / days.length;
-    
-    let html = '';
-    
-    // Y-axis
-    for (let i = 0; i <= 5; i++) {
-        const y = PAD_T + chartH - (chartH * i / 5);
-        const val = Math.round(maxTokens * i / 5 / 1000);
-        html += `<line x1="${PAD_L}" y1="${y}" x2="${W - PAD_R}" y2="${y}" stroke="#333" stroke-width="1"/>`;
-        html += `<text x="${PAD_L - 8}" y="${y + 4}" text-anchor="end" fill="#888" font-size="11">${val}K</text>`;
-    }
-    
-    // Bars
-    days.forEach((d, i) => {
-        const tokens = (d.inputTokens || 0) + (d.outputTokens || 0);
-        const x = PAD_L + gap * i + (gap - barW) / 2;
-        const h = (tokens / maxTokens) * chartH;
-        const y = PAD_T + chartH - h;
-        
-        html += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="2" fill="#ff6b35" opacity="0.85"/>`;
-        
-        // X-axis labels (every 5 days)
-        if (i % 5 === 0) {
-            const label = d.date.slice(5);
-            html += `<text x="${x + barW/2}" y="${H - 10}" text-anchor="middle" fill="#888" font-size="10">${label}</text>`;
+    if (typeof Chart !== 'undefined') {
+        // Replace SVG with canvas for Chart.js
+        const parent = chartContainer.parentElement;
+        if (chartContainer.tagName === 'SVG') {
+            const canvas = document.createElement('canvas');
+            canvas.id = 'detailedUsageChart';
+            canvas.style.maxHeight = '300px';
+            parent.replaceChild(canvas, chartContainer);
         }
-    });
-    
-    svg.innerHTML = html;
+        
+        const ctx = document.getElementById('detailedUsageChart');
+        if (!ctx) return;
+        
+        // Destroy existing chart if any
+        if (window._usageChart) window._usageChart.destroy();
+        
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+        const textColor = isDark ? '#aaa' : '#666';
+        
+        window._usageChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: days.map(d => d.date.slice(5)),
+                datasets: [
+                    {
+                        label: 'Input Tokens',
+                        data: days.map(d => (d.inputTokens || 0) / 1000),
+                        backgroundColor: 'rgba(124, 58, 237, 0.7)',
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'Output Tokens',
+                        data: days.map(d => (d.outputTokens || 0) / 1000),
+                        backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: textColor }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                return `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}K tokens`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: true,
+                        grid: { color: gridColor },
+                        ticks: { color: textColor }
+                    },
+                    y: {
+                        stacked: true,
+                        grid: { color: gridColor },
+                        ticks: {
+                            color: textColor,
+                            callback: v => v + 'K'
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        // SVG fallback
+        const svg = chartContainer;
+        if (svg.tagName !== 'SVG') return;
+        
+        const W = svg.clientWidth || 900;
+        const H = 300;
+        const PAD_L = 60, PAD_R = 20, PAD_T = 20, PAD_B = 60;
+        const chartW = W - PAD_L - PAD_R;
+        const chartH = H - PAD_T - PAD_B;
+        
+        const maxTokens = Math.max(...days.map(d => (d.inputTokens || 0) + (d.outputTokens || 0)), 1000);
+        const barW = Math.min(20, (chartW / days.length) * 0.6);
+        const gap = chartW / days.length;
+        
+        let html = '';
+        for (let i = 0; i <= 5; i++) {
+            const y = PAD_T + chartH - (chartH * i / 5);
+            const val = Math.round(maxTokens * i / 5 / 1000);
+            html += `<line x1="${PAD_L}" y1="${y}" x2="${W - PAD_R}" y2="${y}" stroke="#333" stroke-width="1"/>`;
+            html += `<text x="${PAD_L - 8}" y="${y + 4}" text-anchor="end" fill="#888" font-size="11">${val}K</text>`;
+        }
+        
+        days.forEach((d, i) => {
+            const tokens = (d.inputTokens || 0) + (d.outputTokens || 0);
+            const x = PAD_L + gap * i + (gap - barW) / 2;
+            const h = (tokens / maxTokens) * chartH;
+            const y = PAD_T + chartH - h;
+            html += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="2" fill="#ff6b35" opacity="0.85"/>`;
+            if (i % 5 === 0) {
+                const label = d.date.slice(5);
+                html += `<text x="${x + barW/2}" y="${H - 10}" text-anchor="middle" fill="#888" font-size="10">${label}</text>`;
+            }
+        });
+        
+        svg.innerHTML = html;
+    }
 }
 
 // Billing Tab
@@ -424,20 +518,24 @@ async function showGenerateApiKeyModal() {
     if (!name) return;
     
     try {
-        const res = await fetch('/api/settings/api-keys', {
+        // Try new dedicated endpoint first, fall back to settings endpoint
+        let res = await fetch('/api/keys/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                email: currentEmail,
                 name: name,
-                scopes: ['read', 'write']
+                scopes: ['bots:read', 'bots:create', 'usage:read']
             })
         });
         
-        const data = await res.json();
+        let data = await res.json();
         
-        if (data.ok) {
-            // Show the API key (only shown once!)
+        if (data.secretKey) {
+            // New endpoint format - show both public and secret keys
+            showApiKeyModal(data.secretKey, name);
+            loadSettingsTab();
+        } else if (data.ok) {
+            // Legacy format
             showApiKeyModal(data.apiKey, name);
             loadSettingsTab();
         } else {

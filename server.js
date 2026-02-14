@@ -38,7 +38,17 @@ const apiRoutes = [
   'dashboard/usage',
   'dashboard/margin',
   'settings/api-keys',
-  'settings/team'
+  'settings/team',
+  'team/create',
+  'team/invite',
+  'team/members',
+  'team/remove',
+  'keys/create',
+  'keys/list',
+  'keys/revoke',
+  'analytics/overview',
+  'analytics/timeseries',
+  'analytics/compare'
 ];
 
 apiRoutes.forEach(route => {
@@ -60,6 +70,37 @@ apiRoutes.forEach(route => {
     console.warn(`✗ Failed to load ${routePath}: ${err.message}`);
   }
 });
+
+// Public API v1 routes (rate-limited, API key auth)
+try {
+  const rateLimit = require(path.join(__dirname, 'middleware', 'rateLimit.js'));
+  const v1Routes = [
+    { method: 'get', path: '/v1/bots', handler: 'bots/list' },
+    { method: 'post', path: '/v1/bots', handler: 'bots/create' },
+    { method: 'delete', path: '/v1/bots/:id', handler: 'bots/delete' },
+    { method: 'get', path: '/v1/usage', handler: 'usage/overview' }
+  ];
+
+  v1Routes.forEach(route => {
+    const handlerPath = path.join(__dirname, 'api-v1', `${route.handler}.js`);
+    try {
+      const handler = require(handlerPath);
+      app[route.method](route.path, rateLimit, async (req, res) => {
+        try {
+          await handler(req, res);
+        } catch (err) {
+          console.error(`[API v1 Error] ${route.path}:`, err);
+          res.status(500).json({ error: 'Internal server error' });
+        }
+      });
+      console.log(`✓ Loaded v1: ${route.method.toUpperCase()} ${route.path}`);
+    } catch (err) {
+      console.warn(`✗ v1 route ${route.path}: ${err.message}`);
+    }
+  });
+} catch (err) {
+  console.warn('✗ Rate limit middleware not loaded:', err.message);
+}
 
 // Static files (HTML, CSS, JS, images)
 app.use(express.static(path.join(__dirname), {

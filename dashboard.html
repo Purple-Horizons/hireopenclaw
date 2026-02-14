@@ -771,6 +771,43 @@
         </div>
     </div>
 
+    <!-- Usage Tab -->
+    <div id="usage-tab" class="tab-content" style="display:none;">
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="label">Total Tokens (30d)</div>
+                <div class="value" id="usageTotalTokens">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Total Messages (30d)</div>
+                <div class="value" id="usageTotalMessages">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Avg Tokens/Day</div>
+                <div class="value" id="usageAvgTokens">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Estimated Cost</div>
+                <div class="value" id="usageTotalCost">—</div>
+            </div>
+        </div>
+        <div id="usage-details" style="margin-top:24px;"></div>
+    </div>
+
+    <!-- Billing Tab -->
+    <div id="billing-tab" class="tab-content" style="display:none;">
+        <div id="billing-details" style="padding:20px 0;">
+            <p style="color:var(--gray);text-align:center;padding:40px;">Loading billing data...</p>
+        </div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div id="settings-tab" class="tab-content" style="display:none;">
+        <div id="settings-details" style="padding:20px 0;">
+            <p style="color:var(--gray);text-align:center;padding:40px;">Loading settings...</p>
+        </div>
+    </div>
+
     <!-- Modals -->
     <div id="modalOverlay" class="modal-overlay" onclick="closeModal(event)">
         <!-- Generic alert/confirm modal -->
@@ -834,6 +871,8 @@
         </div>
     </div>
     
+    <!-- Chart.js for analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <!-- Auto-auth script (hash fragment token extraction) -->
     <script src="/public/auto-auth.js"></script>
     <!-- Modal system -->
