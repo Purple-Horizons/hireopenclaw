@@ -856,6 +856,19 @@
                 </button>
             </form>
             <p class="hero-note">Starting at $299/mo. Fixed price. No surprise bills. Cancel anytime.</p>
+            
+            <!-- Login Section -->
+            <div style="max-width:420px;margin:32px auto 0;padding-top:24px;border-top:1px solid var(--light-gray);">
+                <p style="color:var(--gray);margin-bottom:12px;text-align:center;">Already have an account?</p>
+                <form id="login-form" style="display:flex;gap:12px;">
+                    <input type="email" name="email" required placeholder="your@email.com" style="flex:1;background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:14px 16px;font-size:15px;color:var(--white);font-family:inherit;" />
+                    <button type="submit" class="cta-button" style="border:none;cursor:pointer;font-family:inherit;background:#333;color:white;white-space:nowrap;padding:14px 24px;">
+                        <span class="btn-text">Send Login Link</span>
+                        <span class="btn-loading" style="display:none;">Sending...</span>
+                    </button>
+                </form>
+                <p id="login-status" style="margin-top:12px;text-align:center;color:var(--green);display:none;"></p>
+            </div>
         </div>
     </section>
     
@@ -1131,6 +1144,55 @@
     </footer>
 
     <script>
+        // Magic link login
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const btn = form.querySelector('button');
+            const btnText = btn.querySelector('.btn-text');
+            const btnLoading = btn.querySelector('.btn-loading');
+            const status = document.getElementById('login-status');
+            const email = form.querySelector('input[name=email]').value;
+
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/auth/magic-link', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await response.json();
+
+                if (data.ok) {
+                    status.textContent = '✓ Magic link sent! Check your email.';
+                    status.style.display = 'block';
+                    status.style.color = 'var(--green)';
+                    
+                    // For local dev, show the link
+                    if (data.magicLink) {
+                        setTimeout(() => {
+                            status.innerHTML = `✓ Magic link sent!<br><a href="${data.magicLink}" style="color:var(--accent);">Click here to log in (dev mode)</a>`;
+                        }, 500);
+                    }
+                } else {
+                    throw new Error(data.error || 'Failed to send magic link');
+                }
+            } catch (error) {
+                status.textContent = '✗ ' + error.message;
+                status.style.display = 'block';
+                status.style.color = '#ff6b6b';
+            } finally {
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+                btn.disabled = false;
+            }
+        });
+
+        // Signup form
         document.getElementById('signup-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const form = e.target;

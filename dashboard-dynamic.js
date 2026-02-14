@@ -17,11 +17,55 @@ function showDeleteModal(botId, botName) {
     showDeleteBotModal(botId, botName);
 }
 
-// Get email from URL parameter or localStorage
-function getUserEmail() {
+// Check session validity
+async function checkSession() {
+    const sessionToken = localStorage.getItem('clawops_session_token');
+    
+    if (!sessionToken) {
+        return null;
+    }
+    
+    try {
+        const res = await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionToken })
+        });
+        
+        const data = await res.json();
+        
+        if (data.valid) {
+            return data.email;
+        } else {
+            // Invalid session, clear it
+            localStorage.removeItem('clawops_session_token');
+            localStorage.removeItem('clawops_email');
+            localStorage.removeItem('clawops_session_expires');
+            return null;
+        }
+    } catch (err) {
+        console.error('Session check failed:', err);
+        return null;
+    }
+}
+
+// Get email from session, URL parameter, or localStorage
+async function getUserEmail() {
+    // First check if we have a valid session
+    const sessionEmail = await checkSession();
+    if (sessionEmail) {
+        return sessionEmail;
+    }
+    
+    // Fall back to URL param
     const params = new URLSearchParams(window.location.search);
-    const email = params.get('email') || localStorage.getItem('clawops_email');
-    return email;
+    const email = params.get('email');
+    
+    if (email) {
+        return email;
+    }
+    
+    return null;
 }
 
 // Load and render dashboard
@@ -475,9 +519,26 @@ function handleLogin() {
 }
 
 // Handle logout
-function handleLogout() {
+async function handleLogout() {
+    const sessionToken = localStorage.getItem('clawops_session_token');
+    
+    if (sessionToken) {
+        try {
+            await fetch('/api/auth/session', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionToken })
+            });
+        } catch (err) {
+            console.error('Logout API call failed:', err);
+        }
+    }
+    
     currentEmail = null;
+    localStorage.removeItem('clawops_session_token');
     localStorage.removeItem('clawops_email');
+    localStorage.removeItem('clawops_session_expires');
+    
     document.getElementById('dashboardScreen').style.display = 'none';
     document.getElementById('loginScreen').style.display = 'flex';
 }
@@ -500,8 +561,8 @@ function escapeHtml(str) {
 }
 
 // Initialize dashboard on page load
-document.addEventListener('DOMContentLoaded', () => {
-    const email = getUserEmail();
+document.addEventListener('DOMContentLoaded', async () => {
+    const email = await getUserEmail();
     
     if (email) {
         loadDashboard(email);

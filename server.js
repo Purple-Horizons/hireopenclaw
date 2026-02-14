@@ -27,6 +27,8 @@ app.use((req, res, next) => {
 // API routes (load from api-local directory)
 const apiRoutes = [
   'signup',
+  'auth/magic-link',
+  'auth/session',
   'dashboard/bots',
   'dashboard/create-bot',
   'dashboard/bot-action',
