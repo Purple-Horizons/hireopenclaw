@@ -112,25 +112,26 @@
                 }
             }
             
-            // Store token in localStorage for the bot's domain
-            // Note: This works if launch.html is served from same origin as bot
-            // For cross-origin, we need to open bot and use postMessage
+            // Cross-origin fix: Pass token in hash fragment to bot's page
+            // Hash fragment is NOT sent to server and allows bot to read it
             try {
-                localStorage.setItem('openclaw_gateway_token', token);
-                localStorage.setItem('openclaw_auth_method', 'token');
-                
-                console.log('[launch] Token stored:', token.substring(0, 10) + '...');
+                console.log('[launch] Token received:', token.substring(0, 10) + '...');
                 
                 statusEl.textContent = 'Token configured. Redirecting to bot...';
                 successEl.style.display = 'block';
                 
-                // Redirect to bot endpoint after short delay
+                // Redirect to bot endpoint with token in hash fragment
+                // Bot's page can read this and store in ITS localStorage
+                const redirectUrl = `${endpoint}#token=${encodeURIComponent(token)}&exp=${exp || ''}`;
+                
+                console.log('[launch] Redirecting to:', endpoint);
+                
                 setTimeout(() => {
-                    window.location.href = endpoint;
+                    window.location.href = redirectUrl;
                 }, 1500);
                 
             } catch (err) {
-                console.error('[launch] localStorage error:', err);
+                console.error('[launch] Redirect error:', err);
                 showError('Failed to configure authentication. Try opening the bot manually.');
             }
             
