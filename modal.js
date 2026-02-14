@@ -60,7 +60,7 @@ function openModal(modalId) {
     const modal = document.getElementById(modalId);
     
     if (overlay && modal) {
-        overlay.style.display = 'block';
+        overlay.style.display = 'flex';  // Use flex for centering
         modal.style.display = 'block';
         
         // Trigger animation
@@ -144,10 +144,14 @@ async function confirmAddBot() {
         const data = await res.json();
         
         if (data.ok) {
-            showToast(`Bot "${name}" created successfully!`, 'success');
+            showToast(`Bot "${name}" provisioning...`, 'info', 2000);
+            // Refresh immediately to show "provisioning" status
+            if (typeof loadDashboard === 'function') loadDashboard(currentEmail);
+            // Refresh again after 5s to show "active" status
             setTimeout(() => {
                 if (typeof loadDashboard === 'function') loadDashboard(currentEmail);
-            }, 1500);
+                showToast(`Bot "${name}" is ready!`, 'success');
+            }, 5000);
         } else {
             showToast(`Failed to create bot: ${data.error}`, 'error');
         }
