@@ -169,9 +169,14 @@ function renderBots(bots, maxBots) {
 function createBotCard(bot) {
     const card = document.createElement('div');
     card.className = 'bot-card';
+    if (bot.status === 'terminated') {
+        card.style.opacity = '0.6';
+        card.style.border = '2px dashed var(--red)';
+    }
     
     const statusClass = bot.status === 'active' ? 'active' : 
-                       bot.status === 'paused' ? 'paused' : 'error';
+                       bot.status === 'paused' ? 'paused' :
+                       bot.status === 'terminated' ? 'error' : 'error';
     
     const healthColor = bot.health === 'healthy' ? 'var(--green)' :
                        bot.health === 'unhealthy' ? 'var(--red)' : 'var(--yellow)';
@@ -234,12 +239,18 @@ function createBotCard(bot) {
         ` : ''}
         
         <div class="bot-actions">
-            <button class="btn btn-primary" onclick="openBot('${bot.id}', '${bot.endpoint}', '${bot.gatewayToken || ''}')">💬 Open Chat</button>
-            ${bot.status === 'active' 
-                ? `<button class="btn btn-secondary" onclick="botAction('${bot.id}', 'pause')">⏸ Pause</button>`
-                : `<button class="btn btn-primary" onclick="botAction('${bot.id}', 'resume')">▶ Resume</button>`
+            ${bot.status === 'terminated' 
+                ? `<div style="padding:12px;background:rgba(255,0,0,0.1);border-radius:8px;text-align:center;">
+                    <div style="color:var(--red);font-weight:600;">🗑 Deleted ${bot.terminatedAt ? 'on ' + new Date(bot.terminatedAt).toLocaleDateString() : ''}</div>
+                    <div style="font-size:11px;color:var(--gray);margin-top:4px;">Historical stats preserved</div>
+                   </div>`
+                : `<button class="btn btn-primary" onclick="openBot('${bot.id}', '${bot.endpoint}', '${bot.gatewayToken || ''}')">💬 Open Chat</button>
+                   ${bot.status === 'active' 
+                       ? `<button class="btn btn-secondary" onclick="botAction('${bot.id}', 'pause')">⏸ Pause</button>`
+                       : `<button class="btn btn-primary" onclick="botAction('${bot.id}', 'resume')">▶ Resume</button>`
+                   }
+                   <button class="btn btn-danger" onclick="showDeleteModal('${bot.id}', '${escapeHtml(bot.name)}')">🗑 Delete</button>`
             }
-            <button class="btn btn-danger" onclick="showDeleteModal('${bot.id}', '${escapeHtml(bot.name)}')">🗑 Delete</button>
         </div>
     `;
     

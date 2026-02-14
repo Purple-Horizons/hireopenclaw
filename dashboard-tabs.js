@@ -434,10 +434,13 @@ async function loadSettingsTab() {
                         <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;margin-bottom:8px;">
                             <div style="flex:1;">
                                 <div style="font-weight:600;">${key.name}</div>
-                                <div style="font-size:11px;color:var(--gray);font-family:monospace;">${key.preview}</div>
-                                <div style="font-size:11px;color:var(--gray);margin-top:4px;">
+                                <div style="font-size:12px;color:var(--gray);font-family:monospace;margin-top:6px;display:flex;align-items:center;gap:8px;">
+                                    <code style="background:var(--bg);padding:4px 8px;border-radius:4px;">${key.publicKey || key.preview}</code>
+                                    <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;" onclick="navigator.clipboard.writeText('${key.publicKey || key.preview}');showToast('Copied!','success')">📋 Copy</button>
+                                </div>
+                                <div style="font-size:11px;color:var(--gray);margin-top:6px;">
                                     Created: ${new Date(key.createdAt).toLocaleDateString()}
-                                    ${key.lastUsed ? ` • Last used: ${new Date(key.lastUsed).toLocaleDateString()}` : ''}
+                                    ${key.lastUsedAt ? ` • Last used: ${new Date(key.lastUsedAt).toLocaleDateString()}` : ' • Never used'}
                                 </div>
                             </div>
                             <button class="btn btn-danger" style="padding:6px 12px;font-size:12px;" onclick="revokeApiKey('${key.keyId}')">Revoke</button>
