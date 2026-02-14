@@ -626,6 +626,25 @@
             <button class="btn btn-primary" onclick="showAddBot()">+ Add Employee</button>
         </div>
 
+        <!-- Search & Filter Bar -->
+        <div class="search-filter-bar" style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
+            <input type="text" id="botSearch" placeholder="🔍 Search by name, role, or ID..." 
+                   style="flex:1;min-width:250px;padding:12px 16px;background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;color:var(--white);font-size:14px;" />
+            <select id="statusFilter" 
+                    style="padding:12px 16px;background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;color:var(--white);font-size:14px;cursor:pointer;">
+                <option value="all">All Status</option>
+                <option value="active">🟢 Active</option>
+                <option value="paused">🟡 Paused</option>
+                <option value="error">🔴 Error</option>
+            </select>
+            <select id="sortBy" 
+                    style="padding:12px 16px;background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;color:var(--white);font-size:14px;cursor:pointer;">
+                <option value="name">Sort: Name</option>
+                <option value="usage">Sort: Usage ↓</option>
+                <option value="lastActive">Sort: Last Active ↓</option>
+            </select>
+        </div>
+
         <div class="bots-grid">
             <!-- Bots will be populated dynamically by dashboard-dynamic.js -->
             <p style="color: var(--gray); text-align: center; padding: 40px;">Loading your AI employees...</p>
@@ -726,6 +745,8 @@
     <script src="/modal.js"></script>
     <!-- Tabbed interface -->
     <script src="/dashboard-tabs.js"></script>
+    <!-- Search & filter -->
+    <script src="/dashboard-search.js"></script>
     <!-- Dynamic dashboard functionality -->
     <script src="/dashboard-dynamic.js"></script>
 </body>

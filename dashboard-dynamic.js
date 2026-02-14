@@ -141,6 +141,14 @@ function updateStats(data) {
 
 // Render bots grid
 function renderBots(bots, maxBots) {
+    currentBots = bots; // Store for filtering
+    
+    // If search/filter is active, use filtered render
+    if (typeof filterAndRenderBots === 'function' && (searchQuery || statusFilter !== 'all')) {
+        filterAndRenderBots();
+        return;
+    }
+    
     const grid = document.querySelector('.bots-grid');
     grid.innerHTML = ''; // Clear existing
     
