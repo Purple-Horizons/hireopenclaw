@@ -31,6 +31,7 @@ const apiRoutes = [
   'dashboard/create-bot',
   'dashboard/bot-action',
   'dashboard/rename-bot',
+  'dashboard/container-stats',
   'dashboard/billing',
   'dashboard/usage'
 ];

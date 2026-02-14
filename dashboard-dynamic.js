@@ -146,12 +146,24 @@ function createBotCard(bot) {
 
         <div class="bot-stats">
             <div class="bot-stat">
-                <div class="label">Tokens used</div>
+                <div class="label">Tokens</div>
                 <div class="value">${Math.round(bot.tokensUsed / 1000)}K</div>
+            </div>
+            <div class="bot-stat">
+                <div class="label">Memory</div>
+                <div class="value" id="memory-${bot.id}">--</div>
+            </div>
+            <div class="bot-stat">
+                <div class="label">Uptime</div>
+                <div class="value" id="uptime-${bot.id}">--</div>
             </div>
             <div class="bot-stat">
                 <div class="label">Last active</div>
                 <div class="value">${lastActiveText}</div>
+            </div>
+            <div class="bot-stat">
+                <div class="label">Model</div>
+                <div class="value" id="model-${bot.id}">${bot.model || 'GPT-4o'}</div>
             </div>
             <div class="bot-stat">
                 <div class="label">Health</div>
@@ -179,7 +191,36 @@ function createBotCard(bot) {
         </div>
     `;
     
+    // Fetch container stats asynchronously and update
+    fetchContainerStats(bot.id);
+    
     return card;
+}
+
+// Fetch and update container stats
+async function fetchContainerStats(botId) {
+    try {
+        const res = await fetch(`/api/dashboard/container-stats?tenantId=${encodeURIComponent(botId)}`);
+        if (!res.ok) return;
+        
+        const data = await res.json();
+        if (data.ok && data.stats && data.metadata) {
+            // Update memory
+            const memEl = document.getElementById(`memory-${botId}`);
+            if (memEl) {
+                memEl.textContent = `${Math.round(data.stats.memoryValue)}${data.stats.memoryUnit}`;
+            }
+            
+            // Update uptime
+            const uptimeEl = document.getElementById(`uptime-${botId}`);
+            if (uptimeEl) {
+                uptimeEl.textContent = data.metadata.uptimeFormatted;
+            }
+        }
+    } catch (err) {
+        // Silently fail - stats are nice to have but not critical
+        console.warn('Failed to fetch container stats:', err);
+    }
 }
 
 // Create "Add Bot" card
