@@ -4,6 +4,22 @@
 let currentEmail = null;
 let currentBots = [];
 
+// Modal/Alert Functions
+function showAlert(message, title = 'Notice') {
+    alert(`${title}: ${message}`);
+}
+
+function showConfirm(message, title = 'Confirm') {
+    return Promise.resolve(confirm(`${title}\n\n${message}`));
+}
+
+function showDeleteModal(botId, botName) {
+    const confirmed = confirm(`Delete "${botName}"?\n\nThis will permanently remove the bot and all its data. This action cannot be undone.`);
+    if (confirmed) {
+        botAction(botId, 'terminate');
+    }
+}
+
 // Get email from URL parameter or localStorage
 function getUserEmail() {
     const params = new URLSearchParams(window.location.search);
