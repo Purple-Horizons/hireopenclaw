@@ -131,13 +131,19 @@ function createBotCard(bot) {
     
     card.innerHTML = `
         <div class="bot-header">
-            <div>
-                <div class="bot-name">${escapeHtml(bot.name)}</div>
+            <div style="flex:1;">
+                <div class="bot-name">
+                    ${escapeHtml(bot.name)}
+                    <button onclick="renameBot('${bot.id}', '${escapeHtml(bot.name)}'); event.stopPropagation();" 
+                            style="background:none;border:none;color:var(--gray);cursor:pointer;font-size:14px;margin-left:8px;padding:4px;" 
+                            title="Rename bot">✏️</button>
+                </div>
                 <div class="bot-role">${escapeHtml(bot.role)}</div>
             </div>
             <span class="status-dot ${statusClass}" title="${bot.status}"></span>
         </div>
         
+
         <div class="bot-stats">
             <div class="bot-stat">
                 <div class="label">Tokens used</div>
@@ -352,6 +358,38 @@ function configureBot(botId) {
 // Show Add Bot form (uses modal from modal.js)
 function showAddBot() {
     showAddBotModal();
+}
+
+// Rename bot
+async function renameBot(botId, currentName) {
+    const newName = prompt(`Rename bot:`, currentName);
+    
+    if (!newName || newName.trim() === '' || newName.trim() === currentName) {
+        return; // Cancelled or no change
+    }
+    
+    try {
+        const res = await fetch('/api/dashboard/rename-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tenantId: botId,
+                newName: newName.trim()
+            })
+        });
+        
+        const data = await res.json();
+        
+        if (data.ok) {
+            showToast(`Bot renamed to "${newName}"`, 'success');
+            setTimeout(() => loadDashboard(currentEmail), 1000);
+        } else {
+            showToast(`Failed to rename: ${data.error}`, 'error');
+        }
+    } catch (err) {
+        console.error('Rename failed:', err);
+        showToast('Failed to rename bot', 'error');
+    }
 }
 
 // Load usage chart
