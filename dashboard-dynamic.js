@@ -142,10 +142,6 @@ function createBotCard(bot) {
         </div>
         <div class="bot-stats">
             <div class="bot-stat">
-                <div class="label">Messages today</div>
-                <div class="value">${bot.messagesToday || 0}</div>
-            </div>
-            <div class="bot-stat">
                 <div class="label">Tokens used</div>
                 <div class="value">${Math.round(bot.tokensUsed / 1000)}K</div>
             </div>

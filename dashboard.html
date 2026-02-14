@@ -230,7 +230,7 @@
         .add-bot-card .icon { font-size: 32px; margin-bottom: 8px; }
         .add-bot-card .text { color: var(--gray); font-size: 14px; }
 
-        /* Activity Log */
+        /* Usage Chart Container */
         .activity-log {
             background: var(--bg-card);
             border: 1px solid var(--light-gray);
@@ -238,22 +238,6 @@
             padding: 24px;
             margin-bottom: 32px;
         }
-        .activity-log h3 {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 16px;
-        }
-        .log-entry {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            padding: 8px 0;
-            border-bottom: 1px solid var(--light-gray);
-            font-size: 14px;
-        }
-        .log-entry:last-child { border-bottom: none; }
-        .log-entry .time { color: var(--gray); white-space: nowrap; font-size: 12px; min-width: 80px; }
-        .log-entry .event { color: var(--white); }
 
         /* Billing Section */
         .billing-card {
@@ -467,31 +451,6 @@
         <div class="bots-grid">
             <!-- Bots will be populated dynamically by dashboard-dynamic.js -->
             <p style="color: var(--gray); text-align: center; padding: 40px;">Loading your AI employees...</p>
-        </div>
-
-        <!-- Activity Log -->
-        <div class="activity-log">
-            <h3>Recent Activity</h3>
-            <div class="log-entry">
-                <span class="time">2:14 PM</span>
-                <span class="event">Morgan posted 3 LinkedIn articles for review</span>
-            </div>
-            <div class="log-entry">
-                <span class="time">1:45 PM</span>
-                <span class="event">Alex sent 12 outreach emails (8 personalized, 4 follow-ups)</span>
-            </div>
-            <div class="log-entry">
-                <span class="time">11:30 AM</span>
-                <span class="event">Morgan drafted weekly newsletter</span>
-            </div>
-            <div class="log-entry">
-                <span class="time">9:15 AM</span>
-                <span class="event">Alex researched 5 new prospects from LinkedIn</span>
-            </div>
-            <div class="log-entry">
-                <span class="time">8:00 AM</span>
-                <span class="event">System: Daily health check passed for all employees</span>
-            </div>
         </div>
 
         <!-- Usage Chart -->
