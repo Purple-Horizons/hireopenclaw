@@ -159,7 +159,12 @@ async function confirmAddBot() {
             // Refresh again after 5s to show "active" status
             setTimeout(() => {
                 if (typeof loadDashboard === 'function') loadDashboard(currentEmail);
-                showToast(`Bot "${name}" is ready!`, 'success');
+                // Celebrate with confetti!
+                if (typeof celebrateBotCreation === 'function') {
+                    celebrateBotCreation(name);
+                } else {
+                    showToast(`🎉 Bot "${name}" is ready!`, 'success');
+                }
             }, 5000);
         } else {
             showToast(`Failed to create bot: ${data.error}`, 'error');
