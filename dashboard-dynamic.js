@@ -182,10 +182,15 @@ function createAddBotCard(slotsAvailable) {
 }
 
 // Format last active time
-function formatLastActive(isoString) {
-    if (!isoString) return 'Never';
+function formatLastActive(timestamp) {
+    if (!timestamp) return 'Never';
     
-    const diff = Date.now() - new Date(isoString).getTime();
+    // Handle both Unix timestamps (number) and ISO strings
+    const lastActiveMs = typeof timestamp === 'number' 
+        ? timestamp 
+        : new Date(timestamp).getTime();
+    
+    const diff = Date.now() - lastActiveMs;
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
