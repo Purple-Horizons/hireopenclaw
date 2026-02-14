@@ -1,15 +1,32 @@
 const crypto = require('crypto');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, ScanCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+
+const isLocal = process.env.NODE_ENV !== 'production';
+const client = new DynamoDBClient({
+  region: 'us-east-1',
+  ...(isLocal && {
+    endpoint: 'http://localhost:4566',
+    credentials: { accessKeyId: 'test', secretAccessKey: 'test' }
+  })
+});
+const db = DynamoDBDocumentClient.from(client);
 
 // In-memory rate limit store (use Redis in production)
 const rateLimitStore = new Map();
+
+// In-memory API key cache (TTL 5 min)
+const keyCache = new Map();
+const KEY_CACHE_TTL = 5 * 60 * 1000;
 
 // Clean up expired entries every 5 minutes
 setInterval(() => {
   const now = Date.now();
   for (const [key, data] of rateLimitStore.entries()) {
-    if (data.resetAt < now) {
-      rateLimitStore.delete(key);
-    }
+    if (data.resetAt < now) rateLimitStore.delete(key);
+  }
+  for (const [key, data] of keyCache.entries()) {
+    if (data.cachedAt + KEY_CACHE_TTL < now) keyCache.delete(key);
   }
 }, 5 * 60 * 1000);
 
@@ -33,7 +50,7 @@ async function rateLimitMiddleware(req, res, next) {
     // Hash the secret to find the key record
     const hashedSecret = crypto.createHash('sha256').update(secretKey).digest('hex');
 
-    // Get API key from database (mocked here, implement with DynamoDB)
+    // Get API key from database (with caching)
     const apiKey = await getApiKeyByHash(hashedSecret);
 
     if (!apiKey) {
@@ -58,18 +75,15 @@ async function rateLimitMiddleware(req, res, next) {
     }
 
     // Check rate limit
-    const { requests, window } = apiKey.rateLimit;
+    const rateLimit = apiKey.rateLimit || { requests: 1000, window: 3600 };
+    const { requests, window } = rateLimit;
     const key = `ratelimit:${apiKey.keyId}`;
     const now = Date.now();
 
     let limitData = rateLimitStore.get(key);
     
     if (!limitData || limitData.resetAt < now) {
-      // Start new window
-      limitData = {
-        count: 0,
-        resetAt: now + (window * 1000)
-      };
+      limitData = { count: 0, resetAt: now + (window * 1000) };
       rateLimitStore.set(key, limitData);
     }
 
@@ -105,20 +119,49 @@ async function rateLimitMiddleware(req, res, next) {
 }
 
 /**
- * Get API key by hashed secret (implement with DynamoDB)
+ * Get API key by hashed secret from DynamoDB (with cache)
  */
 async function getApiKeyByHash(hashedSecret) {
-  // TODO: Query DynamoDB
-  // For now, return mock data for testing
-  return null;
+  // Check cache first
+  const cached = keyCache.get(hashedSecret);
+  if (cached && cached.cachedAt + KEY_CACHE_TTL > Date.now()) {
+    return cached.key;
+  }
+
+  try {
+    // Scan for matching hash (in production, use a GSI on hashedSecret)
+    const result = await db.send(new ScanCommand({
+      TableName: 'clawops-api-keys',
+      FilterExpression: 'hashedSecret = :hash',
+      ExpressionAttributeValues: { ':hash': hashedSecret }
+    }));
+
+    const key = result.Items?.[0] || null;
+    
+    // Cache result
+    keyCache.set(hashedSecret, { key, cachedAt: Date.now() });
+    
+    return key;
+  } catch (error) {
+    console.error('DynamoDB key lookup error:', error);
+    return null;
+  }
 }
 
 /**
  * Update last used timestamp
  */
 async function updateLastUsed(keyId) {
-  // TODO: Update DynamoDB
-  // UpdateCommand with lastUsedAt = Date.now()
+  try {
+    await db.send(new UpdateCommand({
+      TableName: 'clawops-api-keys',
+      Key: { keyId },
+      UpdateExpression: 'SET lastUsedAt = :now',
+      ExpressionAttributeValues: { ':now': Date.now() }
+    }));
+  } catch (error) {
+    console.error('Update lastUsedAt error:', error);
+  }
 }
 
 module.exports = rateLimitMiddleware;
