@@ -591,6 +591,23 @@
                 <button class="btn btn-danger" onclick="confirmDelete()">Delete Permanently</button>
             </div>
         </div>
+        
+        <!-- Rename modal -->
+        <div class="modal" id="renameModal" onclick="event.stopPropagation()" style="display:none;">
+            <h3>Rename AI Employee</h3>
+            <p>Enter a new name for this bot.</p>
+            
+            <div style="margin: 20px 0;">
+                <label style="display:block; margin-bottom:8px; font-size:14px; color:var(--gray);">New Name</label>
+                <input type="text" id="renameInput" placeholder="e.g., Sarah (Marketing)" 
+                       style="width:100%; padding:12px; background:var(--bg); border:1px solid var(--light-gray); border-radius:8px; color:white; font-size:14px;">
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmRename()">Rename</button>
+            </div>
+        </div>
     </div>
     
     <!-- Auto-auth script (hash fragment token extraction) -->

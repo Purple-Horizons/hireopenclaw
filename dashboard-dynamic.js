@@ -360,36 +360,9 @@ function showAddBot() {
     showAddBotModal();
 }
 
-// Rename bot
-async function renameBot(botId, currentName) {
-    const newName = prompt(`Rename bot:`, currentName);
-    
-    if (!newName || newName.trim() === '' || newName.trim() === currentName) {
-        return; // Cancelled or no change
-    }
-    
-    try {
-        const res = await fetch('/api/dashboard/rename-bot', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                tenantId: botId,
-                newName: newName.trim()
-            })
-        });
-        
-        const data = await res.json();
-        
-        if (data.ok) {
-            showToast(`Bot renamed to "${newName}"`, 'success');
-            setTimeout(() => loadDashboard(currentEmail), 1000);
-        } else {
-            showToast(`Failed to rename: ${data.error}`, 'error');
-        }
-    } catch (err) {
-        console.error('Rename failed:', err);
-        showToast('Failed to rename bot', 'error');
-    }
+// Rename bot (uses modal from modal.js)
+function renameBot(botId, currentName) {
+    showRenameBotModal(botId, currentName);
 }
 
 // Load usage chart

@@ -167,6 +167,24 @@ function showDeleteBotModal(botId, botName) {
     openModal('deleteModal');
 }
 
+// Rename bot
+let pendingRenameBotId = null;
+
+function showRenameBotModal(botId, currentName) {
+    pendingRenameBotId = botId;
+    document.getElementById('renameInput').value = currentName;
+    openModal('renameModal');
+    
+    // Focus the input after modal opens
+    setTimeout(() => {
+        const input = document.getElementById('renameInput');
+        if (input) {
+            input.focus();
+            input.select();
+        }
+    }, 100);
+}
+
 async function confirmDelete() {
     if (!pendingDeleteBotId) return;
     
@@ -194,6 +212,43 @@ async function confirmDelete() {
     } catch (err) {
         console.error('Delete failed:', err);
         showToast('Failed to delete bot. Try again.', 'error');
+    }
+}
+
+async function confirmRename() {
+    if (!pendingRenameBotId) return;
+    
+    const botId = pendingRenameBotId;
+    const newName = document.getElementById('renameInput').value.trim();
+    
+    if (!newName) {
+        showToast('Please enter a name', 'error');
+        return;
+    }
+    
+    pendingRenameBotId = null;
+    closeModal();
+    
+    try {
+        const res = await fetch('/api/dashboard/rename-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tenantId: botId, newName })
+        });
+        
+        const data = await res.json();
+        
+        if (data.ok) {
+            showToast(`Bot renamed to "${newName}"`, 'success');
+            setTimeout(() => {
+                if (typeof loadDashboard === 'function') loadDashboard(currentEmail);
+            }, 1000);
+        } else {
+            showToast(`Failed to rename: ${data.error}`, 'error');
+        }
+    } catch (err) {
+        console.error('Rename failed:', err);
+        showToast('Failed to rename bot', 'error');
     }
 }
 
