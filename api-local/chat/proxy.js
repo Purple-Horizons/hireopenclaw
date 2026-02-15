@@ -149,13 +149,29 @@ async function getOrCreateConnection(botId, endpoint, gatewayToken) {
       }
     }, CONNECT_TIMEOUT_MS);
 
+    let connectNonce = null;
+
     ws.on('open', () => {
-      ws.send(createConnectFrame(gatewayToken));
+      // Don't send connect yet — wait for challenge
+      // If no challenge comes within 2s, send without nonce (older protocol)
+      setTimeout(() => {
+        if (!conn.connected && !connectNonce) {
+          ws.send(createConnectFrame(gatewayToken));
+        }
+      }, 2000);
     });
 
     ws.on('message', (data) => {
       try {
         const msg = JSON.parse(data.toString());
+
+        // Handle connect.challenge — gateway sends nonce, we reply with connect frame
+        // The connect frame IS the challenge response (proves we received the nonce)
+        if (msg.type === 'event' && msg.event === 'connect.challenge') {
+          connectNonce = msg.payload?.nonce;
+          ws.send(createConnectFrame(gatewayToken));
+          return;
+        }
         
         // Handle connect response (hello-ok)
         if (!conn.connected && msg.type === 'res' && msg.ok !== false) {
