@@ -38,10 +38,19 @@ module.exports = async (req, res) => {
     const uptimeMs = Date.now() - startedAt.getTime();
     const uptimeSeconds = Math.floor(uptimeMs / 1000);
 
-    // Parse memory usage (e.g., "280.6MiB / 7.807GiB")
+    // Parse memory usage and normalize to MB
     const memMatch = stats.MemUsage.match(/([\d.]+)([KMGT]iB)/);
-    const memValue = memMatch ? parseFloat(memMatch[1]) : 0;
-    const memUnit = memMatch ? memMatch[2] : 'MiB';
+    let memMB = 0;
+    if (memMatch) {
+      const val = parseFloat(memMatch[1]);
+      const unit = memMatch[2];
+      if (unit === 'GiB') memMB = Math.round(val * 1024);
+      else if (unit === 'MiB') memMB = Math.round(val);
+      else if (unit === 'KiB') memMB = Math.round(val / 1024);
+      else if (unit === 'TiB') memMB = Math.round(val * 1024 * 1024);
+    }
+    const memValue = memMB;
+    const memUnit = 'MB';
 
     return res.status(200).json({
       ok: true,

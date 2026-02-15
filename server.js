@@ -21,6 +21,8 @@ app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
+  // No caching in dev
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   next();
 });
 
@@ -114,6 +116,71 @@ try {
 } catch (err) {
   console.warn('✗ Rate limit middleware not loaded:', err.message);
 }
+
+// Chat proxy routes
+try {
+  const chatProxy = require(path.join(__dirname, 'api-local', 'chat', 'proxy.js'));
+  app.post('/api/chat/:botId/send', async (req, res) => {
+    try { await chatProxy.handleSend(req, res); }
+    catch (err) { console.error('[Chat Proxy Error]', err); res.status(500).json({ error: 'Internal error' }); }
+  });
+  app.get('/api/chat/:botId/events', async (req, res) => {
+    try { await chatProxy.handleEvents(req, res); }
+    catch (err) { console.error('[Chat Events Error]', err); res.status(500).json({ error: 'Internal error' }); }
+  });
+  app.get('/api/chat/:botId/history', async (req, res) => {
+    try { await chatProxy.handleHistory(req, res); }
+    catch (err) { console.error('[Chat History Error]', err); res.status(500).json({ error: 'Internal error' }); }
+  });
+  console.log('✓ Loaded chat proxy routes');
+} catch (err) {
+  console.warn('✗ Chat proxy not loaded:', err.message);
+}
+
+// Auth verify route — handles magic link callback
+app.get('/auth/verify', async (req, res) => {
+  const { token } = req.query;
+  if (!token) {
+    return res.status(400).send('<h1>Invalid link</h1><p>No token provided.</p>');
+  }
+  // Call the magic-link handler in verify mode
+  try {
+    const handler = require(path.join(__dirname, 'api-local', 'auth', 'magic-link.js'));
+    // Fake the query to trigger verify action
+    req.query.action = 'verify';
+    req.method = 'GET';
+    
+    // Intercept the JSON response to redirect instead
+    const originalJson = res.json.bind(res);
+    res.json = (data) => {
+      if (data.ok && data.sessionToken) {
+        // Redirect to dashboard with session in hash fragment (picked up by JS)
+        res.cookie('session', data.sessionToken, { 
+          maxAge: 30 * 24 * 60 * 60 * 1000,
+          httpOnly: false,
+          sameSite: 'lax'
+        });
+        return res.redirect(`/dashboard#session=${data.sessionToken}&email=${encodeURIComponent(data.email)}`);
+      } else {
+        return res.status(401).send(`<h1>Login failed</h1><p>${data.error || 'Invalid or expired link.'}</p><p><a href="/">Try again</a></p>`);
+      }
+    };
+    await handler(req, res);
+  } catch (err) {
+    console.error('[Auth Verify Error]', err);
+    res.status(500).send('<h1>Something went wrong</h1><p><a href="/">Try again</a></p>');
+  }
+});
+
+// Dashboard auth gate — must have session cookie
+app.get('/dashboard', (req, res, next) => {
+  const cookies = req.headers.cookie || '';
+  const hasSession = cookies.includes('session=');
+  if (!hasSession) {
+    return res.redirect('/?login=true');
+  }
+  next();
+});
 
 // Static files (HTML, CSS, JS, images)
 app.use(express.static(path.join(__dirname), {

@@ -12,7 +12,12 @@
     "type": "git",
     "url": "git+https://github.com/Purple-Horizons/hireopenclaw.git"
   },
-  "keywords": ["openclaw", "ai", "agents", "saas"],
+  "keywords": [
+    "openclaw",
+    "ai",
+    "agents",
+    "saas"
+  ],
   "author": "Purple Horizons",
   "license": "ISC",
   "type": "commonjs",
@@ -21,15 +26,16 @@
   },
   "homepage": "https://github.com/Purple-Horizons/hireopenclaw#readme",
   "dependencies": {
-    "@vercel/analytics": "^1.6.1",
-    "stripe": "^14.14.0",
-    "express": "^4.18.2",
-    "http-proxy-middleware": "^2.0.6",
     "@aws-sdk/client-dynamodb": "^3.490.0",
-    "@aws-sdk/lib-dynamodb": "^3.490.0",
     "@aws-sdk/client-s3": "^3.490.0",
     "@aws-sdk/client-secrets-manager": "^3.490.0",
-    "dotenv": "^16.3.1"
+    "@aws-sdk/lib-dynamodb": "^3.490.0",
+    "@vercel/analytics": "^1.6.1",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "http-proxy-middleware": "^2.0.6",
+    "stripe": "^14.14.0",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

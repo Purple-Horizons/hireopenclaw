@@ -4,9 +4,8 @@
  * DELETE /api/auth/session - Logout (invalidate session)
  */
 
-// Share token store with magic-link.js
-// In production, use Redis or DynamoDB
-const sessionStore = new Map();
+// Shared token store
+const sessionStore = require('./token-store.js');
 
 module.exports = async (req, res) => {
   // Validate session
@@ -56,5 +55,4 @@ module.exports = async (req, res) => {
   return res.status(405).json({ error: 'Method not allowed' });
 };
 
-// Export store for magic-link to access
-module.exports.sessionStore = sessionStore;
+// sessionStore is now imported from magic-link.js

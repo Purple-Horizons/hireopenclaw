@@ -61,7 +61,7 @@ module.exports = async (req, res) => {
         messagesToday: t.messagesToday || 0,
         lastActive: t.lastActive ? (t.lastActive * 1000) : (t.createdAt * 1000), // Convert seconds to milliseconds
         createdAt: t.createdAt,
-        endpoint: t.endpoint || `http://localhost:${18790 + parseInt(t.tenantId.split('-')[1] || '1') % 10}`,
+        endpoint: t.endpoint || null,
         gatewayToken: t.gatewayToken || null
       }));
 

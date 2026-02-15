@@ -144,6 +144,12 @@ function showStep(stepIndex) {
             left = rect.left;
     }
     
+    // Clamp to viewport
+    const maxTop = window.innerHeight - 250;
+    const maxLeft = window.innerWidth - 420;
+    top = Math.max(16, Math.min(top, maxTop));
+    left = Math.max(16, Math.min(left, maxLeft));
+    
     tourTooltip.style.top = `${top}px`;
     tourTooltip.style.left = `${left}px`;
     

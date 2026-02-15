@@ -40,9 +40,9 @@ module.exports = async (req, res) => {
     
     const command = new QueryCommand({
       TableName: 'clawops-usage',
-      KeyConditionExpression: 'tenantId = :tid AND #ts >= :monthStart',
+      KeyConditionExpression: 'tenantId = :tid AND #d >= :monthStart',
       ExpressionAttributeNames: {
-        '#ts': 'timestamp'
+        '#d': 'date'
       },
       ExpressionAttributeValues: {
         ':tid': { S: tenantId },
@@ -132,7 +132,7 @@ async function getTenant(tenantId) {
   
   try {
     const command = new GetItemCommand({
-      TableName: 'clawops-users',
+      TableName: 'clawops-tenants',
       Key: {
         tenantId: { S: tenantId }
       }

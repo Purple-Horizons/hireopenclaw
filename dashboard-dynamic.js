@@ -51,18 +51,25 @@ async function checkSession() {
 
 // Get email from session, URL parameter, or localStorage
 async function getUserEmail() {
-    // First check if we have a valid session
+    // Check hash fragment first (from magic link redirect)
+    const hash = window.location.hash;
+    if (hash.includes('session=')) {
+        const hashParams = new URLSearchParams(hash.substring(1));
+        const sessionToken = hashParams.get('session');
+        const email = hashParams.get('email');
+        if (sessionToken && email) {
+            localStorage.setItem('clawops_session_token', sessionToken);
+            localStorage.setItem('clawops_email', email);
+            // Clean up URL
+            history.replaceState(null, '', '/dashboard');
+            return email;
+        }
+    }
+
+    // Check existing session in localStorage
     const sessionEmail = await checkSession();
     if (sessionEmail) {
         return sessionEmail;
-    }
-    
-    // Fall back to URL param
-    const params = new URLSearchParams(window.location.search);
-    const email = params.get('email');
-    
-    if (email) {
-        return email;
     }
     
     return null;
@@ -172,6 +179,7 @@ function renderBots(bots, maxBots) {
 function createBotCard(bot) {
     const card = document.createElement('div');
     card.className = 'bot-card';
+    card.id = `bot-${bot.id}`;
     if (bot.status === 'terminated') {
         card.style.opacity = '0.6';
         card.style.border = '2px dashed var(--red)';
@@ -200,7 +208,10 @@ function createBotCard(bot) {
                 </div>
                 <div class="bot-role">${escapeHtml(bot.role)}</div>
             </div>
-            <span class="status-dot ${statusClass}" title="${bot.status}"></span>
+            <span id="badge-${bot.id}" style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:12px;text-transform:uppercase;letter-spacing:0.5px;
+                ${bot.status === 'active' ? 'background:rgba(0,200,83,0.15);color:#00c853;' : 
+                  bot.status === 'paused' ? 'background:rgba(255,193,7,0.15);color:#ffc107;' :
+                  'background:rgba(255,82,82,0.15);color:#ff5252;'}">${bot.status === 'active' ? 'Active' : bot.status === 'paused' ? 'Paused' : bot.status === 'terminated' ? 'Deleted' : bot.status}</span>
         </div>
         
 
@@ -270,7 +281,8 @@ function createBotCard(bot) {
                    </div>`
                 : `<button class="btn btn-primary" onclick="openBot('${bot.id}', '${bot.endpoint}', '${bot.gatewayToken || ''}')">💬 Open Chat</button>
                    ${bot.status === 'active' 
-                       ? `<button class="btn btn-secondary" onclick="botAction('${bot.id}', 'pause')">⏸ Pause</button>`
+                       ? `<button class="btn btn-secondary" onclick="botAction('${bot.id}', 'pause')">⏸ Pause</button>
+                          <button class="btn btn-secondary" onclick="botAction('${bot.id}', 'restart')">🔄 Restart</button>`
                        : `<button class="btn btn-primary" onclick="botAction('${bot.id}', 'resume')">▶ Resume</button>`
                    }
                    <button class="btn btn-danger" onclick="showDeleteModal('${bot.id}', '${escapeHtml(bot.name)}')">🗑 Delete</button>`
@@ -347,8 +359,15 @@ function formatLastActive(timestamp) {
     return `${days}d ago`;
 }
 
+// Track in-progress actions to prevent double-tap
+const pendingActions = new Set();
+
 // Bot actions
 async function botAction(tenantId, action) {
+    // Prevent double-tap
+    const actionKey = `${tenantId}-${action}`;
+    if (pendingActions.has(actionKey)) return;
+
     // Confirm pause action
     if (action === 'pause') {
         const confirmed = await showConfirm(
@@ -358,6 +377,21 @@ async function botAction(tenantId, action) {
         if (!confirmed) return;
     }
     
+    // Lock buttons and show transitional state
+    pendingActions.add(actionKey);
+    const card = document.getElementById(`bot-${tenantId}`);
+    const buttons = card ? card.querySelectorAll('.bot-actions button') : [];
+    buttons.forEach(btn => { btn.disabled = true; btn.style.opacity = '0.5'; });
+    
+    // Update badge to show action in progress
+    const actionLabels = { restart: 'Restarting…', pause: 'Pausing…', resume: 'Resuming…' };
+    const badge = document.getElementById(`badge-${tenantId}`);
+    if (badge) {
+        badge.textContent = actionLabels[action] || `${action}…`;
+        badge.style.background = 'rgba(255,193,7,0.15)';
+        badge.style.color = '#ffc107';
+    }
+
     try {
         const res = await fetch('/api/dashboard/bot-action', {
             method: 'POST',
@@ -379,6 +413,9 @@ async function botAction(tenantId, action) {
     } catch (err) {
         console.error('Bot action failed:', err);
         showToast('Action failed. Try again.', 'error');
+    } finally {
+        pendingActions.delete(actionKey);
+        buttons.forEach(btn => { btn.disabled = false; btn.style.opacity = '1'; });
     }
 }
 
@@ -388,26 +425,15 @@ function openBot(botId, endpoint, token) {
         showToast('Bot endpoint not available yet. Try again in a moment.', 'warning');
         return;
     }
-    
-    // If we have a token, use launch page for auto-auth
-    if (token && token.length >= 20) {
-        // Generate expiry timestamp (5 minutes from now)
-        const expiryMs = Date.now() + (5 * 60 * 1000);
-        
-        // Construct launch URL (query params, not hash)
-        // Launch page will inject token into localStorage then redirect
-        const launchUrl = `/launch?endpoint=${encodeURIComponent(endpoint)}&token=${encodeURIComponent(token)}&exp=${expiryMs}`;
-        
-        // Open in new tab
-        window.open(launchUrl, '_blank');
-        
-        // Show info toast
-        showTemporaryMessage('🚀 Launching bot with auto-authentication...', 'info', 3000);
-    } else {
-        // No token available, just open endpoint
-        window.open(endpoint, '_blank');
-        showTemporaryMessage('ℹ️ Opened bot - you may need to pair manually', 'info', 3000);
-    }
+
+    // Find bot name for the chat header
+    const bot = currentBots?.find(b => b.id === botId);
+    const botName = bot?.name || 'AI Employee';
+
+    // Open secure chat page — tokens stay server-side
+    const chatUrl = `/chat?botId=${encodeURIComponent(botId)}&name=${encodeURIComponent(botName)}`;
+    window.open(chatUrl, '_blank');
+    showTemporaryMessage('🚀 Opening chat...', 'info', 2000);
 }
 
 // Show temporary message (non-blocking toast)
@@ -625,13 +651,53 @@ function showLoginPrompt() {
     document.getElementById('loginScreen').style.display = 'flex';
 }
 
-// Handle login
-function handleLogin() {
+// Handle login — sends magic link, does NOT auto-login
+async function handleLogin() {
     const email = document.getElementById('loginEmail').value.trim();
-    if (email && email.includes('@')) {
-        loadDashboard(email);
-    } else {
+    if (!email || !email.includes('@')) {
         showToast('Please enter a valid email address', 'error');
+        return;
+    }
+
+    const btn = document.querySelector('#loginScreen .btn-primary');
+    const origText = btn.textContent;
+    btn.textContent = 'Sending...';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch('/api/auth/magic-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        const data = await response.json();
+
+        if (data.ok) {
+            // Show "check your email" message
+            const loginBox = document.querySelector('.login-box');
+            const sentMsg = document.createElement('div');
+            sentMsg.style.cssText = 'margin-top:20px;padding:16px;background:rgba(255,107,53,0.1);border:1px solid rgba(255,107,53,0.3);border-radius:8px;text-align:center;';
+            sentMsg.innerHTML = `<p style="color:#ff6b35;font-weight:600;margin-bottom:8px;">✓ Magic link sent!</p>
+                <p style="color:#aaa;font-size:13px;">Check your email for <strong>${email}</strong></p>`;
+            
+            // In dev mode, show clickable link
+            if (data.magicLink) {
+                sentMsg.innerHTML += `<p style="margin-top:12px;"><a href="${data.magicLink}" style="color:#ff6b35;font-size:13px;">🔗 Click here to log in (dev mode)</a></p>`;
+            }
+            
+            // Remove any previous sent message
+            const prev = loginBox.querySelector('.magic-link-sent');
+            if (prev) prev.remove();
+            sentMsg.className = 'magic-link-sent';
+            loginBox.appendChild(sentMsg);
+        } else {
+            showToast(data.error || 'Failed to send magic link', 'error');
+        }
+    } catch (err) {
+        showToast('Network error. Please try again.', 'error');
+    } finally {
+        btn.textContent = origText;
+        btn.disabled = false;
     }
 }
 
@@ -681,6 +747,10 @@ function escapeHtml(str) {
 document.addEventListener('DOMContentLoaded', async () => {
     const email = await getUserEmail();
     
+    // Hide loading screen
+    const loadingScreen = document.getElementById('loadingScreen');
+    if (loadingScreen) loadingScreen.remove();
+
     if (email) {
         loadDashboard(email);
         

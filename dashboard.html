@@ -647,8 +647,15 @@
     </style>
 </head>
 <body>
-    <!-- Login Screen (shown by default, hidden when authenticated) -->
-    <div id="loginScreen" class="login-screen">
+    <!-- Loading screen while checking auth -->
+    <div id="loadingScreen" style="position:fixed;top:0;left:0;right:0;bottom:0;background:#0a0a0a;display:flex;align-items:center;justify-content:center;z-index:10000;">
+        <div style="text-align:center;color:#888;font-family:Inter,sans-serif;">
+            <div style="font-size:24px;margin-bottom:12px;color:#ff6b35;">Hire<span style="color:white;">OpenClaw</span></div>
+            <div style="font-size:14px;">Loading...</div>
+        </div>
+    </div>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-screen" style="display:none;">
         <div class="login-box">
             <a href="/" class="logo" style="display:block;margin-bottom:24px;text-decoration:none;">Hire<span style="color:#ff6b35;">OpenClaw</span></a>
             <h1>Client Dashboard</h1>
@@ -846,10 +853,14 @@
         <div class="modal" id="deleteModal" onclick="event.stopPropagation()" style="display:none;">
             <h3 style="color:var(--red);">⚠️ Delete AI Employee</h3>
             <p id="deleteModalMessage"></p>
-            <p style="font-size:12px; color:var(--gray); margin-top:12px;">This action cannot be undone.</p>
-            <div class="modal-actions">
+            <p style="font-size:12px; color:var(--gray); margin-top:12px;">This action cannot be undone. A backup will be saved.</p>
+            <p style="font-size:13px; margin-top:16px;">Type <strong id="deleteConfirmPhrase" style="color:var(--red);"></strong> to confirm:</p>
+            <input type="text" id="deleteConfirmInput" placeholder="" autocomplete="off"
+                   style="width:100%;padding:10px 12px;background:var(--dark);border:1px solid #333;border-radius:8px;color:white;font-family:monospace;font-size:14px;margin-top:8px;"
+                   oninput="checkDeleteConfirm()">
+            <div class="modal-actions" style="margin-top:16px;">
                 <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                <button class="btn btn-danger" onclick="confirmDelete()">Delete Permanently</button>
+                <button class="btn btn-danger" id="deleteConfirmBtn" onclick="confirmDelete()" disabled style="opacity:0.5;">Delete Permanently</button>
             </div>
         </div>
         
@@ -890,6 +901,6 @@
     <!-- Onboarding tour -->
     <script src="/onboarding-tour.js"></script>
     <!-- Dynamic dashboard functionality -->
-    <script src="/dashboard-dynamic.js"></script>
+    <script src="/dashboard-dynamic.js?v=6"></script>
 </body>
 </html>

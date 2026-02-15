@@ -5,11 +5,33 @@
  */
 
 const crypto = require('crypto');
-const { execSync } = require('child_process');
+const { DynamoDBClient, ScanCommand } = require('@aws-sdk/client-dynamodb');
 
-// In-memory token store (in production, use Redis or DynamoDB)
-// Format: { token: { email, expiresAt, used } }
-const tokenStore = new Map();
+const dynamodb = new DynamoDBClient({
+  region: process.env.AWS_DEFAULT_REGION || 'us-east-1',
+  endpoint: process.env.AWS_ENDPOINT_URL || 'http://localhost:4566',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'test',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'test'
+  }
+});
+
+async function emailExists(email) {
+  try {
+    const result = await dynamodb.send(new ScanCommand({
+      TableName: 'clawops-tenants',
+      FilterExpression: 'email = :email',
+      ExpressionAttributeValues: { ':email': { S: email } }
+    }));
+    return result.Items && result.Items.length > 0;
+  } catch (err) {
+    console.error('[Magic Link] DB check failed:', err.message);
+    return false;
+  }
+}
+
+// Shared token store
+const tokenStore = require('./token-store.js');
 
 // Token expiry: 15 minutes
 const TOKEN_EXPIRY_MS = 15 * 60 * 1000;
@@ -70,6 +92,19 @@ module.exports = async (req, res) => {
     
     console.log(`[Magic Link] Generating for ${email}`);
     
+    // Check if email exists in our tenant database
+    const exists = await emailExists(email);
+    
+    if (!exists) {
+      console.log(`[Magic Link] ⚠️ No account found for ${email}`);
+      // Same response whether account exists or not (prevent email enumeration)
+      return res.status(200).json({
+        ok: true,
+        message: 'If an account exists with that email, a login link has been sent.',
+        expiresIn: '15 minutes'
+      });
+    }
+
     const { token, magicLink, expiresAt } = createMagicLink(email);
     
     // Send email (or log for local dev)

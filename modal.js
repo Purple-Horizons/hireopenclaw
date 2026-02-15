@@ -180,9 +180,24 @@ let pendingDeleteBotId = null;
 
 function showDeleteBotModal(botId, botName) {
     pendingDeleteBotId = botId;
+    const phrase = `delete ${botName}`;
     document.getElementById('deleteModalMessage').textContent = 
         `Are you sure you want to delete "${botName}"? This will permanently remove the bot and all its data.`;
+    document.getElementById('deleteConfirmPhrase').textContent = phrase;
+    document.getElementById('deleteConfirmInput').value = '';
+    document.getElementById('deleteConfirmInput').dataset.phrase = phrase.toLowerCase();
+    document.getElementById('deleteConfirmBtn').disabled = true;
+    document.getElementById('deleteConfirmBtn').style.opacity = '0.5';
     openModal('deleteModal');
+    setTimeout(() => document.getElementById('deleteConfirmInput').focus(), 100);
+}
+
+function checkDeleteConfirm() {
+    const input = document.getElementById('deleteConfirmInput');
+    const btn = document.getElementById('deleteConfirmBtn');
+    const match = input.value.toLowerCase().trim() === input.dataset.phrase;
+    btn.disabled = !match;
+    btn.style.opacity = match ? '1' : '0.5';
 }
 
 // Rename bot
