@@ -85,7 +85,8 @@ function createConnectFrame(token) {
         platform: 'web',
         mode: 'webchat'
       },
-      role: 'webchat',
+      role: 'operator',
+      scopes: ['operator.admin'],
       auth: { token }
     }
   });
@@ -131,7 +132,8 @@ async function getOrCreateConnection(botId, endpoint, gatewayToken) {
 
   return new Promise((resolve, reject) => {
     const wsUrl = endpoint.replace('http://', 'ws://').replace('https://', 'wss://');
-    const ws = new WebSocket(wsUrl);
+    // Set origin to bot's own host to pass origin check
+    const ws = new WebSocket(wsUrl, { origin: endpoint, headers: { 'Origin': endpoint } });
     const conn = {
       ws,
       connected: false,
@@ -182,14 +184,11 @@ async function getOrCreateConnection(botId, endpoint, gatewayToken) {
           return;
         }
 
-        // Handle streaming events (agent output)
-        if (msg.type === 'evt') {
-          // Forward to all SSE listeners
-          for (const sse of conn.eventListeners) {
-            try {
-              sse.write(`data: ${JSON.stringify(msg)}\n\n`);
-            } catch {}
-          }
+        // Forward ALL messages to SSE listeners (events, deltas, finals)
+        for (const sse of conn.eventListeners) {
+          try {
+            sse.write(`data: ${JSON.stringify(msg)}\n\n`);
+          } catch {}
         }
 
       } catch (err) {
@@ -243,17 +242,17 @@ function sendRequest(conn, frame) {
 // POST /api/chat/:botId/send — Send a message, get response
 async function handleSend(req, res) {
   const { botId } = req.params;
-  const { message, sessionKey } = req.body || {};
-  
-  if (!message) {
-    return res.status(400).json({ error: 'message required' });
-  }
 
-  // Auth
+  // Auth FIRST — before any input validation
   const token = getSessionToken(req);
   const email = validateSession(token);
   if (!email) {
     return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const { message, sessionKey } = req.body || {};
+  if (!message) {
+    return res.status(400).json({ error: 'message required' });
   }
 
   // Bot ownership

@@ -19,6 +19,8 @@ const dynamoClient = new DynamoDBClient({
 
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
+const { requireBotOwnership } = require('../auth/middleware.js');
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -29,6 +31,10 @@ module.exports = async (req, res) => {
   if (!tenantId || !newName) {
     return res.status(400).json({ error: 'tenantId and newName are required' });
   }
+
+  // Auth + ownership check
+  const bot = await requireBotOwnership(req, res, tenantId);
+  if (!bot) return;
 
   if (newName.trim().length === 0) {
     return res.status(400).json({ error: 'Name cannot be empty' });

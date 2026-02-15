@@ -1,11 +1,13 @@
 /**
  * Dashboard Bots API - LocalStack Version
- * GET /api/dashboard/bots?email=user@example.com
- * Lists all bots for a user
+ * GET /api/dashboard/bots
+ * Lists all bots for the authenticated user (email from session)
+ * Falls back to ?email= query param for backwards compat (will be removed)
  */
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, QueryCommand } = require('@aws-sdk/lib-dynamodb');
+const tokenStore = require('../auth/token-store.js');
 
 // Configure DynamoDB client for LocalStack
 const dynamoClient = new DynamoDBClient({
@@ -19,15 +21,26 @@ const dynamoClient = new DynamoDBClient({
 
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
+function getEmailFromSession(req) {
+  const cookies = req.headers.cookie || '';
+  const match = cookies.match(/session=([^;]+)/);
+  const sessionToken = match ? match[1] : null;
+  if (!sessionToken) return null;
+  const session = tokenStore.get(sessionToken);
+  if (!session || session.type !== 'session' || session.expiresAt < Date.now()) return null;
+  return session.email;
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { email } = req.query;
+  // Prefer session-based auth, fall back to query param
+  const email = getEmailFromSession(req) || req.query.email;
 
   if (!email) {
-    return res.status(400).json({ error: 'Email parameter required' });
+    return res.status(401).json({ error: 'Unauthorized — no valid session' });
   }
 
   try {
@@ -61,8 +74,8 @@ module.exports = async (req, res) => {
         messagesToday: t.messagesToday || 0,
         lastActive: t.lastActive ? (t.lastActive * 1000) : (t.createdAt * 1000), // Convert seconds to milliseconds
         createdAt: t.createdAt,
-        endpoint: t.endpoint || null,
-        gatewayToken: t.gatewayToken || null
+        endpoint: t.endpoint || null
+        // gatewayToken intentionally excluded — stays server-side only
       }));
 
     // Aggregate stats

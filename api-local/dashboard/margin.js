@@ -114,15 +114,18 @@ function getBotsData(email) {
   }
 }
 
+const { requireAuth, getEmailFromSession } = require('../auth/middleware.js');
+
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { email } = req.query;
+  // Use session email (trusted)
+  const email = getEmailFromSession(req) || req.query.email;
 
   if (!email) {
-    return res.status(400).json({ error: 'email is required' });
+    return res.status(401).json({ error: 'Unauthorized — no valid session' });
   }
 
   console.log(`[Margin API] Calculating margin for ${email}`);

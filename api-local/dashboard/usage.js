@@ -21,6 +21,8 @@ const PLAN_BUDGETS = {
   enterprise: 980.00
 };
 
+const { requireBotOwnership } = require('../auth/middleware.js');
+
 module.exports = async (req, res) => {
   try {
     const { tenantId } = req.params;
@@ -28,6 +30,10 @@ module.exports = async (req, res) => {
     if (!tenantId) {
       return res.status(400).json({ error: 'tenantId required' });
     }
+
+    // Auth + ownership check
+    const bot = await requireBotOwnership(req, res, tenantId);
+    if (!bot) return;
     
     // Get tenant's plan
     const tenant = await getTenant(tenantId);

@@ -23,13 +23,19 @@ const dynamoClient = new DynamoDBClient({
 
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
+const { requireAuth } = require('../auth/middleware.js');
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Auth check — infer email from session
+  const sessionEmail = requireAuth(req, res);
+  if (!sessionEmail) return;
+
   const { 
-    email,
+    email: bodyEmail,
     tenantId,  // From onboarding signup
     botName, 
     botRole, 
@@ -37,8 +43,11 @@ module.exports = async (req, res) => {
     plan 
   } = req.body || {};
 
-  if (!email || !botName) {
-    return res.status(400).json({ error: 'Email and botName are required' });
+  // Use session email (trusted), fall back to body email for backwards compat
+  const email = sessionEmail;
+
+  if (!botName) {
+    return res.status(400).json({ error: 'botName is required' });
   }
 
   console.log(`[Create Bot] Request from ${email}: "${botName}" (${template || 'blank'})`);

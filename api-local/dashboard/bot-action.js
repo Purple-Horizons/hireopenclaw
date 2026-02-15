@@ -2,10 +2,12 @@
  * Bot Action API - LocalStack Version
  * POST /api/dashboard/bot-action
  * Actions: pause, resume, restart, terminate
+ * Auth: session cookie required + bot ownership validated
  */
 
 const { exec } = require('child_process');
 const { promisify } = require('util');
+const { requireBotOwnership } = require('../auth/middleware.js');
 
 const execAsync = promisify(exec);
 
@@ -19,6 +21,10 @@ module.exports = async (req, res) => {
   if (!tenantId || !action) {
     return res.status(400).json({ error: 'tenantId and action are required' });
   }
+
+  // Auth + ownership check
+  const bot = await requireBotOwnership(req, res, tenantId);
+  if (!bot) return; // Response already sent
 
   const validActions = ['pause', 'resume', 'restart', 'terminate'];
   if (!validActions.includes(action)) {

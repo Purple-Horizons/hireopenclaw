@@ -9,6 +9,8 @@ const { promisify } = require('util');
 
 const execAsync = promisify(exec);
 
+const { requireBotOwnership } = require('../auth/middleware.js');
+
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -19,6 +21,10 @@ module.exports = async (req, res) => {
   if (!tenantId) {
     return res.status(400).json({ error: 'tenantId parameter required' });
   }
+
+  // Auth + ownership check
+  const bot = await requireBotOwnership(req, res, tenantId);
+  if (!bot) return;
 
   try {
     const containerName = `clawops-${tenantId}`;

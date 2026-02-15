@@ -113,10 +113,8 @@
                     return;
                 }
 
-                // Handle agent events (streaming text, etc.)
-                if (data.type === 'evt' && data.event) {
-                    handleBotEvent(data.event, data);
-                }
+                // Handle all server-forwarded messages
+                handleServerMessage(data);
             } catch {}
         };
 
@@ -127,18 +125,51 @@
 
     let currentBotMsg = null;
     
-    function handleBotEvent(eventType, data) {
-        // OpenClaw sends various event types
-        // We care about text output from the agent
-        if (data.data?.text || data.data?.content) {
-            typingEl.classList.remove('active');
-            const text = data.data.text || data.data.content;
-            if (!currentBotMsg) {
-                currentBotMsg = addMessage(text, 'bot');
-            } else {
-                currentBotMsg.textContent += text;
+    // Extract text from OpenClaw message format
+    // Format: { role, content: [{type: "text", text: "..."}], timestamp }
+    // or: { role, content: "string" }
+    // or: just a string
+    function extractText(message) {
+        if (typeof message === 'string') return message;
+        const content = message.content || message.text;
+        if (typeof content === 'string') return content;
+        if (Array.isArray(content)) {
+            return content.filter(c => c.type === 'text').map(c => c.text).join('');
+        }
+        return '';
+    }
+    
+    function handleServerMessage(msg) {
+        // OpenClaw broadcasts: { type: "event", event: "chat", payload: { state, message } }
+        // Also: { type: "res", ... } for request responses
+        
+        const isChatEvent = (msg.type === 'event' && msg.event === 'chat') ||
+                            (msg.type === 'evt' && msg.event === 'chat');
+        const eventData = msg.payload || msg.data;
+        
+        if (isChatEvent && eventData) {
+            const { state, message } = eventData;
+            
+            if ((state === 'delta' || state === 'final') && message) {
+                typingEl.classList.remove('active');
+                const text = extractText(message);
+                if (text) {
+                    if (!currentBotMsg) {
+                        currentBotMsg = addMessage(text, 'bot');
+                    } else {
+                        currentBotMsg.textContent = text; // Deltas are cumulative
+                    }
+                    messagesEl.scrollTop = messagesEl.scrollHeight;
+                }
+                if (state === 'final') currentBotMsg = null;
             }
-            messagesEl.scrollTop = messagesEl.scrollHeight;
+            
+            if (state === 'error') {
+                typingEl.classList.remove('active');
+                addMessage('Bot error: ' + (eventData.error?.message || 'Unknown'), 'system');
+                currentBotMsg = null;
+            }
+            return;
         }
     }
 
@@ -151,8 +182,7 @@
                 messagesEl.innerHTML = '';
                 for (const msg of data.messages) {
                     const role = msg.role === 'user' ? 'user' : msg.role === 'assistant' ? 'bot' : 'system';
-                    const text = typeof msg.content === 'string' ? msg.content : 
-                                 Array.isArray(msg.content) ? msg.content.map(c => c.text || '').join('') : '';
+                    const text = extractText(msg);
                     if (text.trim()) addMessage(text, role);
                 }
             }

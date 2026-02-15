@@ -86,7 +86,8 @@ async function loadDashboard(email) {
     localStorage.setItem('clawops_email', email);
     
     try {
-        const res = await fetch(`/api/dashboard/bots?email=${encodeURIComponent(email)}`);
+        // Session cookie sent automatically — server infers email from session
+        const res = await fetch(`/api/dashboard/bots`);
         const data = await res.json();
         
         if (data.bots) {
@@ -193,9 +194,6 @@ function createBotCard(bot) {
                        bot.health === 'unhealthy' ? 'var(--red)' : 'var(--yellow)';
     
     const lastActiveText = formatLastActive(bot.lastActive);
-    const tokenDisplay = bot.gatewayToken 
-        ? `${bot.gatewayToken.substring(0, 8)}...` 
-        : 'Not set';
     
     card.innerHTML = `
         <div class="bot-header">
@@ -263,15 +261,7 @@ function createBotCard(bot) {
             <div style="font-size:10px;color:var(--gray);margin-top:4px;" id="budget-text-${bot.id}">0% of budget used</div>
         </div>
         
-        ${bot.gatewayToken ? `
-        <div style="margin-top:16px;padding:12px;background:rgba(255,107,53,0.1);border-radius:8px;">
-            <div style="font-size:11px;color:var(--gray);margin-bottom:6px;">🔑 Gateway Token (first-time pairing)</div>
-            <div style="display:flex;align-items:center;gap:8px;">
-                <code style="flex:1;font-size:11px;color:var(--white);word-break:break-all;">${tokenDisplay}</code>
-                <button class="btn btn-primary" style="padding:4px 12px;font-size:11px;white-space:nowrap;" onclick="copyToken('${bot.gatewayToken}', '${escapeHtml(bot.name)}'); return false;">📋 Copy</button>
-            </div>
-        </div>
-        ` : ''}
+        <!-- Gateway token hidden — managed server-side for security -->
         
         <div class="bot-actions">
             ${bot.status === 'terminated' 
@@ -279,7 +269,7 @@ function createBotCard(bot) {
                     <div style="color:var(--red);font-weight:600;">🗑 Deleted ${bot.terminatedAt ? 'on ' + new Date(bot.terminatedAt).toLocaleDateString() : ''}</div>
                     <div style="font-size:11px;color:var(--gray);margin-top:4px;">Historical stats preserved</div>
                    </div>`
-                : `<button class="btn btn-primary" onclick="openBot('${bot.id}', '${bot.endpoint}', '${bot.gatewayToken || ''}')">💬 Open Chat</button>
+                : `<button class="btn btn-primary" onclick="openBot('${bot.id}', '${bot.endpoint}')">💬 Open Chat</button>
                    ${bot.status === 'active' 
                        ? `<button class="btn btn-secondary" onclick="botAction('${bot.id}', 'pause')">⏸ Pause</button>
                           <button class="btn btn-secondary" onclick="botAction('${bot.id}', 'restart')">🔄 Restart</button>`

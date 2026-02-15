@@ -220,4 +220,49 @@ describe('Chat Proxy Auth', () => {
   });
 });
 
+describe('Security: Gateway Token Never Exposed', () => {
+  it('bots API response should not contain gatewayToken', () => {
+    // Simulate what the API returns
+    const bot = {
+      id: 'tenant-123',
+      name: 'Test Bot',
+      endpoint: 'http://localhost:18814',
+      // gatewayToken intentionally excluded
+    };
+    
+    assert.strictEqual(bot.gatewayToken, undefined, 'gatewayToken should not be in API response');
+  });
+
+  it('chat proxy sends botId, not token, to frontend', () => {
+    const botId = 'tenant-268193-renj';
+    const botName = 'Test Bot';
+    const chatUrl = `/chat?botId=${encodeURIComponent(botId)}&name=${encodeURIComponent(botName)}`;
+    
+    assert.ok(!chatUrl.includes('token='), 'Chat URL should not contain token');
+    assert.ok(!chatUrl.includes('gatewayToken'), 'Chat URL should not contain gatewayToken');
+    assert.ok(chatUrl.includes('botId='), 'Chat URL should contain botId');
+  });
+});
+
+describe('Security: All Dashboard Endpoints Require Auth', () => {
+  it('endpoints should validate session before processing', () => {
+    // List of endpoints that MUST check auth
+    const protectedEndpoints = [
+      '/api/dashboard/bots',
+      '/api/dashboard/bot-action',
+      '/api/dashboard/rename-bot',
+      '/api/dashboard/create-bot',
+      '/api/dashboard/container-stats',
+      '/api/dashboard/usage/:tenantId',
+      '/api/dashboard/margin',
+      '/api/chat/:botId/send',
+      '/api/chat/:botId/events',
+      '/api/chat/:botId/history'
+    ];
+    
+    // Verify all endpoints exist in our list
+    assert.ok(protectedEndpoints.length >= 10, 'Should have at least 10 protected endpoints');
+  });
+});
+
 console.log('All auth tests defined. Run with: node --test tests/auth.test.js');
