@@ -98,6 +98,9 @@ async function loadDashboard(email) {
             // Load usage chart
             loadUsageChart(email);
             
+            // Load cost data for all bots
+            setTimeout(() => updateBotCosts(), 500);
+            
             // Show dashboard, hide login
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('dashboardScreen').style.display = 'block';
@@ -226,6 +229,27 @@ function createBotCard(bot) {
                 <div class="label">Health</div>
                 <div class="value" style="color:${healthColor};">${bot.health}</div>
             </div>
+        </div>
+        
+        <div class="bot-cost" id="cost-${bot.id}" style="margin-top:16px;padding:12px;background:rgba(0,180,216,0.1);border-radius:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <div style="font-size:11px;color:var(--gray);">💰 Usage Cost</div>
+                <div style="font-size:14px;font-weight:600;color:var(--primary);" id="cost-value-${bot.id}">Loading...</div>
+            </div>
+            <div style="display:flex;gap:12px;font-size:11px;margin-bottom:8px;">
+                <div style="flex:1;">
+                    <div style="color:var(--gray);">Today</div>
+                    <div style="color:var(--white);font-weight:500;" id="cost-today-${bot.id}">--</div>
+                </div>
+                <div style="flex:1;">
+                    <div style="color:var(--gray);">This month</div>
+                    <div style="color:var(--white);font-weight:500;" id="cost-month-${bot.id}">--</div>
+                </div>
+            </div>
+            <div style="background:rgba(255,255,255,0.1);border-radius:4px;height:6px;overflow:hidden;">
+                <div class="budget-bar" id="budget-bar-${bot.id}" style="height:100%;background:var(--green);transition:width 0.3s ease,background 0.3s ease;width:0%;"></div>
+            </div>
+            <div style="font-size:10px;color:var(--gray);margin-top:4px;" id="budget-text-${bot.id}">0% of budget used</div>
         </div>
         
         ${bot.gatewayToken ? `
@@ -521,6 +545,80 @@ function renderUsageChart(days) {
     svg.innerHTML = html;
 }
 
+// Fetch and update cost data for all bots
+async function updateBotCosts() {
+    if (!currentBots || currentBots.length === 0) return;
+    
+    for (const bot of currentBots) {
+        await updateBotCost(bot.id);
+    }
+}
+
+// Fetch and update cost data for a single bot
+async function updateBotCost(botId) {
+    try {
+        const res = await fetch(`/api/dashboard/usage/${botId}`);
+        const data = await res.json();
+        
+        if (data.error) {
+            console.error(`Failed to get usage for ${botId}:`, data.error);
+            return;
+        }
+        
+        // Update cost display
+        const costValue = document.getElementById(`cost-value-${botId}`);
+        const costToday = document.getElementById(`cost-today-${botId}`);
+        const costMonth = document.getElementById(`cost-month-${botId}`);
+        const budgetBar = document.getElementById(`budget-bar-${botId}`);
+        const budgetText = document.getElementById(`budget-text-${botId}`);
+        
+        if (!costValue) return; // Bot card not rendered yet
+        
+        const totalCost = data.usage.totalCost || 0;
+        const todayCost = data.usage.todayCost || 0;
+        const utilization = data.budget.utilization || 0;
+        const alertLevel = data.budget.alertLevel || 'ok';
+        
+        costValue.textContent = `$${totalCost.toFixed(2)}`;
+        costToday.textContent = `$${todayCost.toFixed(2)}`;
+        costMonth.textContent = `$${totalCost.toFixed(2)}`;
+        
+        // Update budget bar
+        budgetBar.style.width = `${Math.min(100, utilization)}%`;
+        
+        // Color based on alert level
+        if (alertLevel === 'critical') {
+            budgetBar.style.background = 'var(--red)';
+        } else if (alertLevel === 'danger') {
+            budgetBar.style.background = '#ff8c00'; // Orange
+        } else if (alertLevel === 'warning') {
+            budgetBar.style.background = 'var(--yellow)';
+        } else {
+            budgetBar.style.background = 'var(--green)';
+        }
+        
+        budgetText.textContent = `${utilization.toFixed(1)}% of $${data.budget.limit.toFixed(2)} budget used`;
+        
+        // Add alert indicator if needed
+        if (alertLevel === 'warning' || alertLevel === 'danger' || alertLevel === 'critical') {
+            const costSection = document.getElementById(`cost-${botId}`);
+            if (costSection && !costSection.querySelector('.alert-badge')) {
+                const alertBadge = document.createElement('div');
+                alertBadge.className = 'alert-badge';
+                alertBadge.style.cssText = 'position:absolute;top:8px;right:8px;background:var(--red);color:white;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;';
+                alertBadge.textContent = alertLevel === 'critical' ? '🚨 OVER BUDGET' : 
+                                        alertLevel === 'danger' ? '⚠️ 90%+' : 
+                                        '⚠️ 80%+';
+                costSection.style.position = 'relative';
+                costSection.appendChild(alertBadge);
+            }
+        }
+        
+    } catch (err) {
+        console.error(`Error updating cost for ${botId}:`, err);
+    }
+}
+
 // Login prompt
 function showLoginPrompt() {
     document.getElementById('dashboardScreen').style.display = 'none';
@@ -588,6 +686,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Set up auto-refresh every 30 seconds
         setInterval(() => loadDashboard(email), 30000);
+        
+        // Update costs more frequently (every 60 seconds)
+        setInterval(() => updateBotCosts(), 60000);
     } else {
         showLoginPrompt();
     }

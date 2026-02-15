@@ -73,6 +73,17 @@ apiRoutes.forEach(route => {
   }
 });
 
+// Parameterized dashboard routes
+app.get('/api/dashboard/usage/:tenantId', async (req, res) => {
+  try {
+    const handler = require(path.join(__dirname, 'api-local', 'dashboard', 'usage.js'));
+    await handler(req, res);
+  } catch (err) {
+    console.error('[API Error] /api/dashboard/usage/:tenantId:', err);
+    res.status(500).json({ error: 'Internal server error', details: err.message });
+  }
+});
+
 // Public API v1 routes (rate-limited, API key auth)
 try {
   const rateLimit = require(path.join(__dirname, 'middleware', 'rateLimit.js'));

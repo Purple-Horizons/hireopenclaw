@@ -98,7 +98,7 @@ async function loadUsageTab() {
     }
 }
 
-function renderUsageDetails(data) {
+async function renderUsageDetails(data) {
     const container = document.getElementById('usage-details');
     if (!container) return;
     
@@ -108,8 +108,46 @@ function renderUsageDetails(data) {
     const totalTokens = dailyUsage.reduce((sum, day) => sum + (day.inputTokens || 0) + (day.outputTokens || 0), 0);
     const totalMessages = dailyUsage.reduce((sum, day) => sum + (day.messageCount || 0), 0);
     
+    // Fetch cost data for all bots
+    let totalCost = 0;
+    let budgetLimit = 0;
+    let costBreakdown = {};
+    
+    if (currentBots && currentBots.length > 0) {
+        for (const bot of currentBots) {
+            try {
+                const costRes = await fetch(`/api/dashboard/usage/${bot.id}`);
+                const costData = await costRes.json();
+                
+                if (!costData.error) {
+                    totalCost += costData.usage.totalCost || 0;
+                    budgetLimit = costData.budget.limit || 0; // Same for all bots (per-user budget)
+                    
+                    // Aggregate by provider
+                    for (const [provider, cost] of Object.entries(costData.breakdown || {})) {
+                        costBreakdown[provider] = (costBreakdown[provider] || 0) + cost;
+                    }
+                }
+            } catch (err) {
+                console.error(`Failed to fetch cost for ${bot.id}:`, err);
+            }
+        }
+    }
+    
+    const budgetUtilization = budgetLimit > 0 ? (totalCost / budgetLimit) * 100 : 0;
+    const budgetColor = budgetUtilization >= 90 ? 'var(--red)' : 
+                       budgetUtilization >= 80 ? 'var(--yellow)' : 
+                       'var(--green)';
+    
     container.innerHTML = `
         <div class="usage-summary">
+            <div class="usage-stat-card">
+                <div class="label">Total Cost (Month)</div>
+                <div class="value" style="color:${budgetColor};">$${totalCost.toFixed(2)}</div>
+                <div class="sub" style="font-size:11px;color:var(--gray);margin-top:4px;">
+                    ${budgetUtilization.toFixed(1)}% of $${budgetLimit.toFixed(2)} budget
+                </div>
+            </div>
             <div class="usage-stat-card">
                 <div class="label">Total Tokens (30d)</div>
                 <div class="value">${Math.round(totalTokens / 1000)}K</div>
@@ -119,14 +157,29 @@ function renderUsageDetails(data) {
                 <div class="value">${totalMessages}</div>
             </div>
             <div class="usage-stat-card">
-                <div class="label">Avg Tokens/Day</div>
-                <div class="value">${Math.round(totalTokens / 30 / 1000)}K</div>
-            </div>
-            <div class="usage-stat-card">
-                <div class="label">Avg Messages/Day</div>
-                <div class="value">${Math.round(totalMessages / 30)}</div>
+                <div class="label">Avg Cost/Day</div>
+                <div class="value">$${(totalCost / 30).toFixed(2)}</div>
             </div>
         </div>
+        
+        ${Object.keys(costBreakdown).length > 0 ? `
+        <div class="cost-breakdown" style="margin-top:32px;padding:24px;background:rgba(255,107,53,0.05);border-radius:12px;">
+            <h3 style="margin:0 0 16px 0;color:var(--white);">💰 Cost Breakdown by Provider</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;">
+                ${Object.entries(costBreakdown).map(([provider, cost]) => {
+                    const pct = totalCost > 0 ? (cost / totalCost) * 100 : 0;
+                    return `
+                    <div style="padding:16px;background:rgba(255,255,255,0.05);border-radius:8px;">
+                        <div style="font-size:12px;color:var(--gray);text-transform:uppercase;">${provider}</div>
+                        <div style="font-size:24px;font-weight:600;color:var(--primary);margin:8px 0;">$${cost.toFixed(2)}</div>
+                        <div style="font-size:11px;color:var(--gray);">${pct.toFixed(1)}% of total</div>
+                    </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+        ` : ''}
+        
         
         <div class="usage-chart-container">
             <h3>Daily Usage (Last 30 Days)</h3>
