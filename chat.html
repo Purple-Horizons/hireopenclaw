@@ -12,14 +12,27 @@
         .header .back { color: #888; text-decoration: none; font-size: 14px; }
         .header .back:hover { color: #fff; }
         .header .bot-name { font-weight: 600; font-size: 16px; flex: 1; }
+        .header .actions { display: flex; gap: 8px; }
+        .header .actions button { background: #222; border: 1px solid #333; color: #888; border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; font-family: inherit; }
+        .header .actions button:hover { color: #fff; border-color: #555; }
         .header .status { font-size: 12px; padding: 2px 8px; border-radius: 10px; }
-        .status.connected { background: rgba(0,200,83,0.15); color: #00c853; }
-        .status.connecting { background: rgba(255,193,7,0.15); color: #ffc107; }
+        .status.ready { background: rgba(0,200,83,0.15); color: #00c853; }
+        .status.busy { background: rgba(255,193,7,0.15); color: #ffc107; }
         .status.error { background: rgba(255,82,82,0.15); color: #ff5252; }
         .messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-        .msg { max-width: 80%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.6; word-wrap: break-word; white-space: pre-wrap; }
-        .msg.user { align-self: flex-end; background: #ff6b35; color: white; border-bottom-right-radius: 4px; }
+        .msg { max-width: 80%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.6; word-wrap: break-word; }
+        .msg.user { align-self: flex-end; background: #ff6b35; color: white; border-bottom-right-radius: 4px; white-space: pre-wrap; }
         .msg.bot { align-self: flex-start; background: #1a1a1a; border: 1px solid #333; border-bottom-left-radius: 4px; }
+        .msg.bot p { margin: 0 0 8px; } .msg.bot p:last-child { margin: 0; }
+        .msg.bot code { background: #2a2a2a; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'SF Mono', 'Fira Code', monospace; }
+        .msg.bot pre { background: #111; border: 1px solid #333; border-radius: 8px; padding: 12px; margin: 8px 0; overflow-x: auto; }
+        .msg.bot pre code { background: none; padding: 0; }
+        .msg.bot ul, .msg.bot ol { margin: 4px 0; padding-left: 20px; }
+        .msg.bot li { margin: 2px 0; }
+        .msg.bot strong { color: #ff6b35; }
+        .msg.bot h1, .msg.bot h2, .msg.bot h3 { margin: 8px 0 4px; font-size: 15px; color: #fff; }
+        .msg.bot blockquote { border-left: 3px solid #ff6b35; padding-left: 12px; margin: 8px 0; color: #aaa; }
+        .msg.bot a { color: #ff6b35; text-decoration: underline; }
         .msg.system { align-self: center; color: #666; font-size: 12px; font-style: italic; }
         .typing { padding: 0 20px 8px; color: #666; font-size: 13px; display: none; }
         .typing.active { display: block; }
@@ -35,13 +48,16 @@
     <div class="header">
         <a href="/dashboard" class="back">← Dashboard</a>
         <span class="bot-name" id="botName">AI Employee</span>
-        <span class="status connecting" id="statusBadge">Connecting...</span>
+        <div class="actions">
+            <button onclick="clearChat()">🗑 Clear</button>
+        </div>
+        <span class="status ready" id="statusBadge">Ready</span>
     </div>
     <div class="messages" id="messages"></div>
     <div class="typing" id="typing">AI is thinking...</div>
     <div class="input-bar">
-        <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off" disabled>
-        <button id="sendBtn" onclick="sendMessage()" disabled>Send</button>
+        <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off">
+        <button id="sendBtn" onclick="sendMessage()">Send</button>
     </div>
 
     <script>
@@ -59,131 +75,69 @@
     
     let sending = false;
 
+    // Simple markdown → HTML renderer
+    function renderMarkdown(text) {
+        let html = text
+            // Code blocks (``` ... ```)
+            .replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => 
+                `<pre><code>${code.replace(/</g,'&lt;').replace(/>/g,'&gt;').trim()}</code></pre>`)
+            // Inline code
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            // Bold
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            // Italic
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            // Links
+            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+            // Headers
+            .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+            .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+            .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+            // Blockquotes
+            .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+            // Unordered lists
+            .replace(/^[*-] (.+)$/gm, '<li>$1</li>')
+            // Numbered lists
+            .replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+        // Wrap consecutive <li> in <ul>
+        html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+        // Paragraphs — split by double newlines
+        html = html.split(/\n{2,}/).map(p => {
+            p = p.trim();
+            if (!p) return '';
+            if (/^<(pre|h[1-3]|ul|ol|blockquote|li)/.test(p)) return p;
+            return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+        }).join('');
+        return html;
+    }
+
     function setStatus(status, text) {
         statusBadge.className = 'status ' + status;
-        statusBadge.textContent = text || (status === 'connected' ? 'Connected' : status === 'connecting' ? 'Connecting...' : 'Error');
-        const ready = status === 'connected';
-        inputEl.disabled = !ready;
-        sendBtn.disabled = !ready;
-        if (ready) inputEl.focus();
+        statusBadge.textContent = text || { ready: 'Ready', busy: 'Thinking...', error: 'Error' }[status] || status;
     }
 
     function addMessage(text, type) {
         const div = document.createElement('div');
         div.className = 'msg ' + type;
-        div.textContent = text;
+        if (type === 'bot') {
+            div.innerHTML = renderMarkdown(text);
+        } else {
+            div.textContent = text;
+        }
         messagesEl.appendChild(div);
         messagesEl.scrollTop = messagesEl.scrollHeight;
         return div;
     }
 
-    // Connect SSE for real-time events
-    function connectEvents() {
-        if (!botId) {
-            addMessage('Error: No bot ID. Go back to dashboard.', 'system');
-            setStatus('error', 'No bot ID');
-            return;
-        }
-
-        setStatus('connecting');
-        addMessage('Connecting to your AI employee...', 'system');
-
-        const evtSource = new EventSource(`/api/chat/${botId}/events`);
-        
-        evtSource.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                
-                if (data.type === 'connected') {
-                    setStatus('connected');
-                    addMessage('Connected! Start chatting.', 'system');
-                    loadHistory();
-                    return;
-                }
-                
-                if (data.type === 'error') {
-                    setStatus('error', 'Connection failed');
-                    addMessage('Connection error: ' + (data.message || 'Unknown'), 'system');
-                    return;
-                }
-                
-                if (data.type === 'disconnected') {
-                    setStatus('error', 'Disconnected');
-                    addMessage('Disconnected from bot. Refresh to reconnect.', 'system');
-                    return;
-                }
-
-                // Handle all server-forwarded messages
-                handleServerMessage(data);
-            } catch {}
-        };
-
-        evtSource.onerror = () => {
-            setStatus('error', 'Connection lost');
-        };
-    }
-
-    let currentBotMsg = null;
-    
-    // Extract text from OpenClaw message format
-    // Format: { role, content: [{type: "text", text: "..."}], timestamp }
-    // or: { role, content: "string" }
-    // or: just a string
-    function extractText(message) {
-        if (typeof message === 'string') return message;
-        const content = message.content || message.text;
-        if (typeof content === 'string') return content;
-        if (Array.isArray(content)) {
-            return content.filter(c => c.type === 'text').map(c => c.text).join('');
-        }
-        return '';
-    }
-    
-    function handleServerMessage(msg) {
-        // OpenClaw broadcasts: { type: "event", event: "chat", payload: { state, message } }
-        // Also: { type: "res", ... } for request responses
-        
-        const isChatEvent = (msg.type === 'event' && msg.event === 'chat') ||
-                            (msg.type === 'evt' && msg.event === 'chat');
-        const eventData = msg.payload || msg.data;
-        
-        if (isChatEvent && eventData) {
-            const { state, message } = eventData;
-            
-            if ((state === 'delta' || state === 'final') && message) {
-                typingEl.classList.remove('active');
-                const text = extractText(message);
-                if (text) {
-                    if (!currentBotMsg) {
-                        currentBotMsg = addMessage(text, 'bot');
-                    } else {
-                        currentBotMsg.textContent = text; // Deltas are cumulative
-                    }
-                    messagesEl.scrollTop = messagesEl.scrollHeight;
-                }
-                if (state === 'final') currentBotMsg = null;
-            }
-            
-            if (state === 'error') {
-                typingEl.classList.remove('active');
-                addMessage('Bot error: ' + (eventData.error?.message || 'Unknown'), 'system');
-                currentBotMsg = null;
-            }
-            return;
-        }
-    }
-
     async function loadHistory() {
         try {
             const res = await fetch(`/api/chat/${botId}/history`);
+            if (!res.ok) return;
             const data = await res.json();
-            if (data.ok && data.messages && data.messages.length > 0) {
-                // Clear system messages
-                messagesEl.innerHTML = '';
+            if (data.ok && data.messages?.length > 0) {
                 for (const msg of data.messages) {
-                    const role = msg.role === 'user' ? 'user' : msg.role === 'assistant' ? 'bot' : 'system';
-                    const text = extractText(msg);
-                    if (text.trim()) addMessage(text, role);
+                    const type = msg.role === 'user' ? 'user' : msg.role === 'assistant' ? 'bot' : 'system';
+                    if (msg.content?.trim()) addMessage(msg.content, type);
                 }
             }
         } catch {}
@@ -196,47 +150,121 @@
         sending = true;
         sendBtn.disabled = true;
         inputEl.value = '';
-        currentBotMsg = null;
         
         addMessage(text, 'user');
+        setStatus('busy', 'Thinking...');
         typingEl.classList.add('active');
-        
+
         try {
-            const res = await fetch(`/api/chat/${botId}/send`, {
+            // Use streaming mode
+            const res = await fetch(`/api/chat/${botId}/send?stream=true`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: text })
             });
-            
-            const data = await res.json();
-            typingEl.classList.remove('active');
-            
+
             if (res.status === 401) {
+                typingEl.classList.remove('active');
                 addMessage('Session expired. Please log in again.', 'system');
                 setStatus('error', 'Unauthorized');
+                sending = false;
+                sendBtn.disabled = false;
                 return;
             }
-            
+
             if (res.status === 403) {
-                addMessage('Access denied. This is not your bot.', 'system');
+                typingEl.classList.remove('active');
+                addMessage('Access denied.', 'system');
                 setStatus('error', 'Forbidden');
+                sending = false;
+                sendBtn.disabled = false;
                 return;
             }
-            
-            if (!data.ok) {
-                addMessage('Error: ' + (data.error?.message || data.error || 'Unknown error'), 'system');
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                typingEl.classList.remove('active');
+                addMessage('Error: ' + (err.error || res.statusText), 'system');
+                setStatus('error');
+                sending = false;
+                sendBtn.disabled = false;
+                return;
             }
-            // Response text may come via SSE events, or in the response
-            // The chat.send response in OpenClaw may just be an ack
-            
+
+            // Check if streaming (SSE) or JSON
+            const contentType = res.headers.get('content-type') || '';
+
+            if (contentType.includes('text/event-stream')) {
+                // Streaming response
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let botMsg = null;
+                let fullText = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        if (!line.startsWith('data: ')) continue;
+                        const data = line.slice(6).trim();
+                        if (data === '[DONE]') continue;
+                        try {
+                            const chunk = JSON.parse(data);
+                            const delta = chunk.choices?.[0]?.delta?.content;
+                            if (delta) {
+                                fullText += delta;
+                                typingEl.classList.remove('active');
+                                if (!botMsg) {
+                                    botMsg = addMessage('', 'bot');
+                                }
+                                // Show raw text while streaming, render markdown on done
+                                botMsg.textContent = fullText;
+                                messagesEl.scrollTop = messagesEl.scrollHeight;
+                            }
+                        } catch {}
+                    }
+                }
+
+                // Render final markdown
+                if (botMsg && fullText) {
+                    botMsg.innerHTML = renderMarkdown(fullText);
+                } else if (!botMsg && fullText) {
+                    addMessage(fullText, 'bot');
+                }
+            } else {
+                // Non-streaming JSON response
+                const data = await res.json();
+                typingEl.classList.remove('active');
+                if (data.ok && data.content) {
+                    addMessage(data.content, 'bot');
+                } else {
+                    addMessage('Error: ' + (data.error || 'No response'), 'system');
+                }
+            }
+
         } catch (err) {
-            typingEl.classList.remove('active');
-            addMessage('Failed to send: ' + err.message, 'system');
+            addMessage('Failed: ' + err.message, 'system');
         } finally {
+            typingEl.classList.remove('active');
+            setStatus('ready');
             sending = false;
             sendBtn.disabled = false;
             inputEl.focus();
         }
+    }
+
+    async function clearChat() {
+        try {
+            await fetch(`/api/chat/${botId}/clear`, { method: 'POST' });
+            messagesEl.innerHTML = '';
+            addMessage('Conversation cleared.', 'system');
+        } catch {}
     }
 
     inputEl.addEventListener('keypress', (e) => {
@@ -246,8 +274,19 @@
         }
     });
 
-    // Start
-    connectEvents();
+    // Init
+    if (!botId) {
+        addMessage('Error: No bot ID. Go back to dashboard.', 'system');
+        setStatus('error', 'No bot ID');
+    } else {
+        loadHistory().then(() => {
+            const conv = messagesEl.querySelectorAll('.msg:not(.system)');
+            if (conv.length === 0) {
+                addMessage(`New session with ${botName}. Conversation history starts fresh.`, 'system');
+            }
+        });
+        inputEl.focus();
+    }
     </script>
 </body>
 </html>

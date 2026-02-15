@@ -82,7 +82,7 @@ module.exports = async (req, res) => {
                 --table-name clawops-api-keys \
                 --index-name email-index \
                 --key-condition-expression "email = :email" \
-                --expression-attribute-values '{"email":{"S":"${email}"}}' \
+                --expression-attribute-values '{":email":{"S":"${email}"}}' \
                 --output json`;
             
             const result = execSync(cmd, {
@@ -96,16 +96,18 @@ module.exports = async (req, res) => {
             
             const data = JSON.parse(result);
             
-            const keys = (data.Items || []).map(item => ({
-                keyId: item.keyId?.S,
-                name: item.name?.S,
-                scopes: item.scopes?.SS || [],
-                createdAt: item.createdAt?.S,
-                lastUsed: item.lastUsed?.S || null,
-                active: item.active?.BOOL !== false,
-                // Never return the actual key
-                preview: '•'.repeat(40)
-            }));
+            const keys = (data.Items || [])
+                .map(item => ({
+                    keyId: item.keyId?.S,
+                    name: item.name?.S,
+                    scopes: item.scopes?.SS || [],
+                    createdAt: item.createdAt?.S,
+                    lastUsed: item.lastUsed?.S || null,
+                    active: item.active?.BOOL !== false,
+                    // Never return the actual key
+                    preview: 'clw_' + '•'.repeat(12) + (item.keyId?.S?.slice(-4) || '••••')
+                }))
+                .filter(k => k.active); // Hide revoked keys
             
             return res.status(200).json({
                 ok: true,

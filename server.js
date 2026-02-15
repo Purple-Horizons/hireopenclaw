@@ -132,6 +132,10 @@ try {
     try { await chatProxy.handleHistory(req, res); }
     catch (err) { console.error('[Chat History Error]', err); res.status(500).json({ error: 'Internal error' }); }
   });
+  app.post('/api/chat/:botId/clear', async (req, res) => {
+    try { await chatProxy.handleClear(req, res); }
+    catch (err) { console.error('[Chat Clear Error]', err); res.status(500).json({ error: 'Internal error' }); }
+  });
   console.log('✓ Loaded chat proxy routes');
 } catch (err) {
   console.warn('✗ Chat proxy not loaded:', err.message);

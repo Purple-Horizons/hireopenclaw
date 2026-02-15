@@ -91,7 +91,7 @@ module.exports = async (req, res) => {
                 --table-name clawops-team-members \
                 --index-name orgEmail-index \
                 --key-condition-expression "orgEmail = :email" \
-                --expression-attribute-values '{"email":{"S":"${email}"}}' \
+                --expression-attribute-values '{":email":{"S":"${email}"}}' \
                 --output json`;
             
             const result = execSync(cmd, {
