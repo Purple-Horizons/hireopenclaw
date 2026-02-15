@@ -44,74 +44,68 @@ function calculateCost(inputTokens, outputTokens, model = 'gpt-4o', uptimeHours 
   };
 }
 
-function getUsageData(email) {
+function getBotsForEmail(email) {
   try {
-    const cmd = `AWS_ENDPOINT_URL=http://localhost:4566 aws dynamodb query \
-      --table-name clawops-usage \
-      --index-name email-index \
-      --key-condition-expression "email = :email" \
-      --expression-attribute-values '{"email":{"S":"${email}"}}' \
+    // clawops-tenants uses tenantId as PK; scan with filter for email
+    const cmd = `AWS_ENDPOINT_URL=http://localhost:4566 aws dynamodb scan \
+      --table-name clawops-tenants \
+      --filter-expression "email = :email AND #s <> :terminated" \
+      --expression-attribute-names '{"#s":"status"}' \
+      --expression-attribute-values '{":email":{"S":"${email}"},":terminated":{"S":"terminated"}}' \
       --output json`;
     
     const result = execSync(cmd, { encoding: 'utf8', env: { ...process.env, AWS_ACCESS_KEY_ID: 'test', AWS_SECRET_ACCESS_KEY: 'test' } });
-    const data = JSON.parse(result);
-    
-    let totalInputTokens = 0;
-    let totalOutputTokens = 0;
-    let totalMessages = 0;
-    
-    if (data.Items) {
-      for (const item of data.Items) {
+    return JSON.parse(result).Items || [];
+  } catch (err) {
+    console.error('Failed to fetch bots:', err.message);
+    return [];
+  }
+}
+
+function getUsageData(email) {
+  // Get user's bots first, then query usage per bot
+  const botItems = getBotsForEmail(email);
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let totalMessages = 0;
+
+  for (const bot of botItems) {
+    const tenantId = bot.tenantId?.S;
+    if (!tenantId) continue;
+    try {
+      const cmd = `AWS_ENDPOINT_URL=http://localhost:4566 aws dynamodb query \
+        --table-name clawops-usage \
+        --key-condition-expression "tenantId = :tid" \
+        --expression-attribute-values '{":tid":{"S":"${tenantId}"}}' \
+        --output json`;
+      const result = execSync(cmd, { encoding: 'utf8', env: { ...process.env, AWS_ACCESS_KEY_ID: 'test', AWS_SECRET_ACCESS_KEY: 'test' } });
+      const data = JSON.parse(result);
+      for (const item of (data.Items || [])) {
         totalInputTokens += parseInt(item.inputTokens?.N || 0);
         totalOutputTokens += parseInt(item.outputTokens?.N || 0);
         totalMessages += parseInt(item.messageCount?.N || 0);
       }
-    }
-    
-    return { totalInputTokens, totalOutputTokens, totalMessages };
-  } catch (err) {
-    console.error('Failed to fetch usage:', err.message);
-    return { totalInputTokens: 0, totalOutputTokens: 0, totalMessages: 0 };
+    } catch {}
   }
+  return { totalInputTokens, totalOutputTokens, totalMessages };
 }
 
 function getBotsData(email) {
-  try {
-    const cmd = `AWS_ENDPOINT_URL=http://localhost:4566 aws dynamodb query \
-      --table-name clawops-bots \
-      --index-name email-index \
-      --key-condition-expression "email = :email" \
-      --expression-attribute-values '{"email":{"S":"${email}"}}' \
-      --output json`;
-    
-    const result = execSync(cmd, { encoding: 'utf8', env: { ...process.env, AWS_ACCESS_KEY_ID: 'test', AWS_SECRET_ACCESS_KEY: 'test' } });
-    const data = JSON.parse(result);
-    
-    const bots = [];
-    let totalUptimeHours = 0;
-    
-    if (data.Items) {
-      for (const item of data.Items) {
-        const createdAt = item.createdAt?.S;
-        const model = item.model?.S || 'gpt-4o';
-        
-        // Calculate uptime (hours since creation)
-        if (createdAt) {
-          const createdMs = new Date(createdAt).getTime();
-          const nowMs = Date.now();
-          const uptimeHours = (nowMs - createdMs) / (1000 * 60 * 60);
-          totalUptimeHours += uptimeHours;
-          
-          bots.push({ model, uptimeHours });
-        }
-      }
+  const botItems = getBotsForEmail(email);
+  const bots = [];
+  let totalUptimeHours = 0;
+
+  for (const item of botItems) {
+    const createdAt = item.createdAt?.S || item.provisionedAt?.S;
+    const model = item.model?.S || 'gpt-4o';
+
+    if (createdAt) {
+      const uptimeHours = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60);
+      totalUptimeHours += uptimeHours;
+      bots.push({ model, uptimeHours });
     }
-    
-    return { bots, totalUptimeHours };
-  } catch (err) {
-    console.error('Failed to fetch bots:', err.message);
-    return { bots: [], totalUptimeHours: 0 };
   }
+  return { bots, totalUptimeHours };
 }
 
 const { requireAuth, getEmailFromSession } = require('../auth/middleware.js');
