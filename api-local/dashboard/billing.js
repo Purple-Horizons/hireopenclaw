@@ -14,11 +14,11 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Email parameter required' });
   }
 
-  // Plan details (aligned with site pricing)
   const PLANS = {
-    starter: { price: 299, tokens: 500000, maxBots: 1 },
-    team:    { price: 799, tokens: 2000000, maxBots: 3 },
-    enterprise: { price: 2000, tokens: 10000000, maxBots: 50 }
+    starter:    { price: 29,  tokens: 500000,   maxBots: 1 },
+    pro:        { price: 99,  tokens: 2000000,  maxBots: 3 },
+    business:   { price: 299, tokens: 5000000,  maxBots: 10 },
+    enterprise: { price: 999, tokens: 20000000, maxBots: 50 }
   };
 
   // TODO: Fetch real plan from user record / Stripe

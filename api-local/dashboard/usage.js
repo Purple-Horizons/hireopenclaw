@@ -12,11 +12,12 @@ const dynamodb = new DynamoDBClient({
   endpoint: process.env.ENDPOINT
 });
 
-// Plan budget limits (aligned with site pricing)
+// Plan budget limits (API cost budgets per plan)
 const PLAN_BUDGETS = {
-  starter: 80.00,   // $299/mo plan
-  team: 200.00,     // $799/mo plan
-  enterprise: 500.00 // Custom plan
+  starter: 20.00,
+  pro: 80.00,
+  business: 180.00,
+  enterprise: 480.00
 };
 
 const { requireBotOwnership } = require('../auth/middleware.js');

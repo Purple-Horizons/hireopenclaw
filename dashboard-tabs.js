@@ -365,7 +365,7 @@ function renderBillingDetails(billing, margin) {
             <div class="billing-stat-card">
                 <div class="label">Current Plan</div>
                 <div class="value">${billing.plan?.toUpperCase() || 'STARTER'}</div>
-                <div class="sub">$${billing.planPrice || 299}/month</div>
+                <div class="sub">$${billing.planPrice || 29}/month</div>
             </div>
             <div class="billing-stat-card">
                 <div class="label">Token Usage</div>
@@ -379,7 +379,7 @@ function renderBillingDetails(billing, margin) {
             </div>
             <div class="billing-stat-card">
                 <div class="label">Next Invoice</div>
-                <div class="value">$${billing.planPrice || 299}</div>
+                <div class="value">$${billing.planPrice || 29}</div>
                 <div class="sub">${billing.nextBillingDate ? new Date(billing.nextBillingDate).toLocaleDateString() : 'TBD'}</div>
             </div>
         </div>
