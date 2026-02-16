@@ -147,8 +147,8 @@ module.exports = async (req, res) => {
     );
     
     // Get plan and revenue
-    // TODO: Fetch from user record, for now assume 'starter'
-    const plan = tenant?.plan || 'starter';
+    // TODO: Fetch real plan from user/billing record
+    const plan = 'starter';
     const revenue = PLAN_PRICING[plan].price;
     
     // Calculate margin
