@@ -70,6 +70,21 @@
         .log-content { background: var(--card); border: 1px solid var(--border); border-radius: 12px; width: 90%; max-width: 800px; max-height: 80vh; display: flex; flex-direction: column; }
         .log-header { padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
         .log-body { flex: 1; overflow-y: auto; padding: 16px; font-family: 'SF Mono', monospace; font-size: 12px; line-height: 1.8; color: var(--gray); white-space: pre-wrap; }
+        /* Toast notifications */
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 20px; border-radius: 8px; font-size: 13px; font-weight: 500; animation: slideIn 0.3s ease; max-width: 400px; }
+        .toast.success { background: var(--green); color: #000; }
+        .toast.error { background: var(--red); color: #fff; }
+        .toast.warning { background: var(--yellow); color: #000; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes fadeOut { to { opacity: 0; transform: translateX(40px); } }
+
+        /* Inline confirm */
+        .inline-confirm { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+        .inline-confirm .warn { color: var(--red); font-weight: 600; }
+        .inline-confirm button { padding: 4px 10px; border-radius: 4px; border: none; cursor: pointer; font-size: 11px; font-weight: 600; }
+        .inline-confirm .yes { background: var(--red); color: #fff; }
+        .inline-confirm .no { background: rgba(255,255,255,0.1); color: var(--gray); }
     </style>
 </head>
 <body>
@@ -188,7 +203,7 @@ function renderClients(clients) {
                         <div class="bot-actions">
                             ${b.status === 'active' ? `
                                 <button onclick="viewLogs('${b.tenantId}')">📋 Logs</button>
-                                <button onclick="restartBot('${b.tenantId}')">🔄 Restart</button>
+                                <button onclick="restartBot('${b.tenantId}',this)">🔄 Restart</button>
                                 <button onclick="viewConfig('${b.tenantId}')">⚙️ Config</button>
                                 <button onclick="openChat('${b.tenantId}', '${(b.name || b.tenantId).replace(/'/g, "\\'")}')">💬 Chat</button>
                                 <button onclick="backupBot('${b.tenantId}')">💾 Backup</button>
@@ -249,14 +264,15 @@ async function viewConfig(tenantId) {
     }
 }
 
-async function restartBot(tenantId) {
-    if (!confirm(`Restart ${tenantId}?`)) return;
+async function restartBot(tenantId, btnEl) {
+    const confirmed = await inlineConfirm(btnEl.parentElement, `Restart ${tenantId}?`);
+    if (!confirmed) return;
     try {
         const res = await fetch(`/api/admin/bots/${tenantId}?action=restart`, { method: 'POST' });
         const data = await res.json();
-        alert(data.ok ? `✅ ${data.message}` : `❌ ${data.error}`);
+        showToast(data.ok ? `✅ ${data.message}` : `❌ ${data.error}`, data.ok ? 'success' : 'error');
     } catch (err) {
-        alert(`Failed: ${err.message}`);
+        showToast(`Failed: ${err.message}`, 'error');
     }
 }
 
@@ -297,12 +313,11 @@ async function stopImpersonate() {
 // ─── Backup & Restore ───
 
 async function backupBot(tenantId) {
-    if (!confirm(`Create backup of ${tenantId}?`)) return;
     try {
         const res = await fetch(`/api/admin/bots/${tenantId}/backup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'admin-manual' }) });
         const data = await res.json();
-        alert(data.ok ? `✅ Backup created: ${data.backupId} (${(data.sizeBytes/1024).toFixed(1)} KB)` : `❌ ${data.error}`);
-    } catch (err) { alert('Failed: ' + err.message); }
+        showToast(data.ok ? `✅ Backup created: ${data.backupId} (${(data.sizeBytes/1024).toFixed(1)} KB)` : `❌ ${data.error}`, data.ok ? 'success' : 'error');
+    } catch (err) { showToast('Failed: ' + err.message, 'error'); }
 }
 
 async function showBackups(tenantId) {
@@ -323,7 +338,7 @@ async function showBackups(tenantId) {
                     <strong>${b.backupId}</strong><br>
                     <span style="font-size:11px;">${b.createdAt} · ${b.sizeKB} KB · ${b.reason} · by ${b.triggeredBy}</span>
                 </div>
-                <button onclick="restoreBot('${tenantId}','${b.backupId}')" style="background:#ff6b35;color:white;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px;">Restore</button>
+                <button onclick="restoreBot('${tenantId}','${b.backupId}',this)" style="background:#ff6b35;color:white;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px;">Restore</button>
             </div>
         `).join('');
     } catch (err) {
@@ -331,13 +346,16 @@ async function showBackups(tenantId) {
     }
 }
 
-async function restoreBot(tenantId, backupId) {
-    if (!confirm(`⚠️ Restore ${tenantId} from ${backupId}? This overwrites current state.`)) return;
+async function restoreBot(tenantId, backupId, btnEl) {
+    if (btnEl) {
+        const confirmed = await inlineConfirm(btnEl.parentElement, `⚠️ Overwrite current state?`);
+        if (!confirmed) return;
+    }
     try {
         const res = await fetch(`/api/admin/bots/${tenantId}/restore`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ backupId }) });
         const data = await res.json();
-        alert(data.ok ? `✅ Restored from ${backupId}` : `❌ ${data.error}`);
-    } catch (err) { alert('Failed: ' + err.message); }
+        showToast(data.ok ? `✅ Restored from ${backupId}` : `❌ ${data.error}`, data.ok ? 'success' : 'error');
+    } catch (err) { showToast('Failed: ' + err.message, 'error'); }
 }
 
 // ─── Secrets ───
@@ -357,7 +375,7 @@ async function loadSecrets(scope, containerId) {
                 <span style="color:var(--gray);font-family:monospace;font-size:12px;">${s.preview}</span>
                 <span style="color:var(--gray);font-size:11px;flex:1;">${s.label !== s.key ? s.label : ''}</span>
                 <span style="color:var(--gray);font-size:11px;">${s.updatedAt ? new Date(s.updatedAt).toLocaleDateString() : ''}</span>
-                <button onclick="deleteSecret('${scope}','${s.key}','${containerId}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;">✕</button>
+                <button onclick="deleteSecret('${scope}','${s.key}','${containerId}',this)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;">✕</button>
             </div>
         `).join('');
     } catch (err) {
@@ -365,32 +383,50 @@ async function loadSecrets(scope, containerId) {
     }
 }
 
-async function showAddSecret(scope) {
-    const key = prompt('Secret name (e.g., FAL_AI_API_KEY):');
-    if (!key) return;
-    const label = prompt('Label (optional description):', key);
-    const value = prompt(`Value for ${key}:`);
-    if (!value) return;
+function showAddSecret(scope) {
+    const containerId = scope === 'platform' ? 'platformSecrets' : `secrets-${btoa(scope)}`;
+    const container = document.getElementById(containerId);
+    // Don't add if already showing inline form
+    if (container.querySelector('.inline-secret-form')) return;
+
+    const row = document.createElement('div');
+    row.className = 'inline-secret-form';
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);';
+    row.innerHTML = `
+        <input type="text" placeholder="KEY_NAME" style="background:var(--bg);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:6px 10px;color:var(--fg);font-family:monospace;font-size:12px;width:180px;text-transform:uppercase;" id="newSecretKey-${scope}">
+        <input type="password" placeholder="Value" style="background:var(--bg);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:6px 10px;color:var(--fg);font-family:monospace;font-size:12px;flex:1;" id="newSecretVal-${scope}">
+        <button onclick="saveInlineSecret('${scope}')" style="background:var(--green,#4caf50);border:none;color:#fff;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;">Save</button>
+        <button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--gray);cursor:pointer;font-size:12px;">Cancel</button>
+    `;
+    container.insertBefore(row, container.firstChild);
+    row.querySelector('input').focus();
+}
+
+async function saveInlineSecret(scope) {
+    const key = document.getElementById(`newSecretKey-${scope}`).value.trim().toUpperCase();
+    const value = document.getElementById(`newSecretVal-${scope}`).value;
+    if (!key || !value) return;
 
     try {
         const res = await fetch('/api/admin/secrets', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ scope, key: key.toUpperCase(), value, label: label || key })
+            body: JSON.stringify({ scope, key, value, label: key })
         });
         const data = await res.json();
         if (data.ok) {
             loadSecrets(scope, scope === 'platform' ? 'platformSecrets' : `secrets-${btoa(scope)}`);
         } else {
-            alert('Error: ' + data.error);
+            showToast('Error: ' + data.error, 'error');
         }
     } catch (err) {
-        alert('Failed: ' + err.message);
+        showToast('Failed: ' + err.message, 'error');
     }
 }
 
-async function deleteSecret(scope, key, containerId) {
-    if (!confirm(`Delete secret ${key}?`)) return;
+async function deleteSecret(scope, key, containerId, btnEl) {
+    const confirmed = await inlineConfirm(btnEl.parentElement, `Delete ${key}?`);
+    if (!confirmed) return;
     try {
         await fetch('/api/admin/secrets', {
             method: 'DELETE',
@@ -399,6 +435,34 @@ async function deleteSecret(scope, key, containerId) {
         });
         loadSecrets(scope, containerId);
     } catch {}
+}
+
+// ─── Toast & Inline Confirm (no JS dialogs!) ───
+
+function showToast(msg, type = 'success', duration = 3000) {
+    let container = document.querySelector('.toast-container');
+    if (!container) { container = document.createElement('div'); container.className = 'toast-container'; document.body.appendChild(container); }
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.textContent = msg;
+    container.appendChild(t);
+    setTimeout(() => { t.style.animation = 'fadeOut 0.3s ease forwards'; setTimeout(() => t.remove(), 300); }, duration);
+}
+
+function inlineConfirm(el, msg) {
+    return new Promise(resolve => {
+        const orig = el.innerHTML;
+        el.innerHTML = `<span class="inline-confirm"><span class="warn">${msg}</span><button class="yes" onclick="this.closest('.inline-confirm').dataset.result='yes'">Yes</button><button class="no" onclick="this.closest('.inline-confirm').dataset.result='no'">Cancel</button></span>`;
+        const ic = el.querySelector('.inline-confirm');
+        const observer = new MutationObserver(() => {
+            if (ic.dataset.result) {
+                observer.disconnect();
+                el.innerHTML = orig;
+                resolve(ic.dataset.result === 'yes');
+            }
+        });
+        observer.observe(ic, { attributes: true });
+    });
 }
 
 // Init

@@ -86,7 +86,7 @@ module.exports = async (req, res) => {
         breakdown[provider] = (breakdown[provider] || 0) + cost;
         
         // By day
-        const day = record.timestamp.substring(0, 10); // YYYY-MM-DD
+        const day = (record.timestamp || record.date || record.lastUpdated || '').substring(0, 10); // YYYY-MM-DD
         dailyCosts[day] = (dailyCosts[day] || 0) + cost;
       }
     }
