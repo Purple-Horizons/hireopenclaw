@@ -20,24 +20,48 @@
         .status.busy { background: rgba(255,193,7,0.15); color: #ffc107; }
         .status.error { background: rgba(255,82,82,0.15); color: #ff5252; }
         .messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-        .msg { max-width: 80%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.6; word-wrap: break-word; }
+        .msg { max-width: 80%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word; }
         .msg.user { align-self: flex-end; background: #ff6b35; color: white; border-bottom-right-radius: 4px; white-space: pre-wrap; }
         .msg.bot { align-self: flex-start; background: #1a1a1a; border: 1px solid #333; border-bottom-left-radius: 4px; }
         .msg.bot p { margin: 0 0 8px; } .msg.bot p:last-child { margin: 0; }
         .msg.bot code { background: #2a2a2a; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'SF Mono', 'Fira Code', monospace; }
-        .msg.bot pre { background: #111; border: 1px solid #333; border-radius: 8px; padding: 12px; margin: 8px 0; overflow-x: auto; }
+        .msg.bot pre { background: #111; border: 1px solid #333; border-radius: 8px; padding: 12px; margin: 8px 0; overflow-x: auto; position: relative; }
         .msg.bot pre code { background: none; padding: 0; }
-        .msg.bot table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 13px; }
-        .msg.bot th, .msg.bot td { border: 1px solid #444; padding: 6px 10px; text-align: left; }
+        /* Copy button on code blocks */
+        .msg.bot pre .copy-btn { position: absolute; top: 6px; right: 6px; background: #333; border: 1px solid #555; color: #aaa; border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer; font-family: inherit; opacity: 0; transition: opacity 0.15s; }
+        .msg.bot pre:hover .copy-btn { opacity: 1; }
+        .msg.bot pre .copy-btn:hover { color: #fff; background: #444; }
+        .msg.bot pre .copy-btn.copied { color: #00c853; }
+        /* Tables */
+        .msg.bot .table-wrap { overflow-x: auto; margin: 8px 0; max-width: 100%; }
+        .msg.bot table { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 200px; }
+        .msg.bot th, .msg.bot td { border: 1px solid #444; padding: 6px 10px; }
         .msg.bot th { background: #2a2a2a; font-weight: 600; color: #e0e0e0; }
         .msg.bot tr:nth-child(even) { background: rgba(255,255,255,0.03); }
-        .msg.bot table { overflow-x: auto; display: block; }
+        .msg.bot td.align-center, .msg.bot th.align-center { text-align: center; }
+        .msg.bot td.align-right, .msg.bot th.align-right { text-align: right; }
+        .msg.bot td.align-left, .msg.bot th.align-left { text-align: left; }
+        /* Lists */
         .msg.bot ul, .msg.bot ol { margin: 4px 0; padding-left: 20px; list-style-position: outside; }
-        .msg.bot li { margin: 0; padding: 0; line-height: 1.5; }
+        .msg.bot ul { list-style-type: disc; }
+        .msg.bot ol { list-style-type: decimal; }
+        .msg.bot li { margin: 2px 0; padding: 0; line-height: 1.5; }
+        .msg.bot li > ul, .msg.bot li > ol { margin: 2px 0; }
+        /* Task lists */
+        .msg.bot li.task-item { list-style: none; margin-left: -20px; padding-left: 0; }
+        .msg.bot li.task-item input[type="checkbox"] { margin-right: 6px; accent-color: #ff6b35; pointer-events: none; }
         .msg.bot strong { color: #ff6b35; }
-        .msg.bot h1, .msg.bot h2, .msg.bot h3 { margin: 8px 0 4px; font-size: 15px; color: #fff; }
+        .msg.bot em { color: #ccc; }
+        .msg.bot del { color: #888; text-decoration: line-through; }
+        .msg.bot h1, .msg.bot h2, .msg.bot h3, .msg.bot h4 { margin: 12px 0 4px; color: #fff; }
+        .msg.bot h1 { font-size: 18px; } .msg.bot h2 { font-size: 16px; } .msg.bot h3 { font-size: 15px; } .msg.bot h4 { font-size: 14px; }
         .msg.bot blockquote { border-left: 3px solid #ff6b35; padding-left: 12px; margin: 8px 0; color: #aaa; }
         .msg.bot a { color: #ff6b35; text-decoration: underline; }
+        .msg.bot hr { border: none; border-top: 1px solid #333; margin: 12px 0; }
+        /* Images */
+        .msg.bot img { max-width: 100%; border-radius: 8px; margin: 8px 0; cursor: pointer; transition: opacity 0.15s; }
+        .msg.bot img:hover { opacity: 0.9; }
+        .msg.bot .img-caption { font-size: 12px; color: #888; text-align: center; margin-top: -4px; margin-bottom: 8px; }
         .msg.system { align-self: center; color: #666; font-size: 12px; font-style: italic; }
         .typing { padding: 0 20px 8px; color: #666; font-size: 13px; display: none; }
         .typing.active { display: block; }
@@ -47,6 +71,10 @@
         .input-bar button { background: #ff6b35; color: white; border: none; border-radius: 8px; padding: 12px 20px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; align-self: flex-end; }
         .input-bar button:hover { background: #e55a2b; }
         .input-bar button:disabled { opacity: 0.5; cursor: not-allowed; }
+        /* Image lightbox */
+        .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; cursor: zoom-out; }
+        .lightbox.active { display: flex; }
+        .lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
@@ -64,74 +92,191 @@
         <textarea id="messageInput" placeholder="Type a message... (Shift+Enter for new line)" rows="1" autocomplete="off"></textarea>
         <button id="sendBtn" onclick="sendMessage()">Send</button>
     </div>
+    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+        <img id="lightboxImg" src="" alt="">
+    </div>
 
     <script>
     const params = new URLSearchParams(window.location.search);
     const botId = params.get('botId');
     const botName = params.get('name') || 'AI Employee';
-    
+
     document.getElementById('botName').textContent = botName;
-    
+
     const messagesEl = document.getElementById('messages');
     const inputEl = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
     const statusBadge = document.getElementById('statusBadge');
     const typingEl = document.getElementById('typing');
-    
-    let sending = false;
 
-    // Simple markdown → HTML renderer
+    let sending = false;
+    let _renderTimer = null;
+
+    // ── Markdown Renderer ───────────────────────────────────────────────────
+
+    function escapeHtml(s) {
+        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
     function renderMarkdown(text) {
-        let html = text
-            // Code blocks (``` ... ```)
-            .replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => 
-                `<pre><code>${code.replace(/</g,'&lt;').replace(/>/g,'&gt;').trim()}</code></pre>`)
-            // Inline code
-            .replace(/`([^`]+)`/g, '<code>$1</code>')
-            // Bold
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            // Italic
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            // Links
-            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
-            // Headers
-            .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-            .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-            .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-            // Blockquotes
-            .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
-            // Unordered lists
-            .replace(/^[*-] (.+)$/gm, '<li>$1</li>')
-            // Numbered lists
-            .replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
-        // Wrap consecutive <li> in <ul>, strip whitespace between items
-        html = html.replace(/((?:<li>.*<\/li>\s*)+)/g, (match) => '<ul>' + match.replace(/\s*(<li>)/g, '$1').replace(/(<\/li>)\s*/g, '$1') + '</ul>');
-        // Tables — detect pipe-delimited rows
+        // Collect code blocks first to protect them from further processing
+        const codeBlocks = [];
+        let html = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+            const idx = codeBlocks.length;
+            const langLabel = lang ? `<span style="position:absolute;top:6px;left:10px;font-size:10px;color:#666;text-transform:uppercase;">${escapeHtml(lang)}</span>` : '';
+            codeBlocks.push(`<pre>${langLabel}<button class="copy-btn" onclick="copyCode(this)">Copy</button><code>${escapeHtml(code.trim())}</code></pre>`);
+            return `\x00CODEBLOCK${idx}\x00`;
+        });
+
+        // Inline code (protect from further processing)
+        const inlineCodes = [];
+        html = html.replace(/`([^`]+)`/g, (_, code) => {
+            const idx = inlineCodes.length;
+            inlineCodes.push(`<code>${escapeHtml(code)}</code>`);
+            return `\x00INLINE${idx}\x00`;
+        });
+
+        // Images — ![alt](url)
+        html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, url) => {
+            const caption = alt ? `<div class="img-caption">${escapeHtml(alt)}</div>` : '';
+            return `<img src="${escapeHtml(url)}" alt="${escapeHtml(alt)}" onclick="openLightbox(this.src)" loading="lazy">${caption}`;
+        });
+
+        // Links — [text](url)
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+        // Horizontal rules
+        html = html.replace(/^(?:---+|\*\*\*+|___+)\s*$/gm, '<hr>');
+
+        // Headers (h1-h4)
+        html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+        html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+        html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+        html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+        // Blockquotes
+        html = html.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
+        // Merge consecutive blockquotes
+        html = html.replace(/<\/blockquote>\n<blockquote>/g, '<br>');
+
+        // Strikethrough
+        html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
+
+        // Bold (before italic)
+        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+        // Italic
+        html = html.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
+
+        // Tables — detect pipe-delimited blocks
         html = html.replace(/((?:^\|.+\|$\n?)+)/gm, (tableBlock) => {
             const rows = tableBlock.trim().split('\n').filter(r => r.trim());
             if (rows.length < 2) return tableBlock;
-            // Check if second row is separator (|---|---|)
-            const isSep = /^\|[\s:-]+\|$/.test(rows[1]?.trim());
-            const startIdx = isSep ? 2 : 1;
-            const headerRow = rows[0];
-            const headerCells = headerRow.split('|').filter(c => c.trim() !== '').map(c => `<th>${c.trim()}</th>`).join('');
+
+            // Check separator row for alignment
+            const isSep = /^\|[\s:|\-]+\|$/.test(rows[1]?.trim());
+            if (!isSep) return tableBlock;
+
+            // Parse alignment from separator
+            const sepCells = rows[1].split('|').filter(c => c.trim() !== '');
+            const aligns = sepCells.map(c => {
+                c = c.trim();
+                if (c.startsWith(':') && c.endsWith(':')) return 'center';
+                if (c.endsWith(':')) return 'right';
+                return 'left';
+            });
+
+            const headerCells = rows[0].split('|').filter(c => c.trim() !== '')
+                .map((c, i) => `<th class="align-${aligns[i] || 'left'}">${c.trim()}</th>`).join('');
+
             let bodyRows = '';
-            for (let i = startIdx; i < rows.length; i++) {
-                const cells = rows[i].split('|').filter(c => c.trim() !== '').map(c => `<td>${c.trim()}</td>`).join('');
+            for (let i = 2; i < rows.length; i++) {
+                const cells = rows[i].split('|').filter(c => c.trim() !== '')
+                    .map((c, j) => `<td class="align-${aligns[j] || 'left'}">${c.trim()}</td>`).join('');
                 bodyRows += `<tr>${cells}</tr>`;
             }
-            return `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
+            return `<div class="table-wrap"><table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table></div>`;
+        });
+
+        // Task lists — must come before regular list processing
+        html = html.replace(/^(\s*)[-*] \[([ xX])\] (.+)$/gm, (_, indent, check, text) => {
+            const checked = check !== ' ' ? ' checked' : '';
+            return `${indent}<li class="task-item"><input type="checkbox"${checked}>${text}</li>`;
+        });
+
+        // Unordered list items
+        html = html.replace(/^(\s*)[-*] (.+)$/gm, (_, indent, text) => {
+            const depth = Math.floor(indent.length / 2);
+            return `<li data-depth="${depth}">${text}</li>`;
+        });
+
+        // Ordered list items
+        html = html.replace(/^(\s*)\d+\. (.+)$/gm, (_, indent, text) => {
+            const depth = Math.floor(indent.length / 2);
+            return `<oli data-depth="${depth}">${text}</oli>`;
+        });
+
+        // Wrap consecutive <li> in <ul>
+        html = html.replace(/((?:<li[^>]*>.*<\/li>\s*)+)/g, (match) => {
+            return '<ul>' + match.replace(/\s*(<li)/g, '$1').replace(/(\/li>)\s*/g, '$1') + '</ul>';
+        });
+
+        // Wrap consecutive <oli> in <ol>
+        html = html.replace(/((?:<oli[^>]*>.*<\/oli>\s*)+)/g, (match) => {
+            const cleaned = match.replace(/<\/?oli/g, (t) => t.replace('oli', 'li'));
+            return '<ol>' + cleaned.replace(/\s*(<li)/g, '$1').replace(/(\/li>)\s*/g, '$1') + '</ol>';
         });
 
         // Paragraphs — split by double newlines
         html = html.split(/\n{2,}/).map(p => {
             p = p.trim();
             if (!p) return '';
-            if (/^<(pre|h[1-3]|ul|ol|blockquote|li)/.test(p)) return p;
+            if (/^<(pre|h[1-4]|ul|ol|blockquote|li|div|table|hr|img)/.test(p)) return p;
             return `<p>${p.replace(/\n/g, '<br>')}</p>`;
         }).join('');
+
+        // Restore code blocks and inline code
+        html = html.replace(/\x00CODEBLOCK(\d+)\x00/g, (_, i) => codeBlocks[i]);
+        html = html.replace(/\x00INLINE(\d+)\x00/g, (_, i) => inlineCodes[i]);
+
         return html;
     }
+
+    // ── Copy code to clipboard ──────────────────────────────────────────────
+
+    function copyCode(btn) {
+        const code = btn.parentElement.querySelector('code').textContent;
+        navigator.clipboard.writeText(code).then(() => {
+            btn.textContent = 'Copied!';
+            btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+        });
+    }
+
+    // ── Lightbox ────────────────────────────────────────────────────────────
+
+    function openLightbox(src) {
+        document.getElementById('lightboxImg').src = src;
+        document.getElementById('lightbox').classList.add('active');
+    }
+    function closeLightbox() {
+        document.getElementById('lightbox').classList.remove('active');
+    }
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeLightbox();
+    });
+
+    // ── Debounced progressive render ────────────────────────────────────────
+
+    function scheduleRender(el, text) {
+        if (_renderTimer) clearTimeout(_renderTimer);
+        _renderTimer = setTimeout(() => {
+            el.innerHTML = renderMarkdown(text);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }, 40);
+    }
+
+    // ── Chat Functions ──────────────────────────────────────────────────────
 
     function setStatus(status, text) {
         statusBadge.className = 'status ' + status;
@@ -168,18 +313,17 @@
     async function sendMessage() {
         const text = inputEl.value.trim();
         if (!text || sending) return;
-        
+
         sending = true;
         sendBtn.disabled = true;
         inputEl.value = '';
         inputEl.style.height = 'auto';
-        
+
         addMessage(text, 'user');
         setStatus('busy', 'Thinking...');
         typingEl.classList.add('active');
 
         try {
-            // Use streaming mode
             const res = await fetch(`/api/chat/${botId}/send?stream=true`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -214,11 +358,9 @@
                 return;
             }
 
-            // Check if streaming (SSE) or JSON
             const contentType = res.headers.get('content-type') || '';
 
             if (contentType.includes('text/event-stream')) {
-                // Streaming response
                 const reader = res.body.getReader();
                 const decoder = new TextDecoder();
                 let buffer = '';
@@ -246,22 +388,21 @@
                                 if (!botMsg) {
                                     botMsg = addMessage('', 'bot');
                                 }
-                                // Show raw text while streaming, render markdown on done
-                                botMsg.textContent = fullText;
-                                messagesEl.scrollTop = messagesEl.scrollHeight;
+                                // Progressive markdown rendering (debounced)
+                                scheduleRender(botMsg, fullText);
                             }
                         } catch {}
                     }
                 }
 
-                // Render final markdown
+                // Final render (ensures complete)
+                if (_renderTimer) clearTimeout(_renderTimer);
                 if (botMsg && fullText) {
                     botMsg.innerHTML = renderMarkdown(fullText);
                 } else if (!botMsg && fullText) {
                     addMessage(fullText, 'bot');
                 }
             } else {
-                // Non-streaming JSON response
                 const data = await res.json();
                 typingEl.classList.remove('active');
                 if (data.ok && data.content) {
@@ -297,7 +438,6 @@
         }
     });
 
-    // Auto-resize textarea
     inputEl.addEventListener('input', () => {
         inputEl.style.height = 'auto';
         inputEl.style.height = Math.min(inputEl.scrollHeight, 150) + 'px';

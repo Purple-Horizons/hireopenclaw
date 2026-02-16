@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat Renderer Test</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: #0a0a0a; color: #fff; padding: 20px; }
+        h2 { color: #ff6b35; margin: 20px 0 10px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+        .test { display: flex; gap: 20px; margin-bottom: 20px; border: 1px solid #333; border-radius: 8px; overflow: hidden; }
+        .test .input { flex: 1; background: #111; padding: 12px; font-family: monospace; font-size: 12px; white-space: pre-wrap; color: #888; border-right: 1px solid #333; }
+        .test .output { flex: 1; padding: 12px; font-size: 14px; line-height: 1.6; }
+        .pass { color: #00c853; } .fail { color: #ff5252; }
+        .summary { position: fixed; top: 10px; right: 10px; background: #222; padding: 10px 16px; border-radius: 8px; font-size: 13px; border: 1px solid #333; }
+
+        /* Copy the bot message styles from chat.html */
+        .output code { background: #2a2a2a; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'SF Mono', monospace; }
+        .output pre { background: #111; border: 1px solid #333; border-radius: 8px; padding: 12px; margin: 8px 0; overflow-x: auto; position: relative; }
+        .output pre code { background: none; padding: 0; }
+        .output pre .copy-btn { position: absolute; top: 6px; right: 6px; background: #333; border: 1px solid #555; color: #aaa; border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer; opacity: 0; transition: opacity 0.15s; }
+        .output pre:hover .copy-btn { opacity: 1; }
+        .output .table-wrap { overflow-x: auto; margin: 8px 0; }
+        .output table { border-collapse: collapse; width: 100%; font-size: 13px; }
+        .output th, .output td { border: 1px solid #444; padding: 6px 10px; }
+        .output th { background: #2a2a2a; font-weight: 600; color: #e0e0e0; }
+        .output tr:nth-child(even) { background: rgba(255,255,255,0.03); }
+        .output td.align-center, .output th.align-center { text-align: center; }
+        .output td.align-right, .output th.align-right { text-align: right; }
+        .output ul, .output ol { margin: 4px 0; padding-left: 20px; }
+        .output ul { list-style-type: disc; } .output ol { list-style-type: decimal; }
+        .output li { margin: 2px 0; line-height: 1.5; }
+        .output li.task-item { list-style: none; margin-left: -20px; }
+        .output li.task-item input { margin-right: 6px; accent-color: #ff6b35; pointer-events: none; }
+        .output strong { color: #ff6b35; }
+        .output em { color: #ccc; }
+        .output del { color: #888; }
+        .output h1, .output h2, .output h3, .output h4 { margin: 8px 0 4px; color: #fff; }
+        .output h1 { font-size: 18px; } .output h2 { font-size: 16px; } .output h3 { font-size: 15px; }
+        .output blockquote { border-left: 3px solid #ff6b35; padding-left: 12px; margin: 8px 0; color: #aaa; }
+        .output a { color: #ff6b35; }
+        .output hr { border: none; border-top: 1px solid #333; margin: 12px 0; }
+        .output img { max-width: 100%; border-radius: 8px; margin: 8px 0; cursor: pointer; }
+        .output .img-caption { font-size: 12px; color: #888; text-align: center; }
+        .output p { margin: 0 0 8px; } .output p:last-child { margin: 0; }
+    </style>
+</head>
+<body>
+    <h1 style="color:#fff;margin-bottom:20px;">Chat Renderer Test Suite</h1>
+    <div class="summary" id="summary">Running...</div>
+    <div id="tests"></div>
+
+    <script>
+    // Pull renderMarkdown from chat.html (inline copy for testing)
+    function escapeHtml(s) {
+        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function renderMarkdown(text) {
+        const codeBlocks = [];
+        let html = text.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+            const idx = codeBlocks.length;
+            const langLabel = lang ? `<span style="position:absolute;top:6px;left:10px;font-size:10px;color:#666;text-transform:uppercase;">${escapeHtml(lang)}</span>` : '';
+            codeBlocks.push(`<pre>${langLabel}<button class="copy-btn" onclick="copyCode(this)">Copy</button><code>${escapeHtml(code.trim())}</code></pre>`);
+            return `\x00CODEBLOCK${idx}\x00`;
+        });
+        const inlineCodes = [];
+        html = html.replace(/`([^`]+)`/g, (_, code) => {
+            const idx = inlineCodes.length;
+            inlineCodes.push(`<code>${escapeHtml(code)}</code>`);
+            return `\x00INLINE${idx}\x00`;
+        });
+        html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, url) => {
+            const caption = alt ? `<div class="img-caption">${escapeHtml(alt)}</div>` : '';
+            return `<img src="${escapeHtml(url)}" alt="${escapeHtml(alt)}" onclick="openLightbox(this.src)" loading="lazy">${caption}`;
+        });
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+        html = html.replace(/^(?:---+|\*\*\*+|___+)\s*$/gm, '<hr>');
+        html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+        html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+        html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+        html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+        html = html.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
+        html = html.replace(/<\/blockquote>\n<blockquote>/g, '<br>');
+        html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
+        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
+        html = html.replace(/((?:^\|.+\|$\n?)+)/gm, (tableBlock) => {
+            const rows = tableBlock.trim().split('\n').filter(r => r.trim());
+            if (rows.length < 2) return tableBlock;
+            const isSep = /^\|[\s:|\-]+\|$/.test(rows[1]?.trim());
+            if (!isSep) return tableBlock;
+            const sepCells = rows[1].split('|').filter(c => c.trim() !== '');
+            const aligns = sepCells.map(c => { c = c.trim(); if (c.startsWith(':') && c.endsWith(':')) return 'center'; if (c.endsWith(':')) return 'right'; return 'left'; });
+            const headerCells = rows[0].split('|').filter(c => c.trim() !== '').map((c, i) => `<th class="align-${aligns[i] || 'left'}">${c.trim()}</th>`).join('');
+            let bodyRows = '';
+            for (let i = 2; i < rows.length; i++) {
+                const cells = rows[i].split('|').filter(c => c.trim() !== '').map((c, j) => `<td class="align-${aligns[j] || 'left'}">${c.trim()}</td>`).join('');
+                bodyRows += `<tr>${cells}</tr>`;
+            }
+            return `<div class="table-wrap"><table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table></div>`;
+        });
+        html = html.replace(/^(\s*)[-*] \[([ xX])\] (.+)$/gm, (_, indent, check, text) => {
+            const checked = check !== ' ' ? ' checked' : '';
+            return `${indent}<li class="task-item"><input type="checkbox"${checked}>${text}</li>`;
+        });
+        html = html.replace(/^(\s*)[-*] (.+)$/gm, (_, indent, text) => {
+            const depth = Math.floor(indent.length / 2);
+            return `<li data-depth="${depth}">${text}</li>`;
+        });
+        html = html.replace(/^(\s*)\d+\. (.+)$/gm, (_, indent, text) => {
+            const depth = Math.floor(indent.length / 2);
+            return `<oli data-depth="${depth}">${text}</oli>`;
+        });
+        html = html.replace(/((?:<li[^>]*>.*<\/li>\s*)+)/g, (match) => {
+            return '<ul>' + match.replace(/\s*(<li)/g, '$1').replace(/(\/li>)\s*/g, '$1') + '</ul>';
+        });
+        html = html.replace(/((?:<oli[^>]*>.*<\/oli>\s*)+)/g, (match) => {
+            const cleaned = match.replace(/<\/?oli/g, (t) => t.replace('oli', 'li'));
+            return '<ol>' + cleaned.replace(/\s*(<li)/g, '$1').replace(/(\/li>)\s*/g, '$1') + '</ol>';
+        });
+        html = html.split(/\n{2,}/).map(p => {
+            p = p.trim();
+            if (!p) return '';
+            if (/^<(pre|h[1-4]|ul|ol|blockquote|li|div|table|hr|img)/.test(p)) return p;
+            return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+        }).join('');
+        html = html.replace(/\x00CODEBLOCK(\d+)\x00/g, (_, i) => codeBlocks[i]);
+        html = html.replace(/\x00INLINE(\d+)\x00/g, (_, i) => inlineCodes[i]);
+        return html;
+    }
+
+    // ── Test Cases ──────────────────────────────────────────────────────────
+
+    const tests = [
+        {
+            name: 'Bold + Italic',
+            input: 'This is **bold** and *italic* and ***both***.',
+            check: (html) => html.includes('<strong>bold</strong>') && html.includes('<em>italic</em>')
+        },
+        {
+            name: 'Strikethrough',
+            input: 'This is ~~deleted~~ text.',
+            check: (html) => html.includes('<del>deleted</del>')
+        },
+        {
+            name: 'Inline code',
+            input: 'Run `npm install` to start.',
+            check: (html) => html.includes('<code>npm install</code>')
+        },
+        {
+            name: 'Code block with language',
+            input: '```javascript\nconst x = 1;\nconsole.log(x);\n```',
+            check: (html) => html.includes('<pre>') && html.includes('const x = 1;') && html.includes('javascript')
+        },
+        {
+            name: 'Code block has copy button',
+            input: '```\nhello world\n```',
+            check: (html) => html.includes('copy-btn')
+        },
+        {
+            name: 'Headers h1-h4',
+            input: '# H1\n\n## H2\n\n### H3\n\n#### H4',
+            check: (html) => html.includes('<h1>H1</h1>') && html.includes('<h2>H2</h2>') && html.includes('<h3>H3</h3>') && html.includes('<h4>H4</h4>')
+        },
+        {
+            name: 'Horizontal rule (---)',
+            input: 'Before\n\n---\n\nAfter',
+            check: (html) => html.includes('<hr>')
+        },
+        {
+            name: 'Horizontal rule (***)',
+            input: 'Before\n\n***\n\nAfter',
+            check: (html) => html.includes('<hr>')
+        },
+        {
+            name: 'Link',
+            input: 'Visit [Google](https://google.com) now.',
+            check: (html) => html.includes('href="https://google.com"') && html.includes('>Google</a>')
+        },
+        {
+            name: 'Image with alt text',
+            input: '![Miami Sunset](https://example.com/sunset.jpg)',
+            check: (html) => html.includes('<img') && html.includes('src="https://example.com/sunset.jpg"') && html.includes('img-caption')
+        },
+        {
+            name: 'Image without alt text',
+            input: '![](https://example.com/photo.jpg)',
+            check: (html) => html.includes('<img') && !html.includes('img-caption')
+        },
+        {
+            name: 'Image has lightbox onclick',
+            input: '![test](https://example.com/img.png)',
+            check: (html) => html.includes('openLightbox')
+        },
+        {
+            name: 'Blockquote',
+            input: '> This is a quote\n> continued here',
+            check: (html) => html.includes('<blockquote>') && html.includes('This is a quote')
+        },
+        {
+            name: 'Unordered list',
+            input: '- Item one\n- Item two\n- Item three',
+            check: (html) => html.includes('<ul>') && html.includes('<li') && html.includes('Item one')
+        },
+        {
+            name: 'Ordered list',
+            input: '1. First\n2. Second\n3. Third',
+            check: (html) => html.includes('<ol>') && html.includes('First')
+        },
+        {
+            name: 'Task list (unchecked)',
+            input: '- [ ] Todo item',
+            check: (html) => html.includes('task-item') && html.includes('type="checkbox"') && !html.includes('checked')
+        },
+        {
+            name: 'Task list (checked)',
+            input: '- [x] Done item',
+            check: (html) => html.includes('task-item') && html.includes('checked')
+        },
+        {
+            name: 'Basic table with alignment',
+            input: '| Name | Price | Qty |\n|:-----|------:|:---:|\n| Apple | $1.50 | 10 |\n| Banana | $0.75 | 25 |',
+            check: (html) => html.includes('<table>') && html.includes('table-wrap') && html.includes('align-left') && html.includes('align-right') && html.includes('align-center')
+        },
+        {
+            name: 'Table with inline markdown',
+            input: '| Feature | Status |\n|---------|--------|\n| **Bold** | `done` |\n| *Italic* | ~~no~~ |',
+            check: (html) => html.includes('<table>') && html.includes('<strong>Bold</strong>') && html.includes('<del>no</del>')
+        },
+        {
+            name: 'Table with empty cells',
+            input: '| A | B | C |\n|---|---|---|\n| 1 |   | 3 |\n|   | 2 |   |',
+            check: (html) => html.includes('<table>') && html.includes('<td')
+        },
+        {
+            name: 'Complex message (mixed)',
+            input: '# Report\n\nHere is a **summary**:\n\n- Item 1\n- Item 2\n\n```python\nprint("hello")\n```\n\n| Col A | Col B |\n|-------|-------|\n| 1 | 2 |\n\n---\n\n> Final note',
+            check: (html) => html.includes('<h1>') && html.includes('<strong>') && html.includes('<ul>') && html.includes('<pre>') && html.includes('<table>') && html.includes('<hr>') && html.includes('<blockquote>')
+        },
+        {
+            name: 'Code inside backticks not double-processed',
+            input: 'Use `**not bold**` for literal.',
+            check: (html) => !html.includes('<strong>not bold</strong>') && html.includes('<code>')
+        }
+    ];
+
+    // ── Run Tests ───────────────────────────────────────────────────────────
+
+    const container = document.getElementById('tests');
+    let passed = 0, failed = 0;
+
+    tests.forEach((t, i) => {
+        const html = renderMarkdown(t.input);
+        const ok = t.check(html);
+        if (ok) passed++; else failed++;
+
+        const div = document.createElement('div');
+        div.innerHTML = `
+            <h2><span class="${ok ? 'pass' : 'fail'}">${ok ? '✅' : '❌'}</span> ${t.name}</h2>
+            <div class="test">
+                <div class="input">${t.input.replace(/</g, '&lt;')}</div>
+                <div class="output">${html}</div>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+
+    document.getElementById('summary').innerHTML = `<span class="pass">${passed} passed</span> / <span class="${failed ? 'fail' : 'pass'}">${failed} failed</span> / ${tests.length} total`;
+    </script>
+</body>
+</html>
