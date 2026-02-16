@@ -9,7 +9,7 @@ const { unmarshall } = require('@aws-sdk/util-dynamodb');
 
 const dynamodb = new DynamoDBClient({
   region: process.env.AWS_REGION || 'us-east-1',
-  endpoint: process.env.ENDPOINT
+  endpoint: process.env.AWS_ENDPOINT_URL || 'http://localhost:4566'
 });
 
 // Plan budget limits (API cost budgets per plan)
