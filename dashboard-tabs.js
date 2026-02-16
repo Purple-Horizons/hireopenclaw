@@ -75,21 +75,16 @@ async function loadUsageTab() {
         
         const usageData = await usageRes.json();
         
-        // Update top-level stats if analytics available
-        if (analyticsRes) {
-            try {
-                const analytics = await analyticsRes.json();
-                const el = id => document.getElementById(id);
-                if (analytics.summary) {
-                    const s = analytics.summary;
-                    if (el('usageTotalTokens')) el('usageTotalTokens').textContent = Math.round((s.tokensIn + s.tokensOut) / 1000) + 'K';
-                    if (el('usageTotalMessages')) el('usageTotalMessages').textContent = s.messages.toLocaleString();
-                    if (el('usageAvgTokens')) el('usageAvgTokens').textContent = Math.round((s.tokensIn + s.tokensOut) / 30 / 1000) + 'K';
-                    if (el('usageTotalCost')) el('usageTotalCost').textContent = '$' + s.cost.toFixed(2);
-                }
-            } catch (e) {
-                console.warn('Analytics not available:', e);
-            }
+        // Update top-level stats from real usage data
+        if (usageData.ok && usageData.dailyUsage) {
+            const el = id => document.getElementById(id);
+            const totalIn = usageData.dailyUsage.reduce((s, d) => s + (d.inputTokens || 0), 0);
+            const totalOut = usageData.dailyUsage.reduce((s, d) => s + (d.outputTokens || 0), 0);
+            const totalMsgs = usageData.dailyUsage.reduce((s, d) => s + (d.messageCount || 0), 0);
+            const totalTokens = totalIn + totalOut;
+            if (el('usageTotalTokens')) el('usageTotalTokens').textContent = totalTokens >= 1000 ? Math.round(totalTokens / 1000) + 'K' : totalTokens;
+            if (el('usageTotalMessages')) el('usageTotalMessages').textContent = totalMsgs.toLocaleString();
+            if (el('usageAvgTokens')) el('usageAvgTokens').textContent = Math.round(totalTokens / 30 / 1000) + 'K';
         }
         
         renderUsageDetails(usageData);
@@ -108,31 +103,11 @@ async function renderUsageDetails(data) {
     const totalTokens = dailyUsage.reduce((sum, day) => sum + (day.inputTokens || 0) + (day.outputTokens || 0), 0);
     const totalMessages = dailyUsage.reduce((sum, day) => sum + (day.messageCount || 0), 0);
     
-    // Fetch cost data for all bots
-    let totalCost = 0;
-    let budgetLimit = 0;
-    let costBreakdown = {};
-    
-    if (currentBots && currentBots.length > 0) {
-        for (const bot of currentBots) {
-            try {
-                const costRes = await fetch(`/api/dashboard/usage/${bot.id}`);
-                const costData = await costRes.json();
-                
-                if (!costData.error) {
-                    totalCost += costData.usage.totalCost || 0;
-                    budgetLimit = costData.budget.limit || 0; // Same for all bots (per-user budget)
-                    
-                    // Aggregate by provider
-                    for (const [provider, cost] of Object.entries(costData.breakdown || {})) {
-                        costBreakdown[provider] = (costBreakdown[provider] || 0) + cost;
-                    }
-                }
-            } catch (err) {
-                console.error(`Failed to fetch cost for ${bot.id}:`, err);
-            }
-        }
-    }
+    // Estimate cost from tokens (Sonnet pricing: $3/M input, $15/M output)
+    const totalIn = dailyUsage.reduce((s, d) => s + (d.inputTokens || 0), 0);
+    const totalOut = dailyUsage.reduce((s, d) => s + (d.outputTokens || 0), 0);
+    const totalCost = (totalIn / 1_000_000) * 3 + (totalOut / 1_000_000) * 15;
+    const budgetLimit = 20; // Starter plan default
     
     const budgetUtilization = budgetLimit > 0 ? (totalCost / budgetLimit) * 100 : 0;
     const budgetColor = budgetUtilization >= 90 ? 'var(--red)' : 
