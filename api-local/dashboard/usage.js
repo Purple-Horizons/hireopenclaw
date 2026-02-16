@@ -25,6 +25,12 @@ const { requireBotOwnership } = require('../auth/middleware.js');
 module.exports = async (req, res) => {
   try {
     const { tenantId } = req.params;
+    const email = req.query.email;
+    
+    // Email-based: aggregate usage across all bots for this user
+    if (!tenantId && email) {
+      return handleEmailUsage(req, res, email);
+    }
     
     if (!tenantId) {
       return res.status(400).json({ error: 'tenantId required' });
@@ -131,6 +137,59 @@ module.exports = async (req, res) => {
     });
   }
 };
+
+const { ScanCommand } = require('@aws-sdk/client-dynamodb');
+
+async function handleEmailUsage(req, res, email) {
+  // Get all bots for this email
+  const scan = await dynamodb.send(new ScanCommand({
+    TableName: 'clawops-tenants',
+    FilterExpression: 'email = :email',
+    ExpressionAttributeValues: { ':email': { S: email } }
+  }));
+  
+  const tenants = (scan.Items || []).map(i => unmarshall(i));
+  
+  const now = new Date();
+  const days = parseInt(req.query.days) || 30;
+  const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
+  
+  // Query usage for each bot
+  const dailyMap = {};
+  
+  for (const tenant of tenants) {
+    try {
+      const result = await dynamodb.send(new QueryCommand({
+        TableName: 'clawops-usage',
+        KeyConditionExpression: 'tenantId = :tid AND #d >= :start',
+        ExpressionAttributeNames: { '#d': 'date' },
+        ExpressionAttributeValues: {
+          ':tid': { S: tenant.tenantId },
+          ':start': { S: startDate }
+        }
+      }));
+      
+      for (const item of (result.Items || [])) {
+        const record = unmarshall(item);
+        const day = record.date;
+        if (!dailyMap[day]) dailyMap[day] = { date: day, inputTokens: 0, outputTokens: 0, messageCount: 0 };
+        dailyMap[day].inputTokens += parseInt(record.inputTokens || 0);
+        dailyMap[day].outputTokens += parseInt(record.outputTokens || 0);
+        dailyMap[day].messageCount += parseInt(record.messageCount || 0);
+      }
+    } catch {}
+  }
+  
+  const dailyUsage = Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date));
+  
+  return res.json({
+    ok: true,
+    email,
+    days,
+    dailyUsage,
+    bots: tenants.map(t => ({ tenantId: t.tenantId, name: t.name || t.botName }))
+  });
+}
 
 async function getTenant(tenantId) {
   const { GetItemCommand } = require('@aws-sdk/client-dynamodb');
