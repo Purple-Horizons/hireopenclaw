@@ -5,8 +5,9 @@
  * Falls back to ?email= query param for backwards compat (will be removed)
  */
 
-const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBClient, QueryCommand: RawQueryCommand } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, QueryCommand } = require('@aws-sdk/lib-dynamodb');
+const { unmarshall } = require('@aws-sdk/util-dynamodb');
 const tokenStore = require('../auth/token-store.js');
 
 // Configure DynamoDB client for LocalStack
@@ -58,25 +59,30 @@ module.exports = async (req, res) => {
 
     const tenants = result.Items || [];
 
+    // Fetch current month's usage from clawops-usage for each active tenant
+    const activeTenants = tenants.filter(t => t.status === 'active' || t.status === 'paused');
+    const usageMap = await getMonthlyUsage(activeTenants.map(t => t.tenantId));
+
     // Transform to dashboard format
-    const bots = tenants
-      .filter(t => t.status === 'active' || t.status === 'paused')
-      .map(t => ({
-        id: t.tenantId,
-        name: t.name || 'Unnamed Bot',
-        role: t.role || 'Assistant',
-        template: t.template || 'blank',
-        status: t.status,
-        health: t.healthStatus || 'unknown',
-        plan: t.plan || 'starter',
-        tokensUsed: t.tokensUsed || 0,
-        tokensLimit: getTokenLimit(t.plan),
-        messagesToday: t.messagesToday || 0,
-        lastActive: t.lastActive ? (t.lastActive * 1000) : (t.createdAt * 1000), // Convert seconds to milliseconds
-        createdAt: t.createdAt,
-        endpoint: t.endpoint || null
-        // gatewayToken intentionally excluded — stays server-side only
-      }));
+    const bots = activeTenants
+      .map(t => {
+        const usage = usageMap[t.tenantId] || { tokens: 0, messages: 0 };
+        return {
+          id: t.tenantId,
+          name: t.name || 'Unnamed Bot',
+          role: t.role || 'Assistant',
+          template: t.template || 'blank',
+          status: t.status,
+          health: t.healthStatus || 'unknown',
+          plan: t.plan || 'starter',
+          tokensUsed: usage.tokens,
+          tokensLimit: getTokenLimit(t.plan),
+          messagesToday: usage.messages,
+          lastActive: t.lastActive ? (t.lastActive * 1000) : (t.createdAt * 1000),
+          createdAt: t.createdAt,
+          endpoint: t.endpoint || null
+        };
+      });
 
     // Aggregate stats
     const totalTokensUsed = bots.reduce((sum, b) => sum + b.tokensUsed, 0);
@@ -102,12 +108,47 @@ module.exports = async (req, res) => {
   }
 };
 
+// Fetch current month's usage from clawops-usage table for multiple tenants
+async function getMonthlyUsage(tenantIds) {
+  const now = new Date();
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+  const usageMap = {};
+
+  await Promise.all(tenantIds.map(async (tenantId) => {
+    try {
+      const result = await dynamoClient.send(new RawQueryCommand({
+        TableName: 'clawops-usage',
+        KeyConditionExpression: 'tenantId = :tid AND #d >= :start',
+        ExpressionAttributeNames: { '#d': 'date' },
+        ExpressionAttributeValues: {
+          ':tid': { S: tenantId },
+          ':start': { S: monthStart }
+        }
+      }));
+
+      let tokens = 0, messages = 0;
+      for (const raw of (result.Items || [])) {
+        const item = unmarshall(raw);
+        tokens += (item.inputTokens || 0) + (item.outputTokens || 0);
+        messages += (item.messageCount || 0);
+      }
+      usageMap[tenantId] = { tokens, messages };
+    } catch (err) {
+      console.error(`[Bots] Usage fetch failed for ${tenantId}:`, err.message);
+      usageMap[tenantId] = { tokens: 0, messages: 0 };
+    }
+  }));
+
+  return usageMap;
+}
+
 // Helper: Get token limit by plan
 function getTokenLimit(plan) {
   const limits = {
     starter: 500000,
-    professional: 2000000,
-    enterprise: 10000000
+    pro: 2000000,
+    business: 5000000,
+    enterprise: 20000000
   };
   return limits[plan] || limits.starter;
 }
@@ -116,8 +157,9 @@ function getTokenLimit(plan) {
 function getMaxBots(plan) {
   const maxes = {
     starter: 1,
-    professional: 3,
-    enterprise: 999
+    pro: 3,
+    business: 10,
+    enterprise: 50
   };
   return maxes[plan] || maxes.starter;
 }

@@ -129,14 +129,14 @@ function updateStats(data) {
     document.querySelector('.stat-card:nth-child(1) .sub').textContent = `of ${data.maxBots} available`;
     
     // Token usage stat (MOCK DATA for now)
-    const tokenK = Math.round(data.totalTokensUsed / 1000);
+    const tokenK = data.totalTokensUsed >= 1000 ? Math.round(data.totalTokensUsed / 1000) : data.totalTokensUsed;
     const limitM = (data.totalTokensLimit / 1000000).toFixed(1);
     const tokenPct = data.totalTokensLimit > 0 
         ? Math.round((data.totalTokensUsed / data.totalTokensLimit) * 100) 
         : 0;
     
     document.querySelector('.stat-card:nth-child(2) .label').textContent = 'Tokens Used';
-    document.querySelector('.stat-card:nth-child(2) .value').textContent = `${tokenK}K`;
+    document.querySelector('.stat-card:nth-child(2) .value').textContent = data.totalTokensUsed >= 1000 ? `${tokenK}K` : `${tokenK}`;
     document.querySelector('.stat-card:nth-child(2) .sub').textContent = `of ${limitM}M this month`;
     
     // Usage bar
@@ -216,7 +216,7 @@ function createBotCard(bot) {
         <div class="bot-stats">
             <div class="bot-stat">
                 <div class="label">Tokens</div>
-                <div class="value">${Math.round(bot.tokensUsed / 1000)}K</div>
+                <div class="value">${bot.tokensUsed >= 1000 ? Math.round(bot.tokensUsed / 1000) + 'K' : bot.tokensUsed}</div>
             </div>
             <div class="bot-stat">
                 <div class="label">Memory</div>
