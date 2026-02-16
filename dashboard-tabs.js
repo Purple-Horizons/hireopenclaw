@@ -422,10 +422,10 @@ async function loadSettingsTab() {
                 <input type="email" value="${currentEmail}" disabled style="opacity:0.5;background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:12px;color:var(--white);width:100%;margin-bottom:16px;">
                 
                 <label>Notification Preferences</label>
-                <div class="checkbox-group">
-                    <label><input type="checkbox" checked> Email alerts for usage spikes</label>
-                    <label><input type="checkbox" checked> Weekly usage reports</label>
-                    <label><input type="checkbox"> Marketing emails</label>
+                <div class="checkbox-group" id="notification-prefs">
+                    <label><input type="checkbox" id="pref-usageSpikeAlerts" onchange="savePreferences()"> Email alerts for usage spikes</label>
+                    <label><input type="checkbox" id="pref-weeklyReports" onchange="savePreferences()"> Weekly usage reports</label>
+                    <label><input type="checkbox" id="pref-marketingEmails" onchange="savePreferences()"> Marketing emails</label>
                 </div>
             </div>
         </div>
@@ -478,8 +478,49 @@ async function loadSettingsTab() {
         </div>
     `;
 
-    // Load client secrets after render
+    // Load client secrets and preferences after render
     loadClientSecrets();
+    loadPreferences();
+}
+
+async function loadPreferences() {
+    try {
+        const res = await fetch('/api/settings/preferences');
+        const data = await res.json();
+        if (data.ok && data.preferences) {
+            const p = data.preferences;
+            const spike = document.getElementById('pref-usageSpikeAlerts');
+            const weekly = document.getElementById('pref-weeklyReports');
+            const marketing = document.getElementById('pref-marketingEmails');
+            if (spike) spike.checked = p.usageSpikeAlerts;
+            if (weekly) weekly.checked = p.weeklyReports;
+            if (marketing) marketing.checked = p.marketingEmails;
+        }
+    } catch (err) {
+        console.error('Failed to load preferences:', err);
+    }
+}
+
+async function savePreferences() {
+    const prefs = {
+        usageSpikeAlerts: document.getElementById('pref-usageSpikeAlerts')?.checked ?? true,
+        weeklyReports: document.getElementById('pref-weeklyReports')?.checked ?? true,
+        marketingEmails: document.getElementById('pref-marketingEmails')?.checked ?? false
+    };
+    try {
+        const res = await fetch('/api/settings/preferences', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(prefs)
+        });
+        const data = await res.json();
+        if (data.ok) {
+            showToast('Preferences saved', 'success');
+        }
+    } catch (err) {
+        console.error('Failed to save preferences:', err);
+        showToast('Failed to save preferences', 'error');
+    }
 }
 
 // Team management functions

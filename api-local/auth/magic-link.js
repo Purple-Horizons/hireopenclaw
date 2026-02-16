@@ -111,11 +111,13 @@ module.exports = async (req, res) => {
     // Send email (or log for local dev)
     await sendMagicLinkEmail(email, magicLink);
     
-    // Same response as non-existing email (anti-enumeration)
+    // In dev mode, return token for CLI usage. In production, omit it.
+    const isDev = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
     return res.status(200).json({
       ok: true,
       message: 'If an account exists with that email, a login link has been sent.',
-      expiresIn: '15 minutes'
+      expiresIn: '15 minutes',
+      ...(isDev && { token, magicLink })
     });
   }
   

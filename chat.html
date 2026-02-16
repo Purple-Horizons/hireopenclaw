@@ -27,6 +27,11 @@
         .msg.bot code { background: #2a2a2a; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'SF Mono', 'Fira Code', monospace; }
         .msg.bot pre { background: #111; border: 1px solid #333; border-radius: 8px; padding: 12px; margin: 8px 0; overflow-x: auto; }
         .msg.bot pre code { background: none; padding: 0; }
+        .msg.bot table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 13px; }
+        .msg.bot th, .msg.bot td { border: 1px solid #444; padding: 6px 10px; text-align: left; }
+        .msg.bot th { background: #2a2a2a; font-weight: 600; color: #e0e0e0; }
+        .msg.bot tr:nth-child(even) { background: rgba(255,255,255,0.03); }
+        .msg.bot table { overflow-x: auto; display: block; }
         .msg.bot ul, .msg.bot ol { margin: 4px 0; padding-left: 20px; list-style-position: outside; }
         .msg.bot li { margin: 0; padding: 0; line-height: 1.5; }
         .msg.bot strong { color: #ff6b35; }
@@ -101,6 +106,23 @@
             .replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
         // Wrap consecutive <li> in <ul>, strip whitespace between items
         html = html.replace(/((?:<li>.*<\/li>\s*)+)/g, (match) => '<ul>' + match.replace(/\s*(<li>)/g, '$1').replace(/(<\/li>)\s*/g, '$1') + '</ul>');
+        // Tables — detect pipe-delimited rows
+        html = html.replace(/((?:^\|.+\|$\n?)+)/gm, (tableBlock) => {
+            const rows = tableBlock.trim().split('\n').filter(r => r.trim());
+            if (rows.length < 2) return tableBlock;
+            // Check if second row is separator (|---|---|)
+            const isSep = /^\|[\s:-]+\|$/.test(rows[1]?.trim());
+            const startIdx = isSep ? 2 : 1;
+            const headerRow = rows[0];
+            const headerCells = headerRow.split('|').filter(c => c.trim() !== '').map(c => `<th>${c.trim()}</th>`).join('');
+            let bodyRows = '';
+            for (let i = startIdx; i < rows.length; i++) {
+                const cells = rows[i].split('|').filter(c => c.trim() !== '').map(c => `<td>${c.trim()}</td>`).join('');
+                bodyRows += `<tr>${cells}</tr>`;
+            }
+            return `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
+        });
+
         // Paragraphs — split by double newlines
         html = html.split(/\n{2,}/).map(p => {
             p = p.trim();

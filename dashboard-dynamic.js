@@ -4,6 +4,21 @@
 let currentEmail = null;
 let currentBots = [];
 
+function formatModelName(model) {
+  if (!model) return 'Claude Sonnet';
+  // Strip provider prefix (hireopenclaw/, anthropic/, openrouter/ etc)
+  const name = model.replace(/^[^/]+\//, '');
+  const map = {
+    'claude-sonnet-4-5': 'Claude Sonnet 4.5',
+    'claude-haiku-4-5': 'Claude Haiku 4.5',
+    'claude-opus-4-6': 'Claude Opus 4.6',
+    'claude-sonnet-4-0': 'Claude Sonnet 4',
+    'gpt-4o': 'GPT-4o',
+    'gpt-4o-mini': 'GPT-4o Mini',
+  };
+  return map[name] || name;
+}
+
 // Modal/Alert Functions (use modal.js toast system)
 function showAlert(message, type = 'info') {
     showToast(message, type);
@@ -232,7 +247,7 @@ function createBotCard(bot) {
             </div>
             <div class="bot-stat">
                 <div class="label">Model</div>
-                <div class="value" id="model-${bot.id}">${bot.model || 'GPT-4o'}</div>
+                <div class="value" id="model-${bot.id}">${formatModelName(bot.model)}</div>
             </div>
             <div class="bot-stat">
                 <div class="label">Health</div>

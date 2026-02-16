@@ -80,7 +80,8 @@ module.exports = async (req, res) => {
           messagesToday: usage.messages,
           lastActive: t.lastActive ? (t.lastActive * 1000) : (t.createdAt * 1000),
           createdAt: t.createdAt,
-          endpoint: t.endpoint || null
+          endpoint: t.endpoint || null,
+          model: t.model || null
         };
       });
 

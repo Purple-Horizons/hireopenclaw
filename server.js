@@ -41,6 +41,7 @@ const apiRoutes = [
   'dashboard/margin',
   'settings/api-keys',
   'settings/team',
+  'settings/preferences',
   'team/create',
   'team/invite',
   'team/members',

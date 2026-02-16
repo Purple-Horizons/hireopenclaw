@@ -105,13 +105,15 @@ module.exports = async (req, res) => {
             
             const data = JSON.parse(result);
             
-            const members = (data.Items || []).map(item => ({
-                memberId: item.memberId?.S,
-                email: item.memberEmail?.S,
+            const members = (data.Items || [])
+              .map(item => ({
+                memberId: item.memberId?.S || item.membershipId?.S,
+                email: item.memberEmail?.S || item.email?.S,
                 role: item.role?.S,
                 joinedAt: item.joinedAt?.S,
                 lastActive: item.lastActive?.S || null
-            }));
+              }))
+              .filter(m => m.email && m.email !== email); // exclude owner (added below) and incomplete records
             
             // Add owner (the account email)
             members.unshift({
