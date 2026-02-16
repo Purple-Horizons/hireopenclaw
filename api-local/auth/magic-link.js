@@ -92,8 +92,9 @@ module.exports = async (req, res) => {
     
     console.log(`[Magic Link] Generating for ${email}`);
     
-    // Check if email exists in our tenant database
-    const exists = await emailExists(email);
+    // Check if email exists in our tenant database or is an admin
+    const { isAdmin } = require('./middleware.js');
+    const exists = await emailExists(email) || isAdmin(email);
     
     if (!exists) {
       console.log(`[Magic Link] ⚠️ No account found for ${email}`);

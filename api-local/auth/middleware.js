@@ -73,4 +73,51 @@ async function requireBotOwnership(req, res, botId) {
   }
 }
 
-module.exports = { getEmailFromSession, requireAuth, requireBotOwnership };
+// Admin allowlist
+const ADMIN_EMAILS = new Set([
+  'g@purplehorizons.io',
+  'gianni@purplehorizons.io',
+]);
+
+function isAdmin(email) {
+  return email && ADMIN_EMAILS.has(email.toLowerCase());
+}
+
+/**
+ * Require admin auth — returns 403 if not admin
+ */
+function requireAdmin(req, res) {
+  const email = getEmailFromSession(req);
+  if (!email) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return null;
+  }
+  if (!isAdmin(email)) {
+    res.status(403).json({ error: 'Admin access required' });
+    return null;
+  }
+  req.userEmail = email;
+  req.isAdmin = true;
+  return email;
+}
+
+/**
+ * Get impersonated email (admin viewing as client)
+ * Falls back to actual session email
+ */
+function getEffectiveEmail(req) {
+  const cookies = req.headers.cookie || '';
+  const match = cookies.match(/session=([^;]+)/);
+  const sessionToken = match ? match[1] : null;
+  if (!sessionToken) return null;
+  const session = tokenStore.get(sessionToken);
+  if (!session || session.type !== 'session' || session.expiresAt < Date.now()) return null;
+  
+  // If admin is impersonating, use impersonated email
+  if (session.impersonating && isAdmin(session.email)) {
+    return session.impersonating;
+  }
+  return session.email;
+}
+
+module.exports = { getEmailFromSession, requireAuth, requireBotOwnership, isAdmin, requireAdmin, getEffectiveEmail, ADMIN_EMAILS };

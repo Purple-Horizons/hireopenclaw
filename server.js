@@ -141,6 +141,38 @@ try {
   console.warn('✗ Chat proxy not loaded:', err.message);
 }
 
+// ─── Admin routes ───
+try {
+  const adminClients = require(path.join(__dirname, 'api-local', 'admin', 'clients.js'));
+  const adminBots = require(path.join(__dirname, 'api-local', 'admin', 'bots.js'));
+  const adminImpersonate = require(path.join(__dirname, 'api-local', 'admin', 'impersonate.js'));
+
+  app.get('/api/admin/clients', async (req, res) => {
+    try { await adminClients(req, res); }
+    catch (err) { console.error('[Admin Error]', err); res.status(500).json({ error: 'Internal error' }); }
+  });
+  app.get('/api/admin/clients/:email', async (req, res) => {
+    try { await adminClients(req, res); }
+    catch (err) { console.error('[Admin Error]', err); res.status(500).json({ error: 'Internal error' }); }
+  });
+  app.all('/api/admin/bots/:tenantId', async (req, res) => {
+    try { await adminBots(req, res); }
+    catch (err) { console.error('[Admin Error]', err); res.status(500).json({ error: 'Internal error' }); }
+  });
+  app.post('/api/admin/impersonate', async (req, res) => {
+    try { await adminImpersonate(req, res); }
+    catch (err) { console.error('[Admin Error]', err); res.status(500).json({ error: 'Internal error' }); }
+  });
+  app.post('/api/admin/stop-impersonate', async (req, res) => {
+    req.path = '/stop';
+    try { await adminImpersonate(req, res); }
+    catch (err) { console.error('[Admin Error]', err); res.status(500).json({ error: 'Internal error' }); }
+  });
+  console.log('✓ Loaded admin routes');
+} catch (err) {
+  console.warn('✗ Admin routes not loaded:', err.message);
+}
+
 // Auth verify route — handles magic link callback
 app.get('/auth/verify', async (req, res) => {
   const { token } = req.query;
@@ -184,6 +216,15 @@ app.get('/dashboard', (req, res, next) => {
     return res.redirect('/?login=true');
   }
   next();
+});
+
+// Admin dashboard — requires admin email
+app.get('/admin', (req, res) => {
+  const { getEmailFromSession, isAdmin } = require(path.join(__dirname, 'api-local', 'auth', 'middleware.js'));
+  const email = getEmailFromSession(req);
+  if (!email) return res.redirect('/?login=true');
+  if (!isAdmin(email)) return res.status(403).send('<h1>403 Forbidden</h1><p>Admin access required.</p>');
+  res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
 // Static files (HTML, CSS, JS, images)
