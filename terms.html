@@ -4,161 +4,119 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Terms of Service — HireOpenClaw</title>
-        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        :root {
-            --bg: #0a0a0a;
-            --bg-card: #1a1a1a;
-            --white: #ffffff;
-            --gray: #888888;
-            --light-gray: #333333;
-            --accent: #ff6b35;
-        }
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg);
-            color: var(--white);
-            line-height: 1.7;
-        }
-        .container { max-width: 800px; margin: 0 auto; padding: 0 24px; }
-        header {
-            padding: 24px 0;
-            border-bottom: 1px solid var(--light-gray);
-        }
-        .logo {
-            font-size: 22px;
-            font-weight: 800;
-            color: var(--white);
-            text-decoration: none;
-        }
-        .logo span { color: var(--accent); }
-        .content {
-            padding: 60px 0;
-        }
-        h1 {
-            font-size: 36px;
-            font-weight: 800;
-            margin-bottom: 8px;
-        }
-        .updated {
-            color: var(--gray);
-            font-size: 14px;
-            margin-bottom: 40px;
-        }
-        h2 {
-            font-size: 22px;
-            font-weight: 700;
-            margin-top: 40px;
-            margin-bottom: 16px;
-            color: var(--accent);
-        }
-        h3 {
-            font-size: 18px;
-            font-weight: 600;
-            margin-top: 24px;
-            margin-bottom: 12px;
-        }
-        p, li {
-            color: #ccc;
-            margin-bottom: 16px;
-        }
-        ul, ol {
-            margin-left: 24px;
-            margin-bottom: 16px;
-        }
-        li { margin-bottom: 8px; }
-        a { color: var(--accent); }
-        .beta-notice {
-            background: var(--bg-card);
-            border: 1px solid var(--accent);
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 32px;
-        }
-        .beta-notice strong { color: var(--accent); }
-        footer {
-            border-top: 1px solid var(--light-gray);
-            padding: 40px 0;
-            text-align: center;
-            color: var(--gray);
-            font-size: 14px;
-        }
-        footer a { color: var(--gray); text-decoration: none; }
-        footer a:hover { color: var(--accent); }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: #0a0a0a; color: #ccc; line-height: 1.8; }
+        .container { max-width: 800px; margin: 0 auto; padding: 40px 24px 80px; }
+        a { color: #ff6b35; }
+        h1 { color: #fff; font-size: 28px; margin-bottom: 8px; }
+        .subtitle { color: #888; font-size: 14px; margin-bottom: 40px; }
+        h2 { color: #fff; font-size: 18px; margin: 32px 0 12px; padding-top: 16px; border-top: 1px solid #222; }
+        h3 { color: #ddd; font-size: 15px; margin: 20px 0 8px; }
+        p { margin-bottom: 12px; font-size: 15px; }
+        ul { margin: 8px 0 16px 24px; }
+        li { margin-bottom: 6px; font-size: 15px; }
+        .warning { background: rgba(255,82,82,0.1); border: 1px solid rgba(255,82,82,0.3); border-radius: 8px; padding: 16px; margin: 20px 0; }
+        .warning strong { color: #ff5252; }
+        .nav { padding: 16px 24px; border-bottom: 1px solid #222; }
+        .nav a { color: #888; text-decoration: none; font-size: 14px; margin-right: 16px; }
+        .nav a:hover { color: #fff; }
     </style>
 </head>
 <body>
-    <header>
-        <div class="container">
-            <a href="/" class="logo">Hire<span>OpenClaw</span></a>
-        </div>
-    </header>
+    <div class="nav">
+        <a href="/">← Home</a>
+        <a href="/privacy">Privacy Policy</a>
+    </div>
+    <div class="container">
+        <h1>Terms of Service</h1>
+        <p class="subtitle">Last updated: February 15, 2026</p>
 
-    <main class="content">
-        <div class="container">
-            <h1>Terms of Service</h1>
-            <p class="updated">Last Updated: January 2026</p>
+        <p>These Terms of Service ("Terms") govern your use of HireOpenClaw ("Service"), operated by Purple Horizons LLC ("we", "us", "our"). By using our Service, you agree to these Terms.</p>
 
-            <div class="beta-notice">
-                <strong>⚠️ Beta Service Notice:</strong> HireOpenClaw is currently in experimental/beta phase. Features may change, things might break, and we're improving fast. By using the service, you acknowledge this status.
-            </div>
+        <h2>1. What This Service Does</h2>
+        <p>HireOpenClaw provides AI-powered virtual employees ("Bots") that operate on your behalf. Each Bot is a software agent powered by large language models (LLMs) that can:</p>
+        <ul>
+            <li>Read and generate text content</li>
+            <li>Connect to third-party services via API keys you provide</li>
+            <li>Post content to social media platforms on your behalf</li>
+            <li>Generate images and videos using AI tools</li>
+            <li>Access and process data you provide or connect</li>
+        </ul>
 
-            <h2>1. The Service</h2>
-            <p>HireOpenClaw provides managed AI assistant services ("AI Employees") that perform tasks like content creation, social media management, lead research, and administrative work. We deliver these services via messaging platforms (Telegram, WhatsApp) and connected integrations.</p>
-            <p><strong>What we don't provide:</strong> Legal, financial, medical, or other professional advice. Guaranteed business outcomes. 24/7 human support. Data backup services.</p>
-
-            <h2>2. Accounts</h2>
-            <p>You must be at least 18 years old and authorized to act on behalf of any business you represent. You're responsible for maintaining account security and all activity under your account.</p>
-
-            <h2>3. Acceptable Use</h2>
-            <p><strong>You may NOT use the service to:</strong></p>
+        <div class="warning">
+            <strong>⚠️ Important: AI Agent Risks</strong>
+            <p style="margin-top:8px;">Your AI employees are autonomous software agents. While we implement safety guardrails, AI agents can and do make mistakes. They may:</p>
             <ul>
-                <li>Generate spam, phishing, or deceptive content</li>
-                <li>Harass, abuse, or harm others</li>
-                <li>Violate any laws or regulations</li>
-                <li>Infringe on intellectual property rights</li>
-                <li>Generate illegal, defamatory, or obscene content</li>
+                <li><strong>Generate incorrect or inappropriate content</strong> — AI can hallucinate facts, misinterpret instructions, or produce content that doesn't match your intent</li>
+                <li><strong>Take unintended actions</strong> — When connected to services (social media, email, etc.), the AI may post, send, or modify content in ways you didn't expect</li>
+                <li><strong>Access data broadly</strong> — Bots may read files, messages, and data within their configured scope. Be careful what you give them access to</li>
+                <li><strong>Execute code or install packages</strong> — Bots with coding capabilities may install software dependencies or run scripts in their sandboxed environment</li>
             </ul>
-
-            <h2>4. Payment</h2>
-            <p>Services are billed monthly in advance via Stripe. Late payments may result in service suspension. Accounts more than 30 days past due may be terminated.</p>
-            <p><strong>Refunds:</strong> Full refund within first 14 days if unsatisfied. After 14 days, no refunds for partial months. Setup fees are non-refundable after work begins.</p>
-
-            <h2>5. Intellectual Property</h2>
-            <p><strong>You retain ownership of:</strong> Content you provide and content generated by AI Employees based on your input.</p>
-            <p><strong>We retain ownership of:</strong> The HireOpenClaw service, platform, technology, and proprietary systems.</p>
-
-            <h2>6. Disclaimer of Warranties</h2>
-            <p><strong>THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE."</strong> We disclaim all warranties, express or implied, including merchantability, fitness for a particular purpose, and non-infringement.</p>
-
-            <h2>7. Limitation of Liability</h2>
-            <p>We shall not be liable for any indirect, incidental, special, consequential, or punitive damages. Our total liability shall not exceed the fees you paid in the three (3) months before the claim arose.</p>
-
-            <h2>8. Termination</h2>
-            <p>You may cancel at any time by emailing support@hireopenclaw.com. We may terminate or suspend your account for violation of these Terms, non-payment, or any reason with 30 days notice.</p>
-
-            <h2>9. General</h2>
-            <p>These Terms are governed by the laws of the State of Florida, USA. Any disputes shall be resolved through binding arbitration in Miami-Dade County, Florida.</p>
-
-            <h2>Contact</h2>
-            <p>Questions? Email <a href="mailto:legal@hireopenclaw.com">legal@hireopenclaw.com</a></p>
-            <p>Purple Horizons LLC<br>7800 SW 57th Ave, Suite 229<br>South Miami, FL 33143</p>
+            <p style="margin-top:8px;"><strong>You are responsible for reviewing and monitoring your Bot's actions.</strong> We strongly recommend starting with limited permissions and expanding gradually.</p>
         </div>
-    </main>
 
-    <footer>
-        <div class="container">
-            <p><a href="/">← Back to HireOpenClaw</a></p>
-            <p style="margin-top: 12px;"><a href="/terms.html">Terms</a> · <a href="/privacy.html">Privacy</a> · <a href="/security.html">Security</a> · <a href="/faq.html">FAQ</a></p>
-        </div>
-    </footer>
-    <script src="/_vercel/insights/script.js" defer></script>
+        <h2>2. Your Responsibilities</h2>
+        <ul>
+            <li><strong>Review Bot output.</strong> You are responsible for all content your Bot creates or publishes, even if automated.</li>
+            <li><strong>Protect your API keys.</strong> Any third-party API keys you add to your Bot's configuration are your responsibility. We encrypt them at rest but cannot prevent misuse if your account is compromised.</li>
+            <li><strong>Monitor activity.</strong> Regularly check what your Bot is doing, especially when connected to external services.</li>
+            <li><strong>Comply with laws.</strong> You must ensure your Bot's actions comply with all applicable laws, including CAN-SPAM, GDPR, CCPA, and platform terms of service.</li>
+            <li><strong>Don't abuse the service.</strong> No spam, harassment, illegal content, or attempting to circumvent safety guardrails.</li>
+        </ul>
+
+        <h2>3. Third-Party Services</h2>
+        <p>Your Bot may connect to third-party services including but not limited to:</p>
+        <ul>
+            <li><strong>AI Providers:</strong> Anthropic (Claude), OpenAI, Google, fal.ai — for text generation, image/video creation</li>
+            <li><strong>Social Media:</strong> Metricool, Twitter/X, LinkedIn, Instagram — for content publishing</li>
+            <li><strong>Communication:</strong> Telegram, WhatsApp, ElevenLabs — for messaging and voice</li>
+        </ul>
+        <p>We are not responsible for the actions, availability, or terms of these third-party services. Your use of them through our Bots is governed by their respective terms of service.</p>
+
+        <h2>4. Data & Content</h2>
+        <ul>
+            <li><strong>Your data stays yours.</strong> Content you create, upload, or generate through the Service belongs to you.</li>
+            <li><strong>AI-generated content.</strong> Content generated by AI models may not be eligible for copyright protection in all jurisdictions. Check your local laws.</li>
+            <li><strong>We don't train on your data.</strong> We do not use your Bot's conversations, files, or outputs to train AI models. Third-party AI providers have their own data policies — see our <a href="/privacy">Privacy Policy</a>.</li>
+            <li><strong>Backups.</strong> We provide backup and restore functionality. However, we recommend maintaining your own backups of critical data.</li>
+        </ul>
+
+        <h2>5. Service Availability & Limits</h2>
+        <ul>
+            <li>We aim for high availability but do not guarantee 100% uptime.</li>
+            <li>Bot instances may be restarted for maintenance or updates.</li>
+            <li>Usage is subject to plan limits (token usage, number of bots, etc.).</li>
+            <li>We reserve the right to suspend Bots that consume excessive resources or violate these Terms.</li>
+        </ul>
+
+        <h2>6. Limitation of Liability</h2>
+        <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW:</p>
+        <ul>
+            <li>The Service is provided "AS IS" without warranty of any kind.</li>
+            <li>We are not liable for any actions taken by your AI employees, including content they publish, messages they send, or data they process.</li>
+            <li>We are not liable for indirect, incidental, special, or consequential damages.</li>
+            <li>Our total liability is limited to the amount you paid us in the 12 months preceding the claim.</li>
+        </ul>
+
+        <h2>7. Account Termination</h2>
+        <ul>
+            <li>You can delete your account and all Bots at any time from the dashboard.</li>
+            <li>We may suspend or terminate accounts that violate these Terms with notice when possible.</li>
+            <li>Upon termination, we will attempt to provide a final backup of your Bot data (available for 30 days).</li>
+        </ul>
+
+        <h2>8. Changes to Terms</h2>
+        <p>We may update these Terms. Material changes will be notified via email or dashboard notice at least 14 days before taking effect. Continued use after changes constitutes acceptance.</p>
+
+        <h2>9. Governing Law</h2>
+        <p>These Terms are governed by the laws of the State of Florida, United States. Any disputes will be resolved in the courts of Miami-Dade County, Florida.</p>
+
+        <h2>10. Contact</h2>
+        <p>Questions about these Terms? Email us at <a href="mailto:legal@purplehorizons.io">legal@purplehorizons.io</a> or <a href="mailto:g@purplehorizons.io">g@purplehorizons.io</a>.</p>
+
+        <p style="margin-top:40px;color:#555;font-size:13px;">Purple Horizons LLC · Miami, FL · <a href="/privacy">Privacy Policy</a></p>
+    </div>
 </body>
 </html>

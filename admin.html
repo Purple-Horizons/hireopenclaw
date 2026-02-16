@@ -191,6 +191,8 @@ function renderClients(clients) {
                                 <button onclick="restartBot('${b.tenantId}')">🔄 Restart</button>
                                 <button onclick="viewConfig('${b.tenantId}')">⚙️ Config</button>
                                 <button onclick="openChat('${b.tenantId}', '${(b.name || b.tenantId).replace(/'/g, "\\'")}')">💬 Chat</button>
+                                <button onclick="backupBot('${b.tenantId}')">💾 Backup</button>
+                                <button onclick="showBackups('${b.tenantId}')">📦 Restore</button>
                             ` : ''}
                         </div>
                     </div>
@@ -290,6 +292,52 @@ async function stopImpersonate() {
         impersonating = null;
         document.getElementById('impersonateBanner').classList.remove('active');
     } catch {}
+}
+
+// ─── Backup & Restore ───
+
+async function backupBot(tenantId) {
+    if (!confirm(`Create backup of ${tenantId}?`)) return;
+    try {
+        const res = await fetch(`/api/admin/bots/${tenantId}/backup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'admin-manual' }) });
+        const data = await res.json();
+        alert(data.ok ? `✅ Backup created: ${data.backupId} (${(data.sizeBytes/1024).toFixed(1)} KB)` : `❌ ${data.error}`);
+    } catch (err) { alert('Failed: ' + err.message); }
+}
+
+async function showBackups(tenantId) {
+    document.getElementById('logTitle').textContent = `Backups — ${tenantId}`;
+    document.getElementById('logBody').textContent = 'Loading...';
+    document.getElementById('logModal').classList.add('open');
+
+    try {
+        const res = await fetch(`/api/admin/bots/${tenantId}/backups`);
+        const data = await res.json();
+        if (!data.ok || !data.backups.length) {
+            document.getElementById('logBody').textContent = 'No backups found.';
+            return;
+        }
+        document.getElementById('logBody').innerHTML = data.backups.map(b => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #333;">
+                <div>
+                    <strong>${b.backupId}</strong><br>
+                    <span style="font-size:11px;">${b.createdAt} · ${b.sizeKB} KB · ${b.reason} · by ${b.triggeredBy}</span>
+                </div>
+                <button onclick="restoreBot('${tenantId}','${b.backupId}')" style="background:#ff6b35;color:white;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px;">Restore</button>
+            </div>
+        `).join('');
+    } catch (err) {
+        document.getElementById('logBody').textContent = 'Error: ' + err.message;
+    }
+}
+
+async function restoreBot(tenantId, backupId) {
+    if (!confirm(`⚠️ Restore ${tenantId} from ${backupId}? This overwrites current state.`)) return;
+    try {
+        const res = await fetch(`/api/admin/bots/${tenantId}/restore`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ backupId }) });
+        const data = await res.json();
+        alert(data.ok ? `✅ Restored from ${backupId}` : `❌ ${data.error}`);
+    } catch (err) { alert('Failed: ' + err.message); }
 }
 
 // ─── Secrets ───

@@ -168,6 +168,29 @@ try {
     try { await adminImpersonate(req, res); }
     catch (err) { console.error('[Admin Error]', err); res.status(500).json({ error: 'Internal error' }); }
   });
+  // Backup & recovery
+  const { handleAdminBackup, handleClientBackup } = require(path.join(__dirname, 'api-local', 'admin', 'backup.js'));
+  app.post('/api/admin/bots/:tenantId/backup', async (req, res) => {
+    try { await handleAdminBackup(req, res); }
+    catch (err) { console.error('[Backup Error]', err); res.status(500).json({ error: 'Internal error' }); }
+  });
+  app.get('/api/admin/bots/:tenantId/backups', async (req, res) => {
+    try { await handleAdminBackup(req, res); }
+    catch (err) { console.error('[Backup Error]', err); res.status(500).json({ error: 'Internal error' }); }
+  });
+  app.post('/api/admin/bots/:tenantId/restore', async (req, res) => {
+    try { await handleAdminBackup(req, res); }
+    catch (err) { console.error('[Backup Error]', err); res.status(500).json({ error: 'Internal error' }); }
+  });
+  app.all('/api/settings/backup', async (req, res) => {
+    try { await handleClientBackup(req, res); }
+    catch (err) { console.error('[Backup Error]', err); res.status(500).json({ error: 'Internal error' }); }
+  });
+  app.post('/api/settings/restore', async (req, res) => {
+    try { await handleClientBackup(req, res); }
+    catch (err) { console.error('[Backup Error]', err); res.status(500).json({ error: 'Internal error' }); }
+  });
+
   // Secrets management
   const { handleAdminSecrets, handleClientSecrets } = require(path.join(__dirname, 'api-local', 'admin', 'secrets.js'));
   app.all('/api/admin/secrets', async (req, res) => {
