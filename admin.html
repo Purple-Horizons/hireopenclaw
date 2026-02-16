@@ -102,6 +102,20 @@
     </select>
 </div>
 
+<!-- Platform Secrets -->
+<div style="padding:0 24px 20px;">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div>
+                <h3 style="font-size:15px;">🔐 Platform Secrets</h3>
+                <p style="font-size:12px;color:var(--gray);margin-top:4px;">API keys shared across all bot instances (fal-ai, OpenRouter, etc.)</p>
+            </div>
+            <button class="btn btn-primary" onclick="showAddSecret('platform')" style="font-size:12px;padding:6px 14px;">+ Add Secret</button>
+        </div>
+        <div id="platformSecrets"><p style="color:var(--gray);font-size:13px;">Loading...</p></div>
+    </div>
+</div>
+
 <div class="clients" id="clientList">
     <p style="color:var(--gray);text-align:center;padding:40px;">Loading clients...</p>
 </div>
@@ -278,8 +292,70 @@ async function stopImpersonate() {
     } catch {}
 }
 
+// ─── Secrets ───
+
+async function loadSecrets(scope, containerId) {
+    const el = document.getElementById(containerId);
+    try {
+        const res = await fetch(`/api/admin/secrets?scope=${encodeURIComponent(scope)}`);
+        const data = await res.json();
+        if (!data.ok || !data.secrets.length) {
+            el.innerHTML = '<p style="color:var(--gray);font-size:13px;">No secrets configured.</p>';
+            return;
+        }
+        el.innerHTML = data.secrets.map(s => `
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:13px;">
+                <code style="background:var(--bg);padding:4px 8px;border-radius:4px;font-size:12px;min-width:180px;">${s.key}</code>
+                <span style="color:var(--gray);font-family:monospace;font-size:12px;">${s.preview}</span>
+                <span style="color:var(--gray);font-size:11px;flex:1;">${s.label !== s.key ? s.label : ''}</span>
+                <span style="color:var(--gray);font-size:11px;">${s.updatedAt ? new Date(s.updatedAt).toLocaleDateString() : ''}</span>
+                <button onclick="deleteSecret('${scope}','${s.key}','${containerId}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;">✕</button>
+            </div>
+        `).join('');
+    } catch (err) {
+        el.innerHTML = `<p style="color:var(--red);font-size:13px;">Error: ${err.message}</p>`;
+    }
+}
+
+async function showAddSecret(scope) {
+    const key = prompt('Secret name (e.g., FAL_AI_API_KEY):');
+    if (!key) return;
+    const label = prompt('Label (optional description):', key);
+    const value = prompt(`Value for ${key}:`);
+    if (!value) return;
+
+    try {
+        const res = await fetch('/api/admin/secrets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ scope, key: key.toUpperCase(), value, label: label || key })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            loadSecrets(scope, scope === 'platform' ? 'platformSecrets' : `secrets-${btoa(scope)}`);
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (err) {
+        alert('Failed: ' + err.message);
+    }
+}
+
+async function deleteSecret(scope, key, containerId) {
+    if (!confirm(`Delete secret ${key}?`)) return;
+    try {
+        await fetch('/api/admin/secrets', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ scope, key })
+        });
+        loadSecrets(scope, containerId);
+    } catch {}
+}
+
 // Init
 loadClients();
+loadSecrets('platform', 'platformSecrets');
 </script>
 </body>
 </html>

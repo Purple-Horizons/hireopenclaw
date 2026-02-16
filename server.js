@@ -168,6 +168,17 @@ try {
     try { await adminImpersonate(req, res); }
     catch (err) { console.error('[Admin Error]', err); res.status(500).json({ error: 'Internal error' }); }
   });
+  // Secrets management
+  const { handleAdminSecrets, handleClientSecrets } = require(path.join(__dirname, 'api-local', 'admin', 'secrets.js'));
+  app.all('/api/admin/secrets', async (req, res) => {
+    try { await handleAdminSecrets(req, res); }
+    catch (err) { console.error('[Admin Secrets Error]', err); res.status(500).json({ error: 'Internal error' }); }
+  });
+  app.all('/api/settings/secrets', async (req, res) => {
+    try { await handleClientSecrets(req, res); }
+    catch (err) { console.error('[Client Secrets Error]', err); res.status(500).json({ error: 'Internal error' }); }
+  });
+
   console.log('✓ Loaded admin routes');
 } catch (err) {
   console.warn('✗ Admin routes not loaded:', err.message);

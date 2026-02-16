@@ -478,14 +478,28 @@ async function loadSettingsTab() {
         </div>
         
         <!-- API Keys section hidden for MVP. Backend ready: api-local/settings/api-keys.js
-             Scenarios: website embed, Zapier/Make, Slack bridge, mobile app, cron jobs.
              Unhide when targeting developer/agency users (Phase 2). -->
+
+        <div class="settings-section">
+            <h3>🔐 Connected Services</h3>
+            <p style="color:#aaa;margin-bottom:16px;">Add your API keys for services your AI employee can use. Keys are encrypted and never shown again.</p>
+            <div id="clientSecrets"><p style="color:var(--gray);">Loading...</p></div>
+            <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="addClientSecret()">+ Add Secret</button>
+            </div>
+            <div style="margin-top:12px;font-size:12px;color:var(--gray);">
+                Common keys: <span style="color:#aaa;">ELEVENLABS_API_KEY, METRICOOL_API_KEY, METRICOOL_BRAND_ID</span>
+            </div>
+        </div>
         
         <div class="settings-section">
             <h3>Danger Zone</h3>
             <button class="btn btn-danger" onclick="confirmDeleteAccount()">Delete Account</button>
         </div>
     `;
+
+    // Load client secrets after render
+    loadClientSecrets();
 }
 
 // Team management functions
@@ -697,6 +711,73 @@ function confirmDeleteAccount() {
             showToast('Account deletion is disabled in beta. Contact support to delete your account.', 'warning', 5000);
         }
     });
+}
+
+// ─── Client Secrets ───
+
+async function loadClientSecrets() {
+    const el = document.getElementById('clientSecrets');
+    if (!el) return;
+    try {
+        const res = await fetch('/api/settings/secrets');
+        const data = await res.json();
+        if (!data.ok || !data.secrets?.length) {
+            el.innerHTML = '<p style="color:var(--gray);font-size:13px;">No secrets configured yet.</p>';
+            return;
+        }
+        el.innerHTML = data.secrets.map(s => `
+            <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;margin-bottom:8px;font-size:13px;">
+                <code style="background:var(--bg);padding:4px 8px;border-radius:4px;font-size:12px;min-width:180px;">${s.key}</code>
+                <span style="color:var(--gray);font-family:monospace;font-size:12px;">${s.preview}</span>
+                <span style="flex:1;color:var(--gray);font-size:12px;">${s.label !== s.key ? s.label : ''}</span>
+                <button class="btn btn-danger" style="padding:4px 10px;font-size:11px;" onclick="deleteClientSecret('${s.key}')">Remove</button>
+            </div>
+        `).join('');
+    } catch (err) {
+        el.innerHTML = `<p style="color:var(--red);font-size:13px;">Error loading secrets</p>`;
+    }
+}
+
+async function addClientSecret() {
+    const key = await showPromptDialog('Add Secret', 'Secret name (e.g., ELEVENLABS_API_KEY):');
+    if (!key) return;
+    const value = await showPromptDialog('Secret Value', `Paste your ${key} value:`);
+    if (!value) return;
+
+    try {
+        const res = await fetch('/api/settings/secrets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: key.toUpperCase(), value, label: key })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            showToast('Secret saved!', 'success');
+            loadClientSecrets();
+        } else {
+            showToast('Error: ' + data.error, 'error');
+        }
+    } catch {
+        showToast('Failed to save secret', 'error');
+    }
+}
+
+async function deleteClientSecret(key) {
+    const confirmed = await showConfirmDialog(`Remove ${key}? Services using it will stop working.`, 'Remove Secret', 'Remove', 'Cancel');
+    if (!confirmed) return;
+
+    try {
+        const res = await fetch('/api/settings/secrets', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            showToast('Secret removed', 'success');
+            loadClientSecrets();
+        }
+    } catch {}
 }
 
 // Initialize on load

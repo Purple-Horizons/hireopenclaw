@@ -76,7 +76,6 @@ async function requireBotOwnership(req, res, botId) {
 // Admin allowlist
 const ADMIN_EMAILS = new Set([
   'g@purplehorizons.io',
-  'gianni@purplehorizons.io',
 ]);
 
 function isAdmin(email) {
