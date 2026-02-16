@@ -477,33 +477,9 @@ async function loadSettingsTab() {
             <button class="btn btn-primary" onclick="showInviteTeamModal()">+ Invite Team Member</button>
         </div>
         
-        <div class="settings-section">
-            <h3>API Keys (${apiKeys.length})</h3>
-            <p style="color:#aaa;margin-bottom:16px;">Connect external tools to your AI employees.</p>
-            
-            ${apiKeys.length > 0 ? `
-                <div style="margin-bottom:16px;">
-                    ${apiKeys.map(key => `
-                        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;margin-bottom:8px;">
-                            <div style="flex:1;">
-                                <div style="font-weight:600;">${key.name}</div>
-                                <div style="font-size:12px;color:var(--gray);font-family:monospace;margin-top:6px;display:flex;align-items:center;gap:8px;">
-                                    <code style="background:var(--bg);padding:4px 8px;border-radius:4px;">${key.publicKey || key.preview}</code>
-                                    <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;" onclick="navigator.clipboard.writeText('${key.publicKey || key.preview}');showToast('Copied!','success')">📋 Copy</button>
-                                </div>
-                                <div style="font-size:11px;color:var(--gray);margin-top:6px;">
-                                    Created: ${new Date(key.createdAt).toLocaleDateString()}
-                                    ${key.lastUsedAt ? ` • Last used: ${new Date(key.lastUsedAt).toLocaleDateString()}` : ' • Never used'}
-                                </div>
-                            </div>
-                            <button class="btn btn-danger" style="padding:6px 12px;font-size:12px;" onclick="revokeApiKey('${key.keyId}')">Revoke</button>
-                        </div>
-                    `).join('')}
-                </div>
-            ` : '<p style="color:var(--gray);font-size:14px;margin-bottom:16px;">No API keys yet.</p>'}
-            
-            <button class="btn btn-primary" onclick="showGenerateApiKeyModal()">+ Generate API Key</button>
-        </div>
+        <!-- API Keys section hidden for MVP. Backend ready: api-local/settings/api-keys.js
+             Scenarios: website embed, Zapier/Make, Slack bridge, mobile app, cron jobs.
+             Unhide when targeting developer/agency users (Phase 2). -->
         
         <div class="settings-section">
             <h3>Danger Zone</h3>
