@@ -89,9 +89,14 @@ async function confirmAddBot() {
     }
     
     const roleMap = {
-        marketing: 'Content Creator',
-        sales: 'Sales Development',
-        support: 'Customer Support',
+        'content-writer': 'Content Writer',
+        marketing: 'Marketing',
+        sdr: 'Sales Development Rep',
+        sales: 'Sales / Closer',
+        researcher: 'Researcher',
+        'executive-assistant': 'Executive Assistant',
+        'customer-success': 'Customer Success',
+        support: 'Support',
         blank: 'Custom'
     };
     
