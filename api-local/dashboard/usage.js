@@ -72,8 +72,8 @@ module.exports = async (req, res) => {
         const cost = parseFloat(record.cost || 0);
         totalCost += cost;
         requestCount += 1;
-        tokensIn += parseInt(record.tokensIn || 0);
-        tokensOut += parseInt(record.tokensOut || 0);
+        tokensIn += parseInt(record.inputTokens || record.tokensIn || 0);
+        tokensOut += parseInt(record.outputTokens || record.tokensOut || 0);
         
         // By provider
         const provider = record.provider || 'unknown';
