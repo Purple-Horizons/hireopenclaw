@@ -14,10 +14,20 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Email parameter required' });
   }
 
-  // For local dev, return mock billing data
-  // TODO: Integrate with Stripe for real billing
+  // Plan details (aligned with site pricing)
+  const PLANS = {
+    starter: { price: 299, tokens: 500000, maxBots: 1 },
+    team:    { price: 799, tokens: 2000000, maxBots: 3 },
+    enterprise: { price: 2000, tokens: 10000000, maxBots: 50 }
+  };
+
+  // TODO: Fetch real plan from user record / Stripe
+  const plan = 'starter';
+  const planInfo = PLANS[plan];
+
   return res.status(200).json({
-    plan: 'starter',
+    plan,
+    planPrice: planInfo.price,
     status: 'active',
     billingCycle: 'monthly',
     nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -26,12 +36,12 @@ module.exports = async (req, res) => {
       end: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
     },
     usage: {
-      tokensUsed: 123456,
-      tokensLimit: 500000,
-      percentUsed: 24.7
+      tokensUsed: 0,
+      tokensLimit: planInfo.tokens,
+      percentUsed: 0
     },
     upcomingInvoice: {
-      amount: 299,
+      amount: planInfo.price * 100, // cents
       currency: 'usd',
       date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
     }

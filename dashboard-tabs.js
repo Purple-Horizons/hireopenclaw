@@ -355,31 +355,32 @@ function renderBillingDetails(billing, margin) {
     const container = document.getElementById('billing-details');
     if (!container) return;
     
-    const marginStatus = margin.margin?.status || 'unknown';
-    const marginColor = marginStatus === 'healthy' ? 'var(--green)' : 
-                        marginStatus === 'warning' ? 'var(--yellow)' : 'var(--red)';
+    const tokensUsed = billing.usage?.tokensUsed || 0;
+    const tokensLimit = billing.usage?.tokensLimit || 500000;
+    const pctUsed = tokensLimit > 0 ? ((tokensUsed / tokensLimit) * 100).toFixed(1) : 0;
+    const pctColor = pctUsed >= 90 ? 'var(--red)' : pctUsed >= 70 ? 'var(--yellow)' : 'var(--green)';
     
     container.innerHTML = `
         <div class="billing-summary">
             <div class="billing-stat-card">
                 <div class="label">Current Plan</div>
                 <div class="value">${billing.plan?.toUpperCase() || 'STARTER'}</div>
-                <div class="sub">$${billing.planPrice || 29}/month</div>
+                <div class="sub">$${billing.planPrice || 299}/month</div>
             </div>
             <div class="billing-stat-card">
-                <div class="label">Revenue</div>
-                <div class="value">$${margin.revenue || 0}</div>
-                <div class="sub">This month</div>
+                <div class="label">Token Usage</div>
+                <div class="value" style="color:${pctColor};">${pctUsed}%</div>
+                <div class="sub">${tokensUsed.toLocaleString()} / ${tokensLimit.toLocaleString()}</div>
             </div>
             <div class="billing-stat-card">
-                <div class="label">Costs</div>
-                <div class="value">$${margin.costs?.total || 0}</div>
-                <div class="sub">Tokens: $${margin.costs?.tokens || 0} | Compute: $${margin.costs?.compute || 0}</div>
+                <div class="label">AI Employees</div>
+                <div class="value">${margin.bots?.count || 1}</div>
+                <div class="sub">${margin.bots?.uptimeHours || 0}h uptime this month</div>
             </div>
-            <div class="billing-stat-card" style="border-left: 3px solid ${marginColor};">
-                <div class="label">Margin</div>
-                <div class="value" style="color:${marginColor};">$${margin.margin?.amount || 0}</div>
-                <div class="sub">${margin.margin?.percent || 0}% (${marginStatus})</div>
+            <div class="billing-stat-card">
+                <div class="label">Next Invoice</div>
+                <div class="value">$${billing.planPrice || 299}</div>
+                <div class="sub">${billing.nextBillingDate ? new Date(billing.nextBillingDate).toLocaleDateString() : 'TBD'}</div>
             </div>
         </div>
         
@@ -390,22 +391,20 @@ function renderBillingDetails(billing, margin) {
         </div>
         
         <div class="cost-breakdown">
-            <h3>Cost Breakdown</h3>
-            <p style="color:#aaa;margin-bottom:16px;">Understanding your AI employee costs</p>
-            <div style="display:grid;gap:16px;">
-                <div style="background:rgba(255,255,255,0.03);padding:16px;border-radius:8px;">
-                    <strong>Token Costs: $${margin.costs?.tokens || 0}</strong><br>
-                    <span style="color:#888;font-size:14px;">
-                        ${margin.usage?.inputTokens || 0} input + ${margin.usage?.outputTokens || 0} output tokens<br>
-                        Model: ${margin.bots?.avgModel || 'gpt-4o'}
-                    </span>
+            <h3>Plan Details</h3>
+            <p style="color:#aaa;margin-bottom:16px;">What's included in your ${billing.plan?.charAt(0).toUpperCase() + billing.plan?.slice(1) || 'Starter'} plan</p>
+            <div style="display:grid;gap:12px;">
+                <div style="background:rgba(255,255,255,0.03);padding:16px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+                    <span>Token Allowance</span>
+                    <strong>${tokensLimit.toLocaleString()} / month</strong>
                 </div>
-                <div style="background:rgba(255,255,255,0.03);padding:16px;border-radius:8px;">
-                    <strong>Compute Costs: $${margin.costs?.compute || 0}</strong><br>
-                    <span style="color:#888;font-size:14px;">
-                        ${margin.bots?.uptimeHours || 0} hours across ${margin.bots?.count || 0} bot(s)<br>
-                        Fargate: $0.04/hour per bot
-                    </span>
+                <div style="background:rgba(255,255,255,0.03);padding:16px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+                    <span>Status</span>
+                    <strong style="color:var(--green);">● ${billing.status?.charAt(0).toUpperCase() + billing.status?.slice(1) || 'Active'}</strong>
+                </div>
+                <div style="background:rgba(255,255,255,0.03);padding:16px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+                    <span>Billing Cycle</span>
+                    <strong>Monthly</strong>
                 </div>
             </div>
         </div>
@@ -484,11 +483,17 @@ async function loadSettingsTab() {
             <h3>🔐 Connected Services</h3>
             <p style="color:#aaa;margin-bottom:16px;">Add your API keys for services your AI employee can use. Keys are encrypted and never shown again.</p>
             <div id="clientSecrets"><p style="color:var(--gray);">Loading...</p></div>
-            <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
-                <button class="btn btn-primary" onclick="addClientSecret()">+ Add Secret</button>
+            <div id="newSecretRow" style="display:none;margin-top:8px;">
+                <div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--bg-card);border:2px solid var(--primary);border-radius:8px;">
+                    <input type="text" id="newSecretName" placeholder="KEY_NAME" style="background:var(--bg);border:1px solid var(--light-gray);border-radius:4px;padding:8px 10px;color:var(--white);font-family:monospace;font-size:12px;min-width:180px;text-transform:uppercase;">
+                    <input type="password" id="newSecretValue" placeholder="Paste your secret value…" style="flex:1;background:var(--bg);border:1px solid var(--light-gray);border-radius:4px;padding:8px 10px;color:var(--white);font-family:monospace;font-size:12px;">
+                    <button class="btn btn-primary" style="padding:6px 14px;font-size:12px;white-space:nowrap;" onclick="saveNewSecret()">Save</button>
+                    <button class="btn btn-secondary" style="padding:6px 10px;font-size:12px;" onclick="cancelNewSecret()">✕</button>
+                </div>
             </div>
-            <div style="margin-top:12px;font-size:12px;color:var(--gray);">
-                Common keys: <span style="color:#aaa;">ELEVENLABS_API_KEY, METRICOOL_API_KEY, METRICOOL_BRAND_ID</span>
+            <div style="margin-top:12px;display:flex;align-items:center;gap:16px;">
+                <button class="btn btn-primary" onclick="showNewSecretRow()">+ Add Secret</button>
+                <span style="font-size:12px;color:var(--gray);">Common: <span style="color:#aaa;">ELEVENLABS_API_KEY, METRICOOL_API_KEY, METRICOOL_BRAND_ID</span></span>
             </div>
         </div>
         
@@ -738,21 +743,36 @@ async function loadClientSecrets() {
     }
 }
 
-async function addClientSecret() {
-    const key = await showPromptDialog('Add Secret', 'Secret name (e.g., ELEVENLABS_API_KEY):');
-    if (!key) return;
-    const value = await showPromptDialog('Secret Value', `Paste your ${key} value:`);
-    if (!value) return;
+function showNewSecretRow() {
+    document.getElementById('newSecretRow').style.display = 'block';
+    document.getElementById('newSecretName').value = '';
+    document.getElementById('newSecretValue').value = '';
+    setTimeout(() => document.getElementById('newSecretName').focus(), 50);
+}
+
+function cancelNewSecret() {
+    document.getElementById('newSecretRow').style.display = 'none';
+}
+
+async function saveNewSecret() {
+    const nameEl = document.getElementById('newSecretName');
+    const valueEl = document.getElementById('newSecretValue');
+    const key = (nameEl.value || '').trim().toUpperCase();
+    const value = (valueEl.value || '').trim();
+
+    if (!key) { nameEl.focus(); showToast('Enter a key name', 'error'); return; }
+    if (!value) { valueEl.focus(); showToast('Enter the secret value', 'error'); return; }
 
     try {
         const res = await fetch('/api/settings/secrets', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key: key.toUpperCase(), value, label: key })
+            body: JSON.stringify({ key, value, label: key })
         });
         const data = await res.json();
         if (data.ok) {
             showToast('Secret saved!', 'success');
+            cancelNewSecret();
             loadClientSecrets();
         } else {
             showToast('Error: ' + data.error, 'error');
