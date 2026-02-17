@@ -284,13 +284,13 @@ function createBotCard(bot) {
                     <div style="color:var(--red);font-weight:600;">🗑 Deleted ${bot.terminatedAt ? 'on ' + new Date(bot.terminatedAt).toLocaleDateString() : ''}</div>
                     <div style="font-size:11px;color:var(--gray);margin-top:4px;">Historical stats preserved</div>
                    </div>`
-                : `<button class="btn btn-primary" onclick="openBot('${bot.id}', '${bot.endpoint}')">💬 Open Chat</button>
+                : `<button class="btn btn-primary" aria-label="Open chat with ${escapeHtml(bot.name)}" onclick="openBot('${bot.id}', '${bot.endpoint}')">💬 Open Chat</button>
                    ${bot.status === 'active' 
-                       ? `<button class="btn btn-secondary" onclick="botAction('${bot.id}', 'pause')">⏸ Pause</button>
-                          <button class="btn btn-secondary" onclick="botAction('${bot.id}', 'restart')">🔄 Restart</button>`
-                       : `<button class="btn btn-primary" onclick="botAction('${bot.id}', 'resume')">▶ Resume</button>`
+                       ? `<button class="btn btn-secondary" aria-label="Pause ${escapeHtml(bot.name)}" onclick="botAction('${bot.id}', 'pause')">⏸ Pause</button>
+                          <button class="btn btn-secondary" aria-label="Restart ${escapeHtml(bot.name)}" onclick="botAction('${bot.id}', 'restart')">🔄 Restart</button>`
+                       : `<button class="btn btn-primary" aria-label="Resume ${escapeHtml(bot.name)}" onclick="botAction('${bot.id}', 'resume')">▶ Resume</button>`
                    }
-                   <button class="btn btn-danger" onclick="showDeleteModal('${bot.id}', '${escapeHtml(bot.name)}')">🗑 Delete</button>`
+                   <button class="btn btn-danger" aria-label="Delete ${escapeHtml(bot.name)}" onclick="showDeleteModal('${bot.id}', '${escapeHtml(bot.name)}')">🗑 Delete</button>`
             }
         </div>
     `;

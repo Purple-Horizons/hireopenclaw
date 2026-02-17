@@ -163,6 +163,7 @@ async function renderUsageDetails(data) {
         
         <div class="usage-breakdown">
             <h3>Daily Breakdown</h3>
+            <div class="usage-table-wrapper" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
             <table class="usage-table">
                 <thead>
                     <tr>
@@ -185,6 +186,7 @@ async function renderUsageDetails(data) {
                     `).join('')}
                 </tbody>
             </table>
+            </div>
         </div>
     `;
     

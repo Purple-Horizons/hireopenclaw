@@ -824,6 +824,10 @@
             .form-section {
                 padding: 24px;
             }
+            /* TASK-403: Touch targets */
+            button, .btn, .cta-button, .nav-cta, [role="button"], a.action { min-height: 44px; min-width: 44px; padding: 10px 16px; }
+            /* TASK-404: Prevent iOS zoom */
+            input, textarea, select { font-size: 16px !important; }
         }
     </style>
 </head>
@@ -847,10 +851,10 @@
             <p class="subtitle">Get a pre-trained AI employee ready to work in 48 hours. No setup. Fixed pricing.</p>
             
             <form id="signup-form" style="max-width:420px;margin:0 auto 20px;display:flex;flex-direction:column;gap:12px;">
-                <input type="text" name="name" required placeholder="Your name" style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:14px 16px;font-size:15px;color:var(--white);font-family:inherit;width:100%;" />
-                <input type="email" name="email" required placeholder="Email address" style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:14px 16px;font-size:15px;color:var(--white);font-family:inherit;width:100%;" />
-                <input type="tel" name="phone" required placeholder="Phone number" style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:14px 16px;font-size:15px;color:var(--white);font-family:inherit;width:100%;" />
-                <button type="submit" class="cta-button" style="border:none;cursor:pointer;font-family:inherit;width:100%;text-align:center;">
+                <input type="text" name="name" required placeholder="Your name" aria-label="Full name" style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:14px 16px;font-size:15px;color:var(--white);font-family:inherit;width:100%;" />
+                <input type="email" name="email" required placeholder="Email address" aria-label="Email address" style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:14px 16px;font-size:15px;color:var(--white);font-family:inherit;width:100%;" />
+                <input type="tel" name="phone" required placeholder="Phone number" aria-label="Phone number" style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:14px 16px;font-size:15px;color:var(--white);font-family:inherit;width:100%;" />
+                <button type="submit" class="cta-button" aria-label="Get started" style="border:none;cursor:pointer;font-family:inherit;width:100%;text-align:center;">
                     <span class="btn-text">Get Started →</span>
                     <span class="btn-loading" style="display:none;">Sending...</span>
                 </button>
@@ -861,7 +865,7 @@
             <div style="max-width:420px;margin:32px auto 0;padding-top:24px;border-top:1px solid var(--light-gray);">
                 <p style="color:var(--gray);margin-bottom:12px;text-align:center;">Already have an account?</p>
                 <form id="login-form" style="display:flex;gap:12px;">
-                    <input type="email" name="email" required placeholder="your@email.com" style="flex:1;background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:14px 16px;font-size:15px;color:var(--white);font-family:inherit;" />
+                    <input type="email" name="email" required placeholder="your@email.com" aria-label="Email address" style="flex:1;background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:14px 16px;font-size:15px;color:var(--white);font-family:inherit;" />
                     <button type="submit" class="cta-button" style="border:none;cursor:pointer;font-family:inherit;background:#333;color:white;white-space:nowrap;padding:14px 24px;">
                         <span class="btn-text">Send Login Link</span>
                         <span class="btn-loading" style="display:none;">Sending...</span>
@@ -1234,7 +1238,7 @@
                 });
 
                 if (response.ok) {
-                    window.location.href = '/onboarding';
+                    window.location.href = '/dashboard?welcome=true';
                 } else {
                     throw new Error('Signup failed');
                 }

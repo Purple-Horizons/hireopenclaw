@@ -76,6 +76,11 @@
         .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; cursor: zoom-out; }
         .lightbox.active { display: flex; }
         .lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+        @media (max-width: 768px) {
+            .input-bar textarea { font-size: 16px; }
+            .input-bar button { min-height: 44px; min-width: 44px; }
+            button, [role="button"] { min-height: 44px; min-width: 44px; }
+        }
     </style>
 </head>
 <body>
@@ -90,7 +95,7 @@
     <div class="messages" id="messages"></div>
     <div class="typing" id="typing">AI is thinking...</div>
     <div class="input-bar">
-        <textarea id="messageInput" placeholder="Type a message... (Shift+Enter for new line)" rows="1" autocomplete="off"></textarea>
+        <textarea id="messageInput" placeholder="Type a message... (Shift+Enter for new line)" rows="1" autocomplete="off" aria-label="Chat message input"></textarea>
         <button id="sendBtn" onclick="sendMessage()">Send</button>
     </div>
     <div class="lightbox" id="lightbox" onclick="closeLightbox()">
