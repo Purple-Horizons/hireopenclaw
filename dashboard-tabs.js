@@ -211,10 +211,14 @@ async function renderUsageDetails(data) {
     renderDetailedUsageChart(dailyUsage);
 }
 
-function renderDetailedUsageChart(days) {
-    // Use Chart.js if available, fallback to SVG
+async function renderDetailedUsageChart(days) {
+    // Lazy load Chart.js, fallback to SVG
     const chartContainer = document.getElementById('detailedUsageChart');
     if (!chartContainer || days.length === 0) return;
+    
+    if (typeof Chart === 'undefined' && typeof loadChartLib === 'function') {
+        try { await loadChartLib(); } catch(e) { /* fallback to SVG */ }
+    }
     
     if (typeof Chart !== 'undefined') {
         // Replace SVG with canvas for Chart.js

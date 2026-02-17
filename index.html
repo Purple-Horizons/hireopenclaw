@@ -30,6 +30,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
+        .form-input { background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:14px 16px;font-size:15px;color:var(--white);font-family:inherit;width:100%; }
+        .form-input-flex { flex:1;background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:14px 16px;font-size:15px;color:var(--white);font-family:inherit; }
+        .text-success { color: #10b981; }
         * {
             margin: 0;
             padding: 0;
@@ -851,9 +854,9 @@
             <p class="subtitle">Get a pre-trained AI employee ready to work in 48 hours. No setup. Fixed pricing.</p>
             
             <form id="signup-form" style="max-width:420px;margin:0 auto 20px;display:flex;flex-direction:column;gap:12px;">
-                <input type="text" name="name" required placeholder="Your name" aria-label="Full name" style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:14px 16px;font-size:15px;color:var(--white);font-family:inherit;width:100%;" />
-                <input type="email" name="email" required placeholder="Email address" aria-label="Email address" style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:14px 16px;font-size:15px;color:var(--white);font-family:inherit;width:100%;" />
-                <input type="tel" name="phone" required placeholder="Phone number" aria-label="Phone number" style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:14px 16px;font-size:15px;color:var(--white);font-family:inherit;width:100%;" />
+                <input type="text" name="name" required placeholder="Your name" aria-label="Full name" class="form-input" />
+                <input type="email" name="email" required placeholder="Email address" aria-label="Email address" class="form-input" />
+                <input type="tel" name="phone" required placeholder="Phone number" aria-label="Phone number" class="form-input" />
                 <button type="submit" class="cta-button" aria-label="Get started" style="border:none;cursor:pointer;font-family:inherit;width:100%;text-align:center;">
                     <span class="btn-text">Get Started →</span>
                     <span class="btn-loading" style="display:none;">Sending...</span>
@@ -865,7 +868,7 @@
             <div style="max-width:420px;margin:32px auto 0;padding-top:24px;border-top:1px solid var(--light-gray);">
                 <p style="color:var(--gray);margin-bottom:12px;text-align:center;">Already have an account?</p>
                 <form id="login-form" style="display:flex;gap:12px;">
-                    <input type="email" name="email" required placeholder="your@email.com" aria-label="Email address" style="flex:1;background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:14px 16px;font-size:15px;color:var(--white);font-family:inherit;" />
+                    <input type="email" name="email" required placeholder="your@email.com" aria-label="Email address" class="form-input-flex" />
                     <button type="submit" class="cta-button" style="border:none;cursor:pointer;font-family:inherit;background:#333;color:white;white-space:nowrap;padding:14px 24px;">
                         <span class="btn-text">Send Login Link</span>
                         <span class="btn-loading" style="display:none;">Sending...</span>
@@ -981,7 +984,7 @@
                 <div class="security-icon">🎙️</div>
                 <div class="security-content">
                     <h3>NEW: Voice Chat Built In — Talk to Your AI Employee</h3>
-                    <p>Skip the typing. Just talk. Every HireOpenClaw employee includes <strong style="color: #10b981;">OpenClaw Voice</strong> — real-time voice conversations in your browser. Like talking to Alexa, but it actually knows your business. <a href="https://openclawvoice.com" target="_blank" style="color: #10b981;">Learn more →</a></p>
+                    <p>Skip the typing. Just talk. Every HireOpenClaw employee includes <strong class="text-success">OpenClaw Voice</strong> — real-time voice conversations in your browser. Like talking to Alexa, but it actually knows your business. <a href="https://openclawvoice.com" target="_blank" class="text-success">Learn more →</a></p>
                 </div>
             </div>
         </div>
@@ -1057,9 +1060,9 @@
             <p class="subtitle">No usage calculators. No "contact sales." No anxiety.</p>
             
             <div class="pricing-grid">
-                <div class="pricing-card">
+                <div class="pricing-card" data-plan="starter">
                     <h3>Starter</h3>
-                    <div class="price">$29<span>/mo</span></div>
+                    <div class="price" data-price="29">$29<span>/mo</span></div>
                     <p class="description">One focused AI employee</p>
                     <ul>
                         <li>1 AI employee</li>
@@ -1071,9 +1074,9 @@
                     <a href="#" class="cta-button" onclick="window.scrollTo({top:0,behavior:'smooth'});document.querySelector('#signup-form input[name=name]').focus();return false;">Get Started</a>
                 </div>
 
-                <div class="pricing-card featured">
+                <div class="pricing-card featured" data-plan="pro">
                     <h3>Pro</h3>
-                    <div class="price">$99<span>/mo</span></div>
+                    <div class="price" data-price="99">$99<span>/mo</span></div>
                     <p class="description">Most popular</p>
                     <ul>
                         <li>Up to 3 AI employees</li>
@@ -1086,9 +1089,9 @@
                     <a href="#" class="cta-button" onclick="window.scrollTo({top:0,behavior:'smooth'});document.querySelector('#signup-form input[name=name]').focus();return false;">Get Started</a>
                 </div>
 
-                <div class="pricing-card">
+                <div class="pricing-card" data-plan="business">
                     <h3>Business</h3>
-                    <div class="price">$299<span>/mo</span></div>
+                    <div class="price" data-price="299">$299<span>/mo</span></div>
                     <p class="description">Scale your AI workforce</p>
                     <ul>
                         <li>Up to 10 AI employees</li>
@@ -1101,9 +1104,9 @@
                     <a href="#" class="cta-button" onclick="window.scrollTo({top:0,behavior:'smooth'});document.querySelector('#signup-form input[name=name]').focus();return false;">Get Started</a>
                 </div>
 
-                <div class="pricing-card">
+                <div class="pricing-card" data-plan="enterprise">
                     <h3>Enterprise</h3>
-                    <div class="price">$999<span>/mo</span></div>
+                    <div class="price" data-price="999">$999<span>/mo</span></div>
                     <p class="description">Full AI workforce</p>
                     <ul>
                         <li>Up to 50 AI employees</li>
@@ -1288,6 +1291,20 @@
             input.addEventListener('blur', function() { validateEmail(this); });
         });
         window.validateEmail = validateEmail;
+
+        // Dynamic pricing (fetch from API if available, fallback to hardcoded)
+        fetch('/api/plans').then(r => r.json()).then(plans => {
+            if (!plans || !Array.isArray(plans)) return;
+            plans.forEach(function(plan) {
+                const card = document.querySelector('[data-plan="' + plan.id + '"]');
+                if (!card) return;
+                const priceEl = card.querySelector('[data-price]');
+                if (priceEl && plan.price != null) {
+                    priceEl.innerHTML = '$' + plan.price + '<span>/mo</span>';
+                    priceEl.setAttribute('data-price', plan.price);
+                }
+            });
+        }).catch(function() { /* use hardcoded prices */ });
     })();
     </script>
     <script src="/_vercel/insights/script.js" defer></script>

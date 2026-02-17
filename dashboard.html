@@ -13,6 +13,13 @@
         :root {
             /* Tab styles */
         }
+        .hidden { display: none; }
+        .modal-input { width:100%; padding:12px; background:var(--bg); border:1px solid var(--light-gray); border-radius:8px; color:white; font-size:14px; }
+        .form-label { display:block; margin-bottom:8px; font-size:14px; color:var(--gray); }
+        .form-select { padding:12px 16px; background:var(--bg-card); border:1px solid var(--light-gray); border-radius:8px; color:var(--white); font-size:14px; cursor:pointer; }
+        .text-red { color:var(--red); }
+        .text-green { color:var(--green); }
+        .empty-state { color:var(--gray); text-align:center; padding:40px; }
         .tab-btn:hover {
             color: var(--white) !important;
             background: rgba(255,255,255,0.05);
@@ -798,14 +805,14 @@
             <input type="text" id="botSearch" placeholder="🔍 Search by name, role, or ID..." 
                    style="flex:1;min-width:250px;padding:12px 16px;background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;color:var(--white);font-size:14px;" />
             <select id="statusFilter" 
-                    style="padding:12px 16px;background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;color:var(--white);font-size:14px;cursor:pointer;">
+                    class="form-select">
                 <option value="all">All Status</option>
                 <option value="active">🟢 Active</option>
                 <option value="paused">🟡 Paused</option>
                 <option value="error">🔴 Error</option>
             </select>
             <select id="sortBy" 
-                    style="padding:12px 16px;background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;color:var(--white);font-size:14px;cursor:pointer;">
+                    class="form-select">
                 <option value="name">Sort: Name</option>
                 <option value="usage">Sort: Usage ↓</option>
                 <option value="lastActive">Sort: Last Active ↓</option>
@@ -886,14 +893,14 @@
     <!-- Billing Tab -->
     <div id="billing-tab" class="tab-content" style="display:none;">
         <div id="billing-details" style="padding:20px 0;">
-            <p style="color:var(--gray);text-align:center;padding:40px;">Loading billing data...</p>
+            <p class="empty-state">Loading billing data...</p>
         </div>
     </div>
 
     <!-- Settings Tab -->
     <div id="settings-tab" class="tab-content" style="display:none;">
         <div id="settings-details" style="padding:20px 0;">
-            <p style="color:var(--gray);text-align:center;padding:40px;">Loading settings...</p>
+            <p class="empty-state">Loading settings...</p>
         </div>
     </div>
 
@@ -912,12 +919,12 @@
             <p>Create a new bot to help with your work.</p>
             
             <div style="margin: 20px 0;">
-                <label style="display:block; margin-bottom:8px; font-size:14px; color:var(--gray);">Bot Name</label>
+                <label class="form-label">Bot Name</label>
                 <input type="text" id="newBotName" placeholder="e.g., Sarah (Marketing)" 
-                       style="width:100%; padding:12px; background:var(--bg); border:1px solid var(--light-gray); border-radius:8px; color:white; font-size:14px;">
+                       class="modal-input">
                 
                 <label style="display:block; margin:16px 0 8px; font-size:14px; color:var(--gray);">Role</label>
-                <select id="newBotRole" style="width:100%; padding:12px; background:var(--bg); border:1px solid var(--light-gray); border-radius:8px; color:white; font-size:14px;">
+                <select id="newBotRole" class="modal-input">
                     <option value="content-writer">✍️ Content Writer</option>
                     <option value="marketing">📣 Marketing</option>
                     <option value="sdr">📞 Sales Development (SDR)</option>
@@ -957,9 +964,9 @@
             <p>Enter a new name for this bot.</p>
             
             <div style="margin: 20px 0;">
-                <label style="display:block; margin-bottom:8px; font-size:14px; color:var(--gray);">New Name</label>
+                <label class="form-label">New Name</label>
                 <input type="text" id="renameInput" placeholder="e.g., Sarah (Marketing)" 
-                       style="width:100%; padding:12px; background:var(--bg); border:1px solid var(--light-gray); border-radius:8px; color:white; font-size:14px;">
+                       class="modal-input">
             </div>
             
             <div class="modal-actions">
@@ -969,8 +976,39 @@
         </div>
     </div>
     
-    <!-- Chart.js for analytics -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        .input-error { border-color: #ef4444 !important; }
+        .input-valid { border-color: #22c55e !important; }
+    </style>
+    <script>
+    (function() {
+        // Email validation
+        const emailInput = document.getElementById('loginEmail');
+        if (emailInput) {
+            const feedback = emailInput.nextElementSibling;
+            function validate() {
+                const email = emailInput.value.trim();
+                const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+                if (!email) { if(feedback) feedback.textContent=''; emailInput.classList.remove('input-error','input-valid'); }
+                else if (!valid) { if(feedback) feedback.textContent='Please enter a valid email address'; emailInput.classList.add('input-error'); emailInput.classList.remove('input-valid'); }
+                else { if(feedback) feedback.textContent=''; emailInput.classList.remove('input-error'); emailInput.classList.add('input-valid'); }
+                return valid;
+            }
+            emailInput.addEventListener('input', validate);
+            emailInput.addEventListener('blur', validate);
+        }
+        // Lazy load Chart.js
+        window.loadChartLib = function() {
+            if (window.Chart) return Promise.resolve();
+            return new Promise(function(resolve) {
+                var script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+                script.onload = resolve;
+                document.head.appendChild(script);
+            });
+        };
+    })();
+    </script>
     <!-- Auto-auth script (hash fragment token extraction) -->
     <script src="/public/auto-auth.js"></script>
     <!-- Modal system -->

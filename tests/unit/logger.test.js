@@ -32,9 +32,14 @@ describe('logger', () => {
     expect(parsed.message).toBe('test message');
   });
 
-  test('respects log levels - debug shown at debug level', () => {
+  test('respects log levels - info suppresses debug', () => {
+    jest.resetModules();
+    process.env.LOG_LEVEL = 'info';
+    const infoLogger = require('../../api-local/util/logger');
     consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    logger.debug('mod', 'debug msg');
+    infoLogger.debug('mod', 'debug msg');
+    expect(consoleSpy).not.toHaveBeenCalled();
+    infoLogger.info('mod', 'info msg');
     expect(consoleSpy).toHaveBeenCalled();
   });
 

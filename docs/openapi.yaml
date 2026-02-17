@@ -1,0 +1,483 @@
+openapi: '3.0.3'
+info:
+  title: HireOpenClaw API
+  version: '1.0.0'
+  description: AI Employee Management Platform API
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development (v1)
+  - url: http://localhost:3000/api
+    description: Local development (legacy)
+
+paths:
+  /auth/magic-link:
+    post:
+      summary: Request magic link login
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Magic link sent (always 200 to prevent enumeration)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /auth/session:
+    get:
+      summary: Validate session
+      tags: [Auth]
+      responses:
+        '200':
+          description: Session info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  email:
+                    type: string
+                  isAdmin:
+                    type: boolean
+        '401':
+          description: No valid session
+
+  /auth/csrf:
+    get:
+      summary: Get CSRF token
+      tags: [Auth]
+      responses:
+        '200':
+          description: CSRF token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  csrfToken:
+                    type: string
+        '401':
+          description: No session
+
+  /plans:
+    get:
+      summary: List available plans
+      tags: [Plans]
+      responses:
+        '200':
+          description: Plan list
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    price:
+                      type: number
+                      nullable: true
+                    employees:
+                      type: integer
+                      nullable: true
+                    interactions:
+                      type: integer
+                      nullable: true
+        '304':
+          description: Not modified (ETag match)
+
+  /dashboard/bots:
+    get:
+      summary: List user's bots
+      tags: [Dashboard]
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Bot list
+        '401':
+          description: Authentication required
+
+  /dashboard/create-bot:
+    post:
+      summary: Create a new bot
+      tags: [Dashboard]
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  maxLength: 64
+                plan:
+                  type: string
+                  enum: [free, starter, pro, business, enterprise]
+                template:
+                  type: string
+                  enum: [blank, assistant, content, support, sales]
+      responses:
+        '200':
+          description: Bot created
+        '400':
+          description: Invalid input
+        '401':
+          description: Authentication required
+
+  /dashboard/bot-action:
+    post:
+      summary: Execute bot action (pause/resume/restart/terminate)
+      tags: [Dashboard]
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenantId, action]
+              properties:
+                tenantId:
+                  type: string
+                action:
+                  type: string
+                  enum: [pause, resume, restart, terminate]
+      responses:
+        '200':
+          description: Action executed
+        '401':
+          description: Authentication required
+        '403':
+          description: Not bot owner
+
+  /dashboard/rename-bot:
+    post:
+      summary: Rename a bot
+      tags: [Dashboard]
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenantId, name]
+              properties:
+                tenantId:
+                  type: string
+                name:
+                  type: string
+                  maxLength: 64
+      responses:
+        '200':
+          description: Bot renamed
+        '401':
+          description: Authentication required
+
+  /dashboard/container-stats:
+    get:
+      summary: Get container stats for a bot
+      tags: [Dashboard]
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: tenantId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Container statistics
+
+  /dashboard/billing:
+    get:
+      summary: Get billing info
+      tags: [Dashboard]
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Billing information
+
+  /dashboard/usage:
+    get:
+      summary: Get usage data
+      tags: [Dashboard]
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Usage data
+
+  /dashboard/usage/{tenantId}:
+    get:
+      summary: Get usage data for specific bot
+      tags: [Dashboard]
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Bot usage data
+
+  /dashboard/margin:
+    get:
+      summary: Get margin data
+      tags: [Dashboard]
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Margin data
+
+  /admin/clients:
+    get:
+      summary: List all clients (admin)
+      tags: [Admin]
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Client list
+        '403':
+          description: Admin access required
+
+  /admin/clients/{email}:
+    get:
+      summary: Get client by email (admin)
+      tags: [Admin]
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema:
+            type: string
+            format: email
+      responses:
+        '200':
+          description: Client details
+
+  /admin/bots/{tenantId}/backup:
+    post:
+      summary: Create bot backup (admin)
+      tags: [Admin]
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Backup created
+
+  /admin/bots/{tenantId}/backups:
+    get:
+      summary: List bot backups (admin)
+      tags: [Admin]
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Backup list
+
+  /admin/bots/{tenantId}/restore:
+    post:
+      summary: Restore bot from backup (admin)
+      tags: [Admin]
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [backupId]
+              properties:
+                backupId:
+                  type: string
+      responses:
+        '200':
+          description: Bot restored
+
+  /admin/impersonate:
+    post:
+      summary: Impersonate a user (admin)
+      tags: [Admin]
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Impersonation started
+
+  /admin/stop-impersonate:
+    post:
+      summary: Stop impersonation (admin)
+      tags: [Admin]
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Impersonation stopped
+
+  /settings/restore:
+    post:
+      summary: Restore client backup
+      tags: [Settings]
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Backup restored
+
+  /billing/checkout:
+    post:
+      summary: Create checkout session
+      tags: [Billing]
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Checkout session URL
+
+  /billing/webhook:
+    post:
+      summary: Stripe webhook handler
+      tags: [Billing]
+      responses:
+        '200':
+          description: Webhook processed
+
+  /chat/{botId}/send:
+    post:
+      summary: Send chat message
+      tags: [Chat]
+      parameters:
+        - name: botId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message:
+                  type: string
+      responses:
+        '200':
+          description: Message sent
+
+  /chat/{botId}/events:
+    get:
+      summary: SSE stream for chat events
+      tags: [Chat]
+      parameters:
+        - name: botId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: SSE event stream
+          content:
+            text/event-stream: {}
+
+  /chat/{botId}/history:
+    get:
+      summary: Get chat history
+      tags: [Chat]
+      parameters:
+        - name: botId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Chat history
+
+  /chat/{botId}/clear:
+    post:
+      summary: Clear chat history
+      tags: [Chat]
+      parameters:
+        - name: botId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: History cleared
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
