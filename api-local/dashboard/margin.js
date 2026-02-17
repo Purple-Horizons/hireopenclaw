@@ -18,13 +18,8 @@ const MODEL_COSTS = {
 // Fargate costs (us-east-1, as of Feb 2026)
 const FARGATE_COST_PER_HOUR = 0.04048; // 0.25 vCPU + 0.5 GB memory
 
-// Plan pricing
-const PLAN_PRICING = {
-  starter:    { price: 29,  maxBots: 1 },
-  pro:        { price: 99,  maxBots: 3 },
-  business:   { price: 299, maxBots: 10 },
-  enterprise: { price: 999, maxBots: 50 }
-};
+// Plan pricing — from single source of truth (TASK-149)
+const { PLAN_PRICING } = require('../data/plans.js');
 
 function calculateCost(inputTokens, outputTokens, model = 'gpt-4o', uptimeHours = 0) {
   const modelCost = MODEL_COSTS[model] || MODEL_COSTS.default;

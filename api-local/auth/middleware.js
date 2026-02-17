@@ -10,6 +10,9 @@ const { client: dynamodb, TABLES } = require('../util/dynamodb.js');
 const { ERROR_CODES, apiError } = require('../util/error-codes.js');
 const logger = require('../util/logger.js');
 
+// Named constants (TASK-306)
+const IMPERSONATION_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
+
 /**
  * Extract email from session cookie
  * Returns email string or null
@@ -122,7 +125,7 @@ function getEffectiveEmail(req) {
   // If admin is impersonating, use impersonated email
   if (session.impersonating && isAdmin(session.email)) {
     // Check timeout (1 hour)
-    if (session.impersonatedAt && Date.now() - session.impersonatedAt > 3600000) {
+    if (session.impersonatedAt && Date.now() - session.impersonatedAt > IMPERSONATION_TIMEOUT_MS) {
       logger.info('auth', 'Impersonation expired', { admin: session.email, target: session.impersonating });
       delete session.impersonating;
       delete session.impersonatedAt;

@@ -56,6 +56,12 @@ app.use((req, res, next) => {
   next();
 });
 
+// API version header
+app.use((req, res, next) => {
+  res.setHeader('X-API-Version', '1');
+  next();
+});
+
 // CSRF validation middleware for state-changing requests
 app.use(validateCsrf);
 
@@ -78,7 +84,14 @@ app.use('/api/admin', require(path.join(__dirname, 'api-local', 'routes', 'admin
 app.use('/api/dashboard', require(path.join(__dirname, 'api-local', 'routes', 'dashboard.js')));
 app.use('/api/settings', require(path.join(__dirname, 'api-local', 'routes', 'settings.js')));
 app.use('/api/billing', require(path.join(__dirname, 'api-local', 'routes', 'billing.js')));
-console.log('✓ Loaded Express Router modules (auth, admin, dashboard, settings, billing)');
+
+// Plans endpoint — public, no auth required (TASK-149)
+app.get('/api/plans', (req, res) => {
+  const { plans } = require(path.join(__dirname, 'api-local', 'data', 'plans.js'));
+  res.json(plans);
+});
+
+console.log('✓ Loaded Express Router modules (auth, admin, dashboard, settings, billing, plans)');
 
 // Remaining individual routes (signup, team, keys, analytics)
 const remainingRoutes = [

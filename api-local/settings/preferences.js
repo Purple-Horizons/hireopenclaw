@@ -15,17 +15,11 @@ const DEFAULTS = {
   marketingEmails: false
 };
 
+const { getEmailFromSession } = require('../auth/middleware.js');
+
 module.exports = async (req, res) => {
-  const tokenStore = require('../auth/token-store.js');
-  const cookies = req.headers.cookie || '';
-  const match = cookies.match(/session=([^;]+)/);
-  const sessionToken = match ? match[1] : null;
-  if (!sessionToken) return res.status(401).json({ error: 'Unauthorized' });
-  const session = tokenStore.get(sessionToken);
-  if (!session || session.type !== 'session' || session.expiresAt < Date.now()) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  const email = session.email;
+  const email = getEmailFromSession(req);
+  if (!email) return res.status(401).json({ error: 'Unauthorized' });
 
   if (req.method === 'GET') {
     try {

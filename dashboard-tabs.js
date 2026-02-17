@@ -6,7 +6,6 @@
 let currentTab = 'employees';
 
 function initTabs() {
-    // Add click handlers to all tab buttons
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const tab = e.target.dataset.tab;
@@ -14,12 +13,18 @@ function initTabs() {
         });
     });
     
-    // Load initial tab
-    switchTab('employees');
+    // TASK-429: Restore tab from URL hash
+    const hash = window.location.hash.slice(1);
+    const validTabs = ['employees', 'usage', 'billing', 'settings'];
+    switchTab(validTabs.includes(hash) ? hash : 'employees');
 }
 
 function switchTab(tabName) {
     currentTab = tabName;
+    // TASK-429: Persist tab in URL hash
+    if (window.location.hash.slice(1) !== tabName) {
+        history.replaceState(null, '', '#' + tabName);
+    }
     
     // Update tab buttons
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -99,6 +104,18 @@ async function renderUsageDetails(data) {
     
     const dailyUsage = data.dailyUsage || [];
     
+    // TASK-417: Empty state for usage tab
+    if (dailyUsage.length === 0 || dailyUsage.every(d => !d.inputTokens && !d.outputTokens && !d.messageCount)) {
+        container.innerHTML = `
+            <div style="text-align:center; padding:60px 20px; color:#888">
+                <div style="font-size:48px; margin-bottom:12px">📊</div>
+                <h3 style="margin:0 0 8px; color:var(--white)">No usage data yet</h3>
+                <p style="margin:0; font-size:14px">Usage statistics will appear here once your bot starts processing requests.</p>
+            </div>
+        `;
+        return;
+    }
+
     // Calculate totals
     const totalTokens = dailyUsage.reduce((sum, day) => sum + (day.inputTokens || 0) + (day.outputTokens || 0), 0);
     const totalMessages = dailyUsage.reduce((sum, day) => sum + (day.messageCount || 0), 0);

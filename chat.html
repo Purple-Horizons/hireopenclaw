@@ -339,7 +339,7 @@
 
             if (res.status === 401) {
                 typingEl.classList.remove('active');
-                addMessage('Session expired. Please log in again.', 'system');
+                addMessage('Session expired. <a href="/dashboard" style="color:#ff6b35">Log in again</a>', 'system');
                 setStatus('error', 'Unauthorized');
                 sending = false;
                 sendBtn.disabled = false;
@@ -348,7 +348,7 @@
 
             if (res.status === 403) {
                 typingEl.classList.remove('active');
-                addMessage('Access denied.', 'system');
+                addMessage('Access denied. You may not have permission for this bot. <a href="/dashboard" style="color:#ff6b35">Back to dashboard</a>', 'system');
                 setStatus('error', 'Forbidden');
                 sending = false;
                 sendBtn.disabled = false;
@@ -358,7 +358,7 @@
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
                 typingEl.classList.remove('active');
-                addMessage('Error: ' + (err.error || res.statusText), 'system');
+                addMessage('Couldn\'t get a response ('+res.status+'). <a href="javascript:void(0)" onclick="sendMessage()" style="color:#ff6b35">Retry</a> or <a href="/dashboard" style="color:#ff6b35">check bot status</a>', 'system');
                 setStatus('error');
                 sending = false;
                 sendBtn.disabled = false;
@@ -420,7 +420,7 @@
             }
 
         } catch (err) {
-            addMessage('Failed: ' + err.message, 'system');
+            addMessage('Connection failed. Check your internet and <a href="javascript:void(0)" onclick="sendMessage()" style="color:#ff6b35">try again</a>.', 'system');
         } finally {
             typingEl.classList.remove('active');
             setStatus('ready');
@@ -452,7 +452,7 @@
 
     // Init
     if (!botId) {
-        addMessage('Error: No bot ID. Go back to dashboard.', 'system');
+        addMessage('No bot ID found. <a href="/dashboard" style="color:#ff6b35">Go back to dashboard</a> and select a bot.', 'system');
         setStatus('error', 'No bot ID');
     } else {
         loadHistory().then(() => {

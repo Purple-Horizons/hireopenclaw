@@ -130,7 +130,7 @@ async function loadDashboard(email) {
         }
     } catch (err) {
         console.error('Failed to load dashboard:', err);
-        showToast('Failed to load dashboard. Check console for errors.', 'error');
+        showToast('Failed to load dashboard. Check your connection and refresh the page.', 'error');
     }
 }
 
@@ -430,7 +430,7 @@ async function botAction(tenantId, action) {
         }
     } catch (err) {
         console.error('Bot action failed:', err);
-        showToast('Action failed. Try again.', 'error');
+        showToast('Could not complete that action. Check your connection and try again.', 'error');
     } finally {
         pendingActions.delete(actionKey);
         buttons.forEach(btn => {

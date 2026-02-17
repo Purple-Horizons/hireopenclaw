@@ -14,7 +14,7 @@
  *   clawops-user-preferences — PK: userId
  */
 
-const { DynamoDBClient, CreateTableCommand, DescribeTableCommand, UpdateTableCommand } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBClient, CreateTableCommand, DescribeTableCommand, UpdateTableCommand, UpdateTimeToLiveCommand } = require('@aws-sdk/client-dynamodb');
 
 const EP = process.env.AWS_ENDPOINT_URL || 'http://localhost:4566';
 const REGION = process.env.AWS_DEFAULT_REGION || 'us-east-1';
@@ -140,6 +140,25 @@ async function main() {
   for (const t of TABLES) {
     await createOrSkip(t);
   }
+
+  // Enable TTL on clawops-usage table (TASK-250)
+  try {
+    await client.send(new UpdateTimeToLiveCommand({
+      TableName: 'clawops-usage',
+      TimeToLiveSpecification: {
+        Enabled: true,
+        AttributeName: 'expiresAt'
+      }
+    }));
+    console.log('  ✓ TTL enabled on clawops-usage (expiresAt, 90 days)');
+  } catch (err) {
+    if (err.name === 'ValidationException' && err.message.includes('already enabled')) {
+      console.log('  ✓ TTL already enabled on clawops-usage');
+    } else {
+      console.warn('  ⚠ TTL setup failed:', err.message);
+    }
+  }
+
   console.log('\nDone.');
 }
 

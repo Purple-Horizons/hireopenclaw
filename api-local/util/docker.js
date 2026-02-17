@@ -1,8 +1,12 @@
 const { execFileSync } = require('child_process');
 
+// Named constants (TASK-306)
+const DEFAULT_DOCKER_TIMEOUT_MS = 15000;
+const DEFAULT_DOCKER_RETRIES = 3;
+
 async function dockerExec(args, options = {}) {
-  const maxRetries = options.retries || 3;
-  const timeout = options.timeout || 15000;
+  const maxRetries = options.retries || DEFAULT_DOCKER_RETRIES;
+  const timeout = options.timeout || DEFAULT_DOCKER_TIMEOUT_MS;
   let lastError;
 
   for (let i = 0; i < maxRetries; i++) {

@@ -14,8 +14,8 @@ const SAFE_EMAIL = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 // Bot name — alphanumeric, spaces, hyphens, apostrophes (no shell metacharacters)
 const SAFE_BOT_NAME = /^[a-zA-Z0-9 _\-'.]{1,64}$/;
 
-// Plan names
-const VALID_PLANS = new Set(['free', 'starter', 'pro', 'business', 'enterprise']);
+// Plan names — from single source of truth (TASK-149)
+const { VALID_PLANS } = require('../data/plans.js');
 
 // Templates
 const VALID_TEMPLATES = new Set(['blank', 'assistant', 'content', 'support', 'sales']);

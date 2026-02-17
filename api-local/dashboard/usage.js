@@ -9,13 +9,8 @@ const { unmarshall } = require('@aws-sdk/util-dynamodb');
 const { client: dynamodb, TABLES } = require('../util/dynamodb.js');
 const { requireBotOwnership } = require('../auth/middleware.js');
 
-// Plan budget limits (API cost budgets per plan)
-const PLAN_BUDGETS = {
-  starter: 20.00,
-  pro: 80.00,
-  business: 180.00,
-  enterprise: 480.00
-};
+// Plan budget limits — from single source of truth (TASK-149)
+const { PLAN_BUDGETS } = require('../data/plans.js');
 
 module.exports = async (req, res) => {
   try {

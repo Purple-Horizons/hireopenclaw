@@ -14,12 +14,11 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Email parameter required' });
   }
 
-  const PLANS = {
-    starter:    { price: 29,  tokens: 500000,   maxBots: 1 },
-    pro:        { price: 99,  tokens: 2000000,  maxBots: 3 },
-    business:   { price: 299, tokens: 5000000,  maxBots: 10 },
-    enterprise: { price: 999, tokens: 20000000, maxBots: 50 }
-  };
+  const { PLAN_PRICING, PLAN_TOKEN_LIMITS } = require('../data/plans.js');
+  const PLANS = {};
+  for (const [k, v] of Object.entries(PLAN_PRICING)) {
+    PLANS[k] = { price: v.price, tokens: PLAN_TOKEN_LIMITS[k], maxBots: v.maxBots };
+  }
 
   // TODO: Fetch real plan from user record / Stripe
   const plan = 'starter';

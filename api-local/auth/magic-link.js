@@ -28,8 +28,9 @@ async function emailExists(email) {
 // Shared token store
 const tokenStore = require('./token-store.js');
 
-// Token expiry: 15 minutes
-const TOKEN_EXPIRY_MS = 15 * 60 * 1000;
+// Named constants (TASK-306)
+const TOKEN_EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
+const SESSION_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 function generateToken() {
   return crypto.randomBytes(32).toString('hex');
@@ -74,7 +75,7 @@ async function sendMagicLinkEmail(email, magicLink) {
   return true;
 }
 
-const { rateLimit } = require('./rate-limit.js');
+const { rateLimit, setRateLimitHeaders } = require('./rate-limit.js');
 
 module.exports = async (req, res) => {
   const { action } = req.query;
@@ -90,7 +91,9 @@ module.exports = async (req, res) => {
     // Rate limit by IP + email
     const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
     const rateLimitKey = `magic:${ip}:${email.toLowerCase()}`;
-    if (!rateLimit(rateLimitKey)) {
+    const rlResult = rateLimit(rateLimitKey);
+    setRateLimitHeaders(res, rlResult);
+    if (!rlResult.allowed) {
       return res.status(429).json({ error: 'Too many requests. Please try again later.' });
     }
     
@@ -135,7 +138,9 @@ module.exports = async (req, res) => {
     
     // Rate limit verify by IP
     const verifyIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
-    if (!rateLimit(`verify:${verifyIp}`)) {
+    const verifyRl = rateLimit(`verify:${verifyIp}`);
+    setRateLimitHeaders(res, verifyRl);
+    if (!verifyRl.allowed) {
       return res.status(429).json({ error: 'Too many requests. Please try again later.' });
     }
     
@@ -162,7 +167,7 @@ module.exports = async (req, res) => {
     
     // Create session token (30 days)
     const sessionToken = generateToken();
-    const sessionExpiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000);
+    const sessionExpiresAt = Date.now() + SESSION_EXPIRY_MS;
     
     tokenStore.set(sessionToken, {
       email: tokenData.email,

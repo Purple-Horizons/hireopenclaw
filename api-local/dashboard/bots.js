@@ -6,21 +6,10 @@
  */
 
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
-const tokenStore = require('../auth/token-store.js');
 const { QueryCommand: RawQueryCommand } = require('@aws-sdk/client-dynamodb');
 const { QueryCommand } = require('@aws-sdk/lib-dynamodb');
 const { docClient, TABLES } = require('../util/dynamodb.js');
-
-
-function getEmailFromSession(req) {
-  const cookies = req.headers.cookie || '';
-  const match = cookies.match(/session=([^;]+)/);
-  const sessionToken = match ? match[1] : null;
-  if (!sessionToken) return null;
-  const session = tokenStore.get(sessionToken);
-  if (!session || session.type !== 'session' || session.expiresAt < Date.now()) return null;
-  return session.email;
-}
+const { getEmailFromSession } = require('../auth/middleware.js');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {

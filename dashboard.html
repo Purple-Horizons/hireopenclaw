@@ -379,6 +379,13 @@
         .status-dot.paused { background: var(--yellow); }
         .status-dot.error { background: var(--red); }
 
+        /* TASK-427: Unified status badge styling */
+        .badge { display:inline-block; padding:3px 8px; border-radius:12px; font-size:12px; font-weight:500; }
+        .badge-success, .badge-running, .badge-healthy, .badge-active { background:rgba(34,197,94,0.12); color:#22c55e; }
+        .badge-warning, .badge-paused { background:rgba(245,158,11,0.12); color:#f59e0b; }
+        .badge-error, .badge-unhealthy { background:rgba(239,68,68,0.12); color:#ef4444; }
+        .badge-info { background:rgba(59,130,246,0.12); color:#3b82f6; }
+
         .bot-stats {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;

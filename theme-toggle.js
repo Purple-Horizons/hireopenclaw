@@ -6,8 +6,9 @@
 const THEME_KEY = 'clawops_theme';
 
 function initTheme() {
-    // Get saved theme or default to dark
-    const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
+    // TASK-421: Check system preference, fallback to dark
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const savedTheme = localStorage.getItem(THEME_KEY) || (prefersDark ? 'dark' : 'light');
     setTheme(savedTheme, false); // Don't animate on initial load
     
     // Add toggle button to header

@@ -43,10 +43,11 @@
         .client-email { font-weight: 600; font-size: 14px; flex: 1; }
         .client-meta { display: flex; gap: 16px; font-size: 12px; color: var(--gray); }
         .client-meta .active { color: var(--green); }
-        .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-        .pill.active { background: rgba(0,200,83,0.15); color: var(--green); }
-        .pill.terminated { background: rgba(255,82,82,0.15); color: var(--red); }
-        .pill.paused { background: rgba(255,193,7,0.15); color: var(--yellow); }
+        .pill, .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .pill.active, .badge-success { background: rgba(0,200,83,0.15); color: var(--green); }
+        .pill.terminated, .badge-error { background: rgba(255,82,82,0.15); color: var(--red); }
+        .pill.paused, .badge-warning { background: rgba(255,193,7,0.15); color: var(--yellow); }
+        .badge-info { background: rgba(59,130,246,0.15); color: #3b82f6; }
         
         /* Bot list (expanded) */
         .client-bots { display: none; padding: 0 16px 16px; border-top: 1px solid var(--border); }
@@ -189,7 +190,7 @@ function renderClients(clients) {
 
     el.innerHTML = clients.map(c => `
         <div class="client-card" id="client-${btoa(c.email)}">
-            <div class="client-header" onclick="toggleBots('${btoa(c.email)}')">
+            <div class="client-header" tabindex="0" role="button" aria-expanded="false" onclick="toggleBots('${btoa(c.email)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleBots('${btoa(c.email)}');}">
                 <div class="client-email">${c.email}</div>
                 <div class="client-meta">
                     <span class="active">${c.activeBots} active</span>
@@ -224,7 +225,12 @@ function renderClients(clients) {
 
 function toggleBots(id) {
     const el = document.getElementById('bots-' + id);
-    if (el) el.classList.toggle('open');
+    if (el) {
+        el.classList.toggle('open');
+        // TASK-408: Update aria-expanded
+        const header = el.previousElementSibling;
+        if (header) header.setAttribute('aria-expanded', el.classList.contains('open'));
+    }
 }
 
 function filterClients() {

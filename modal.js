@@ -60,14 +60,16 @@ function openModal(modalId) {
     const modal = document.getElementById(modalId);
     
     if (overlay && modal) {
-        overlay.style.display = 'flex';  // Use flex for centering
+        overlay.style.display = 'flex';
         modal.style.display = 'block';
         
-        // Trigger animation
         setTimeout(() => {
             overlay.classList.add('active');
             modal.classList.add('active');
         }, 10);
+
+        // TASK-407: Trap focus inside modal
+        setTimeout(() => trapFocus(modal), 50);
     }
 }
 
@@ -77,7 +79,10 @@ function closeModal() {
     
     if (overlay) {
         overlay.classList.remove('active');
-        modals.forEach(m => m.classList.remove('active'));
+        modals.forEach(m => {
+            m.classList.remove('active');
+            releaseFocusTrap(m); // TASK-407
+        });
         
         setTimeout(() => {
             overlay.style.display = 'none';
@@ -171,7 +176,7 @@ async function confirmAddBot() {
         }
     } catch (err) {
         console.error('Create bot failed:', err);
-        showToast('Failed to create bot. Try again.', 'error');
+        showToast('Failed to create bot. Check your connection and try again.', 'error');
     }
 }
 
@@ -244,7 +249,7 @@ async function confirmDelete() {
         }
     } catch (err) {
         console.error('Delete failed:', err);
-        showToast('Failed to delete bot. Try again.', 'error');
+        showToast('Failed to delete bot. Check your connection and try again.', 'error');
     }
 }
 
@@ -281,8 +286,42 @@ async function confirmRename() {
         }
     } catch (err) {
         console.error('Rename failed:', err);
-        showToast('Failed to rename bot', 'error');
+        showToast('Failed to rename bot. Check your connection and try again.', 'error');
     }
+}
+
+// TASK-407: Focus trap for modals
+function trapFocus(modal) {
+    const focusable = modal.querySelectorAll('button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])');
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    modal._focusTrapHandler = (e) => {
+        if (e.key === 'Tab') {
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault(); last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault(); first.focus();
+            }
+        }
+        if (e.key === 'Escape') closeModal();
+    };
+    modal.addEventListener('keydown', modal._focusTrapHandler);
+    first.focus();
+}
+
+function releaseFocusTrap(modal) {
+    if (modal._focusTrapHandler) {
+        modal.removeEventListener('keydown', modal._focusTrapHandler);
+        delete modal._focusTrapHandler;
+    }
+}
+
+// TASK-419: Network offline/online detection
+if (typeof window !== 'undefined') {
+    window.addEventListener('online', () => showToast('Back online', 'success'));
+    window.addEventListener('offline', () => showToast("You're offline. Changes won't be saved.", 'error', 10000));
 }
 
 // Close modal on overlay click
