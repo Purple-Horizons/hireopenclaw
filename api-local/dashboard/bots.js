@@ -10,6 +10,7 @@ const { QueryCommand: RawQueryCommand } = require('@aws-sdk/client-dynamodb');
 const { QueryCommand } = require('@aws-sdk/lib-dynamodb');
 const { docClient, TABLES } = require('../util/dynamodb.js');
 const { getEmailFromSession } = require('../auth/middleware.js');
+const { getUserPlan, getMaxBots: getMaxBotsForUser } = require('../auth/team-plan.js');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -68,14 +69,15 @@ module.exports = async (req, res) => {
     const totalTokensUsed = bots.reduce((sum, b) => sum + b.tokensUsed, 0);
     const totalTokensLimit = bots.reduce((sum, b) => sum + b.tokensLimit, 0);
 
-    // Get plan from first bot (all bots under same user have same plan)
-    const plan = bots.length > 0 ? bots[0].plan : 'starter';
+    // TASK-300: Get plan from team (user/account level), not from bot records
+    const plan = await getUserPlan(email);
+    const maxBots = await getMaxBotsForUser(email);
 
     const { withETag } = require('../util/etag.js');
     return withETag(req, res, {
       bots,
       plan,
-      maxBots: getMaxBots(plan),
+      maxBots,
       totalTokensUsed,
       totalTokensLimit
     });

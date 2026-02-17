@@ -11,6 +11,7 @@ const execFileAsync = promisify(execFile);
 
 
 const { requireAuth } = require('../auth/middleware.js');
+const { canCreateBot, getUserPlan, ensureTeam } = require('../auth/team-plan.js');
 const { validateTenantId, validateBotName, validateEmail, validatePlan, validateTemplate } = require('../util/validate.js');
 const { UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const { docClient, TABLES } = require('../util/dynamodb.js');
@@ -57,6 +58,12 @@ module.exports = async (req, res) => {
   console.log(`[Create Bot] Request from ${email}: "${botName}" (${template || 'blank'})`);
 
   try {
+    // TASK-300: Check team plan for bot slot availability
+    const botCheck = await canCreateBot(email);
+    if (!botCheck.allowed) {
+      return res.status(403).json({ error: botCheck.reason, code: 'BOT_LIMIT_REACHED' });
+    }
+    const userPlan = await getUserPlan(email);
     const tableName = process.env.DYNAMODB_TABLE || 'clawops-tenants';
     
     // If tenantId provided, update existing record; otherwise create new
@@ -78,20 +85,18 @@ module.exports = async (req, res) => {
     await docClient.send(new UpdateCommand({
       TableName: tableName,
       Key: { tenantId: finalTenantId },
-      UpdateExpression: 'SET #name = :name, #role = :role, #template = :template, #status = :status, #plan = :plan, email = :email, createdAt = if_not_exists(createdAt, :now), updatedAt = :now',
+      UpdateExpression: 'SET #name = :name, #role = :role, #template = :template, #status = :status, email = :email, createdAt = if_not_exists(createdAt, :now), updatedAt = :now',
       ExpressionAttributeNames: {
         '#name': 'name',
         '#role': 'role',
         '#template': 'template',
         '#status': 'status',
-        '#plan': 'plan'
       },
       ExpressionAttributeValues: {
         ':name': botName,
         ':role': botRole || 'Assistant',
         ':template': template || 'blank',
         ':status': 'provisioning',
-        ':plan': plan || 'starter',
         ':email': email,
         ':now': Math.floor(Date.now() / 1000)  // Unix timestamp in seconds
       }
@@ -112,7 +117,7 @@ module.exports = async (req, res) => {
           '--tenant-id', finalTenantId,
           '--email', email,
           '--name', botName,
-          '--plan', plan || 'starter',
+          '--plan', userPlan,
           '--template', template || 'blank',
           '--mode', 'managed'
         ],

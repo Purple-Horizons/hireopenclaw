@@ -30,9 +30,9 @@ module.exports = async (req, res) => {
     const bot = await requireBotOwnership(req, res, tenantId);
     if (!bot) return;
     
-    // Get tenant's plan
-    const tenant = await getTenant(tenantId);
-    const plan = tenant?.plan || 'starter';
+    // TASK-300: Get plan from team (user/account level)
+    const { getUserPlan } = require('../auth/team-plan.js');
+    const plan = await getUserPlan(bot.email);
     const budgetLimit = PLAN_BUDGETS[plan] || PLAN_BUDGETS.starter;
     
     // Get current month's usage

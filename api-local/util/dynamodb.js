@@ -26,6 +26,7 @@ const TABLES = {
   TEAMS: 'clawops-teams',
   TEAM_MEMBERS: 'clawops-team-members',
   USER_PREFERENCES: 'clawops-user-preferences',
+  AUTH_TOKENS: 'clawops-auth-tokens',
 };
 
 module.exports = { client, docClient, TABLES };

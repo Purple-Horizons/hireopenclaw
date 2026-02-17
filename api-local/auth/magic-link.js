@@ -9,16 +9,12 @@ const { QueryCommand } = require('@aws-sdk/client-dynamodb');
 const { client: dynamodb, TABLES } = require('../util/dynamodb.js');
 const { ERROR_CODES, apiError } = require('../util/error-codes.js');
 
+const { userExists } = require('./team-plan.js');
+
 async function emailExists(email) {
+  // TASK-300: Check teams table (user/account level), not tenants (per-bot)
   try {
-    const result = await dynamodb.send(new QueryCommand({
-      TableName: TABLES.TENANTS,
-      IndexName: 'email-index',
-      KeyConditionExpression: 'email = :email',
-      ExpressionAttributeValues: { ':email': { S: email } },
-      Limit: 1
-    }));
-    return result.Items && result.Items.length > 0;
+    return await userExists(email);
   } catch (err) {
     console.error('[Magic Link] DB check failed:', err.message);
     return false;
