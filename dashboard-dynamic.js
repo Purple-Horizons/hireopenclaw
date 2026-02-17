@@ -284,13 +284,22 @@ function createBotCard(bot) {
                     <div style="color:var(--red);font-weight:600;">🗑 Deleted ${bot.terminatedAt ? 'on ' + new Date(bot.terminatedAt).toLocaleDateString() : ''}</div>
                     <div style="font-size:11px;color:var(--gray);margin-top:4px;">Historical stats preserved</div>
                    </div>`
-                : `<button class="btn btn-sm btn-primary" aria-label="Open chat with ${escapeHtml(bot.name)}" onclick="openBot('${bot.id}', '${bot.endpoint}')">💬 Open Chat</button>
-                   ${bot.status === 'active' 
-                       ? `<button class="btn btn-sm btn-secondary" aria-label="Pause ${escapeHtml(bot.name)}" onclick="botAction('${bot.id}', 'pause')">⏸ Pause</button>
-                          <button class="btn btn-sm btn-secondary" aria-label="Restart ${escapeHtml(bot.name)}" onclick="botAction('${bot.id}', 'restart')">🔄 Restart</button>`
-                       : `<button class="btn btn-sm btn-primary" aria-label="Resume ${escapeHtml(bot.name)}" onclick="botAction('${bot.id}', 'resume')">▶ Resume</button>`
-                   }
-                   <button class="btn btn-sm btn-danger" aria-label="Delete ${escapeHtml(bot.name)}" onclick="showDeleteModal('${bot.id}', '${escapeHtml(bot.name)}')">🗑 Delete</button>`
+                : `<div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <button class="btn btn-sm btn-primary" aria-label="Open chat with ${escapeHtml(bot.name)}" onclick="openBot('${bot.id}', '${bot.endpoint}')">💬 Web Chat</button>
+                    <button class="btn btn-sm btn-secondary" aria-label="Connect channels" onclick="toggleChannels('${bot.id}')" id="channel-toggle-${bot.id}">📡 Channels</button>
+                    ${bot.status === 'active' 
+                        ? `<button class="btn btn-sm btn-secondary" aria-label="Pause ${escapeHtml(bot.name)}" onclick="botAction('${bot.id}', 'pause')">⏸ Pause</button>
+                           <button class="btn btn-sm btn-secondary" aria-label="Restart ${escapeHtml(bot.name)}" onclick="botAction('${bot.id}', 'restart')">🔄 Restart</button>`
+                        : `<button class="btn btn-sm btn-primary" aria-label="Resume ${escapeHtml(bot.name)}" onclick="botAction('${bot.id}', 'resume')">▶ Resume</button>`
+                    }
+                    <button class="btn btn-sm btn-danger" aria-label="Delete ${escapeHtml(bot.name)}" onclick="showDeleteModal('${bot.id}', '${escapeHtml(bot.name)}')">🗑 Delete</button>
+                   </div>
+                   <div class="channel-panel" id="channels-${bot.id}" style="display:none;margin-top:12px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;">
+                    <div style="font-size:12px;font-weight:600;color:var(--white);margin-bottom:8px;">Connect Channels</div>
+                    <div class="channel-list" id="channel-list-${bot.id}">
+                      <div style="color:var(--gray);font-size:12px;">Loading channels...</div>
+                    </div>
+                   </div>`
             }
         </div>
     `;
@@ -762,6 +771,184 @@ function upgradePlan() {
 }
 
 // Utility: Escape HTML
+// ── Channel Connection Panel ────────────────────────────────────────────────
+
+const CHANNEL_DEFS = [
+    { id: 'telegram', name: 'Telegram', icon: '📱', tokenKey: 'TELEGRAM_BOT_TOKEN', guide: [
+        '1. Open <a href="https://t.me/BotFather" target="_blank">@BotFather</a> on Telegram',
+        '2. Send /newbot and follow the prompts',
+        '3. Copy the bot token and paste it below'
+    ]},
+    { id: 'whatsapp', name: 'WhatsApp', icon: '💬', tokenKey: 'WHATSAPP_TOKEN', guide: [
+        '1. Go to <a href="https://developers.facebook.com" target="_blank">Meta for Developers</a>',
+        '2. Create a WhatsApp Business app',
+        '3. Copy the permanent token and paste below'
+    ]},
+    { id: 'discord', name: 'Discord', icon: '🎮', tokenKey: 'DISCORD_BOT_TOKEN', guide: [
+        '1. Go to <a href="https://discord.com/developers" target="_blank">Discord Developer Portal</a>',
+        '2. Create an application → Bot → Reset Token',
+        '3. Copy the bot token and paste below'
+    ]},
+    { id: 'signal', name: 'Signal', icon: '📡', tokenKey: 'SIGNAL_NUMBER', guide: [
+        '1. Set up signal-cli or signal-rest-api',
+        '2. Register a phone number',
+        '3. Enter the Signal number below'
+    ]}
+];
+
+function toggleChannels(botId) {
+    const panel = document.getElementById(`channels-${botId}`);
+    if (!panel) return;
+    const isVisible = panel.style.display !== 'none';
+    panel.style.display = isVisible ? 'none' : 'block';
+    if (!isVisible) loadChannelStatus(botId);
+}
+
+async function loadChannelStatus(botId) {
+    const list = document.getElementById(`channel-list-${botId}`);
+    if (!list) return;
+
+    // Fetch instance secrets to see which tokens are configured
+    let secrets = [];
+    try {
+        const res = await fetch(`/api/dashboard/bots/${encodeURIComponent(botId)}/secrets`);
+        if (res.ok) {
+            const data = await res.json();
+            secrets = data.secrets || [];
+        }
+    } catch {}
+
+    const configuredKeys = new Set(secrets.map(s => s.key));
+
+    list.innerHTML = CHANNEL_DEFS.map(ch => {
+        const connected = configuredKeys.has(ch.tokenKey);
+        return `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:16px;">${ch.icon}</span>
+                    <span style="font-size:13px;color:var(--white);">${ch.name}</span>
+                    ${connected ? '<span style="font-size:10px;color:#00c853;margin-left:4px;">● Connected</span>' : ''}
+                </div>
+                <div>
+                    ${connected 
+                        ? `<button class="btn btn-sm btn-danger" style="font-size:11px;padding:2px 8px;" onclick="disconnectChannel('${botId}','${ch.tokenKey}','${ch.name}')">Disconnect</button>`
+                        : `<button class="btn btn-sm btn-primary" style="font-size:11px;padding:2px 8px;" onclick="showChannelSetup('${botId}','${ch.id}')">Connect</button>`
+                    }
+                </div>
+            </div>
+        `;
+    }).join('') + `
+        <div style="padding:8px 0;display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:16px;">🌐</span>
+                <span style="font-size:13px;color:var(--white);">Web Chat</span>
+                <span style="font-size:10px;color:#00c853;margin-left:4px;">● Always On</span>
+            </div>
+        </div>
+    `;
+}
+
+function showChannelSetup(botId, channelId) {
+    const ch = CHANNEL_DEFS.find(c => c.id === channelId);
+    if (!ch) return;
+    const list = document.getElementById(`channel-list-${botId}`);
+    if (!list) return;
+
+    list.innerHTML = `
+        <div style="padding:8px 0;">
+            <div style="font-size:13px;font-weight:600;color:var(--white);margin-bottom:8px;">${ch.icon} Connect ${ch.name}</div>
+            <div style="font-size:12px;color:var(--gray);line-height:1.8;margin-bottom:12px;">
+                ${ch.guide.map(s => `<div>${s}</div>`).join('')}
+            </div>
+            <div style="display:flex;gap:8px;">
+                <input type="text" id="channel-token-${botId}" placeholder="Paste your ${ch.name} token here" 
+                    style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--white);font-size:13px;font-family:monospace;" />
+                <button class="btn btn-sm btn-primary" onclick="saveChannelToken('${botId}','${ch.tokenKey}','${ch.name}')">Save</button>
+            </div>
+            <div id="channel-status-${botId}" style="margin-top:8px;font-size:12px;display:none;"></div>
+            <button class="btn btn-sm btn-secondary" style="margin-top:8px;font-size:11px;" onclick="loadChannelStatus('${botId}')">← Back</button>
+        </div>
+    `;
+}
+
+async function saveChannelToken(botId, tokenKey, channelName) {
+    const input = document.getElementById(`channel-token-${botId}`);
+    const status = document.getElementById(`channel-status-${botId}`);
+    if (!input || !input.value.trim()) return;
+
+    const token = input.value.trim();
+    status.style.display = 'block';
+    status.style.color = 'var(--gray)';
+    status.textContent = `Saving ${channelName} token...`;
+
+    try {
+        const res = await fetch(`/api/dashboard/bots/${encodeURIComponent(botId)}/secrets`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: tokenKey, value: token, label: `${channelName} Bot Token` })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            status.style.color = '#00c853';
+            status.textContent = `✅ ${channelName} connected! Restarting bot...`;
+            // Restart bot to pick up new channel config
+            try {
+                await fetch(`/api/dashboard/bot-action?tenantId=${encodeURIComponent(botId)}&action=restart`, { method: 'POST' });
+                setTimeout(() => {
+                    status.textContent = `✅ ${channelName} connected and bot restarted!`;
+                    setTimeout(() => loadChannelStatus(botId), 2000);
+                }, 3000);
+            } catch {
+                status.textContent = `✅ Token saved. Restart bot manually to activate.`;
+            }
+        } else {
+            status.style.color = 'var(--red)';
+            status.textContent = `Error: ${data.error || 'Failed to save'}`;
+        }
+    } catch (err) {
+        status.style.color = 'var(--red)';
+        status.textContent = `Error: ${err.message}`;
+    }
+}
+
+async function disconnectChannel(botId, tokenKey, channelName) {
+    const list = document.getElementById(`channel-list-${botId}`);
+    if (!list) return;
+
+    // Inline confirmation
+    const existing = list.querySelector('.inline-confirm');
+    if (existing) existing.remove();
+
+    const confirm = document.createElement('div');
+    confirm.className = 'inline-confirm';
+    confirm.style.cssText = 'padding:8px;background:rgba(255,82,82,0.1);border:1px solid rgba(255,82,82,0.3);border-radius:6px;margin-top:8px;display:flex;align-items:center;gap:8px;';
+    confirm.innerHTML = `
+        <span style="font-size:12px;color:var(--red);">Disconnect ${channelName}?</span>
+        <button class="btn btn-sm btn-danger" style="font-size:11px;padding:2px 8px;" onclick="confirmDisconnect('${botId}','${tokenKey}')">Yes</button>
+        <button class="btn btn-sm btn-secondary" style="font-size:11px;padding:2px 8px;" onclick="this.parentElement.remove()">No</button>
+    `;
+    list.appendChild(confirm);
+}
+
+async function confirmDisconnect(botId, tokenKey) {
+    try {
+        await fetch(`/api/dashboard/bots/${encodeURIComponent(botId)}/secrets`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: tokenKey })
+        });
+        // Restart to remove channel
+        await fetch(`/api/dashboard/bot-action?tenantId=${encodeURIComponent(botId)}&action=restart`, { method: 'POST' });
+        showTemporaryMessage('Channel disconnected. Bot restarting...', 'info', 3000);
+        setTimeout(() => loadChannelStatus(botId), 3000);
+    } catch (err) {
+        showTemporaryMessage('Error: ' + err.message, 'error', 3000);
+    }
+}
+
+// ── Utilities ───────────────────────────────────────────────────────────────
+
 function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
@@ -778,7 +965,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (email) {
         loadDashboard(email);
-        
+
         // Set up auto-refresh every 30 seconds
         setInterval(() => loadDashboard(email), 30000);
         

@@ -126,6 +126,39 @@ async function getSecretValue(scope, key) {
   return decrypt(item.encryptedValue);
 }
 
+// ─── Get merged secrets (platform → client → instance) ───
+// Instance secrets override client secrets, which override platform secrets
+async function getMergedSecrets(tenantId, email) {
+  const scopes = [
+    'platform',
+    `client:${email}`,
+    `instance:${tenantId}`
+  ];
+
+  const merged = {};
+
+  for (const scope of scopes) {
+    const result = await dynamodb.send(new QueryCommand({
+      TableName: TABLE,
+      KeyConditionExpression: '#s = :scope',
+      ExpressionAttributeNames: { '#s': 'scope' },
+      ExpressionAttributeValues: { ':scope': { S: scope } }
+    }));
+
+    const items = result.Items || [];
+    for (const item of items) {
+      const i = unmarshall(item);
+      try {
+        merged[i.key] = decrypt(i.encryptedValue);
+      } catch (err) {
+        console.error(`[Secrets] Failed to decrypt ${scope}/${i.key}:`, err.message);
+      }
+    }
+  }
+
+  return merged;
+}
+
 // ─── Admin handler: platform secrets ───
 async function handleAdminSecrets(req, res) {
   const admin = requireAdmin(req, res);
@@ -190,4 +223,12 @@ async function handleClientSecrets(req, res) {
   return res.status(405).json({ error: 'Method not allowed' });
 }
 
-module.exports = { handleAdminSecrets, handleClientSecrets, getSecretValue };
+module.exports = { 
+  handleAdminSecrets, 
+  handleClientSecrets, 
+  getSecretValue, 
+  getMergedSecrets,
+  listSecrets,
+  setSecret,
+  deleteSecret
+};

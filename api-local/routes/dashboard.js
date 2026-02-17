@@ -35,5 +35,6 @@ router.all('/billing', wrapHandler(path.join(base, 'billing.js')));
 router.all('/usage', wrapHandler(path.join(base, 'usage.js')));
 router.get('/usage/:tenantId', wrapHandler(path.join(base, 'usage.js')));
 router.all('/margin', wrapHandler(path.join(base, 'margin.js')));
+router.all('/bots/:tenantId/secrets', wrapHandler(path.join(base, 'instance-secrets.js')));
 
 module.exports = router;
