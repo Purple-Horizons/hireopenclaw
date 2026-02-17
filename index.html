@@ -924,35 +924,35 @@
             
             <div class="team-grid">
                 <div class="team-card">
-                    <img src="https://v3b.fal.media/files/b/0a8c7d15/cdE-CsM4D0oP8mfHNhM0R_A7q4Y7OC.png" alt="Morgan">
+                    <img src="https://v3b.fal.media/files/b/0a8c7d15/cdE-CsM4D0oP8mfHNhM0R_A7q4Y7OC.png" alt="Morgan" width="200" height="200" loading="lazy">
                     <h3>Morgan</h3>
                     <div class="role">Content Creator</div>
                     <p>Writes your posts, blogs, and newsletters. Sounds like you. You take the credit.</p>
                 </div>
                 
                 <div class="team-card">
-                    <img src="https://v3b.fal.media/files/b/0a8c7d16/JXvuWQSmpq-NdxH46adsO_b9hTnrxy.png" alt="Alex">
+                    <img src="https://v3b.fal.media/files/b/0a8c7d16/JXvuWQSmpq-NdxH46adsO_b9hTnrxy.png" alt="Alex" width="200" height="200" loading="lazy">
                     <h3>Alex</h3>
                     <div class="role">SDR / Sales</div>
                     <p>Finds leads. Writes outreach. Follows up until they reply. You just close.</p>
                 </div>
                 
                 <div class="team-card">
-                    <img src="https://v3b.fal.media/files/b/0a8c7d17/qU0mbMGFrE1ziGiQUqGVo_McBUkpYY.png" alt="Riley">
+                    <img src="https://v3b.fal.media/files/b/0a8c7d17/qU0mbMGFrE1ziGiQUqGVo_McBUkpYY.png" alt="Riley" width="200" height="200" loading="lazy">
                     <h3>Riley</h3>
                     <div class="role">Social Media</div>
                     <p>Schedules posts. Tracks engagement. Tells you what's working. You stay relevant.</p>
                 </div>
                 
                 <div class="team-card">
-                    <img src="https://v3b.fal.media/files/b/0a8c7d18/XtDyB-GyZg5YtWlgQG3Q__cCXoxXgf.png" alt="Casey">
+                    <img src="https://v3b.fal.media/files/b/0a8c7d18/XtDyB-GyZg5YtWlgQG3Q__cCXoxXgf.png" alt="Casey" width="200" height="200" loading="lazy">
                     <h3>Casey</h3>
                     <div class="role">Executive Assistant</div>
                     <p>Calendar. Email triage. Task tracking. Manages your chaos so you can make more.</p>
                 </div>
                 
                 <div class="team-card">
-                    <img src="https://v3b.fal.media/files/b/0a8e19b7/xMoISRMckfSnrVK38rQVf.jpg" alt="Sam">
+                    <img src="https://v3b.fal.media/files/b/0a8e19b7/xMoISRMckfSnrVK38rQVf.jpg" alt="Sam" width="200" height="200" loading="lazy">
                     <h3>Sam</h3>
                     <div class="role">Customer Support</div>
                     <p>Answers tickets. Handles FAQs. Escalates the hard stuff. Your customers never wait.</p>
@@ -1250,6 +1250,45 @@
                 btn.disabled = false;
             }
         });
+    </script>
+    <style>
+        .input-error { border-color: #ef4444 !important; }
+        .input-valid { border-color: #22c55e !important; }
+        .input-feedback { font-size: 12px; color: #ef4444; margin-top: 4px; min-height: 16px; }
+    </style>
+    <script>
+    (function() {
+        function createFeedback(input) {
+            const el = document.createElement('div');
+            el.className = 'input-feedback';
+            input.parentNode.insertBefore(el, input.nextSibling);
+            return el;
+        }
+        function validateEmail(input) {
+            const email = input.value.trim();
+            const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+            let feedback = input.nextElementSibling;
+            if (!feedback || !feedback.classList.contains('input-feedback')) feedback = createFeedback(input);
+            if (!email) {
+                feedback.textContent = '';
+                input.classList.remove('input-error', 'input-valid');
+            } else if (!valid) {
+                feedback.textContent = 'Please enter a valid email address';
+                input.classList.add('input-error');
+                input.classList.remove('input-valid');
+            } else {
+                feedback.textContent = '';
+                input.classList.remove('input-error');
+                input.classList.add('input-valid');
+            }
+            return valid;
+        }
+        document.querySelectorAll('input[type="email"]').forEach(function(input) {
+            input.addEventListener('input', function() { validateEmail(this); });
+            input.addEventListener('blur', function() { validateEmail(this); });
+        });
+        window.validateEmail = validateEmail;
+    })();
     </script>
     <script src="/_vercel/insights/script.js" defer></script>
 </body>

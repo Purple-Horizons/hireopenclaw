@@ -292,6 +292,8 @@ const { globalErrorHandler } = require(path.join(__dirname, 'api-local', 'util',
 app.use(globalErrorHandler);
 
 // Start server
+module.exports = app;
+
 app.listen(PORT, () => {
   console.log('');
   console.log('========================================');

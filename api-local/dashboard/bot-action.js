@@ -3,14 +3,13 @@
  * POST /api/dashboard/bot-action
  * Actions: pause, resume, restart, terminate
  * Auth: session cookie required + bot ownership validated
+ *
+ * Refactored to use Docker SDK (dockerode) instead of execFile [TASK-243]
  */
 
-const { execFile } = require('child_process');
-const { promisify } = require('util');
+const { restartContainer, pauseContainer, unpauseContainer, stopContainer } = require('../util/docker-sdk.js');
 const { requireBotOwnership } = require('../auth/middleware.js');
 const { validateTenantId } = require('../util/validate.js');
-
-const execFileAsync = promisify(execFile);
 const logger = require('../util/logger.js');
 
 module.exports = async (req, res) => {
@@ -39,30 +38,23 @@ module.exports = async (req, res) => {
 
   logger.info('bot-action', `${action} on ${tenantId}`);
 
+  const containerName = `clawops-${tenantId}`;
+
   try {
-    const clawopsPath = '/Users/giannidalerta/.openclaw/workspace/repos/clawops';
-
-    const args = action === 'terminate'
-      ? [action, tenantId, '--force']
-      : [action, tenantId];
-
-    const { stdout, stderr } = await execFileAsync(
-      'bin/clawops',
-      args,
-      {
-        cwd: clawopsPath,
-        timeout: 30000,
-        env: {
-          ...process.env,
-          AWS_ENDPOINT_URL: process.env.AWS_ENDPOINT_URL || 'http://localhost:4566',
-          AWS_ACCESS_KEY_ID: 'test',
-          AWS_SECRET_ACCESS_KEY: 'test'
-        }
-      }
-    );
-
-    logger.info('bot-action', 'Output', { stdout: stdout.trim() });
-    if (stderr) logger.warn('bot-action', 'Stderr', { stderr: stderr.trim() });
+    switch (action) {
+      case 'pause':
+        await pauseContainer(containerName);
+        break;
+      case 'resume':
+        await unpauseContainer(containerName);
+        break;
+      case 'restart':
+        await restartContainer(containerName);
+        break;
+      case 'terminate':
+        await stopContainer(containerName);
+        break;
+    }
 
     return res.status(200).json({
       ok: true,
