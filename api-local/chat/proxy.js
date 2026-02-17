@@ -186,7 +186,7 @@ async function handleSend(req, res) {
     }
   } catch (err) {
     console.error(`[Chat Proxy] Send error for ${botId}:`, err.message);
-    return res.status(500).json({ error: 'Failed to send message: ' + err.message });
+    return res.status(500).json({ error: 'Failed to send message' });
   }
 }
 
