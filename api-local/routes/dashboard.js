@@ -1,3 +1,16 @@
+/**
+ * Dashboard Router — /api/dashboard/*
+ * Auth matrix: ALL routes require requireAuth (session-based auth)
+ *   ALL  /bots             — requireAuth (in handler via getEmailFromSession)
+ *   ALL  /create-bot       — requireAuth (in handler)
+ *   ALL  /bot-action       — requireBotOwnership (in handler)
+ *   ALL  /rename-bot       — requireBotOwnership (in handler)
+ *   ALL  /container-stats  — requireBotOwnership (in handler)
+ *   ALL  /billing          — requireAuth (in handler)
+ *   ALL  /usage            — requireAuth/requireBotOwnership (in handler)
+ *   GET  /usage/:tenantId  — requireBotOwnership (in handler)
+ *   ALL  /margin           — requireAuth (in handler via getEmailFromSession)
+ */
 const router = require('express').Router();
 const path = require('path');
 

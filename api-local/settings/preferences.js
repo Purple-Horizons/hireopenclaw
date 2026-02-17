@@ -28,8 +28,9 @@ module.exports = async (req, res) => {
         Key: { email: { S: email } }
       }));
 
+      const { withETag } = require('../util/etag.js');
       if (!result.Item) {
-        return res.json({ ok: true, preferences: DEFAULTS });
+        return withETag(req, res, { ok: true, preferences: DEFAULTS });
       }
 
       const prefs = {
@@ -37,7 +38,7 @@ module.exports = async (req, res) => {
         weeklyReports: result.Item.weeklyReports?.BOOL ?? DEFAULTS.weeklyReports,
         marketingEmails: result.Item.marketingEmails?.BOOL ?? DEFAULTS.marketingEmails
       };
-      return res.json({ ok: true, preferences: prefs });
+      return withETag(req, res, { ok: true, preferences: prefs });
     } catch (err) {
       console.error('[Preferences] GET error:', err.message);
       return res.json({ ok: true, preferences: DEFAULTS });

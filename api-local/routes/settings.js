@@ -1,3 +1,13 @@
+/**
+ * Settings Router — /api/settings/*
+ * Auth matrix: ALL routes require requireAuth (session-based auth)
+ *   ALL  /api-keys      — requireAuth (in handler via session check)
+ *   ALL  /team          — requireAuth (in handler via session check)
+ *   ALL  /preferences   — requireAuth (in handler via session check)
+ *   ALL  /backup        — requireAuth (handleClientBackup checks session)
+ *   POST /restore       — requireAuth (handleClientBackup checks session)
+ *   ALL  /secrets       — requireAuth (handleClientSecrets checks session)
+ */
 const router = require('express').Router();
 const path = require('path');
 

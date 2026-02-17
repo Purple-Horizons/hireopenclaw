@@ -1,3 +1,16 @@
+/**
+ * Admin Router — /api/admin/*
+ * Auth matrix: ALL routes require requireAdmin (admin-only access)
+ *   GET  /clients           — requireAdmin (in handler)
+ *   GET  /clients/:email    — requireAdmin (in handler)
+ *   ALL  /bots/:tenantId    — requireAdmin (in handler)
+ *   POST /bots/:tenantId/backup  — requireAdmin (in handler)
+ *   GET  /bots/:tenantId/backups — requireAdmin (in handler)
+ *   POST /bots/:tenantId/restore — requireAdmin (in handler)
+ *   POST /impersonate       — requireAdmin (in handler)
+ *   POST /stop-impersonate  — requireAdmin (in handler)
+ *   ALL  /secrets           — requireAdmin (in handler)
+ */
 const router = require('express').Router();
 const path = require('path');
 

@@ -79,19 +79,37 @@ app.get('/api/auth/csrf', (req, res) => {
 });
 
 // ─── Express Router modules ───
-app.use('/api/auth', require(path.join(__dirname, 'api-local', 'routes', 'auth.js')));
-app.use('/api/admin', require(path.join(__dirname, 'api-local', 'routes', 'admin.js')));
-app.use('/api/dashboard', require(path.join(__dirname, 'api-local', 'routes', 'dashboard.js')));
-app.use('/api/settings', require(path.join(__dirname, 'api-local', 'routes', 'settings.js')));
-app.use('/api/billing', require(path.join(__dirname, 'api-local', 'routes', 'billing.js')));
+const authRouter = require(path.join(__dirname, 'api-local', 'routes', 'auth.js'));
+const adminRouter = require(path.join(__dirname, 'api-local', 'routes', 'admin.js'));
+const dashboardRouter = require(path.join(__dirname, 'api-local', 'routes', 'dashboard.js'));
+const settingsRouter = require(path.join(__dirname, 'api-local', 'routes', 'settings.js'));
+const billingRouter = require(path.join(__dirname, 'api-local', 'routes', 'billing.js'));
 
-// Plans endpoint — public, no auth required (TASK-149)
-app.get('/api/plans', (req, res) => {
+const { withETag } = require(path.join(__dirname, 'api-local', 'util', 'etag.js'));
+
+// Plans endpoint — public, no auth required (TASK-149), with ETag caching
+const plansHandler = (req, res) => {
   const { plans } = require(path.join(__dirname, 'api-local', 'data', 'plans.js'));
-  res.json(plans);
-});
+  withETag(req, res, plans);
+};
 
-console.log('✓ Loaded Express Router modules (auth, admin, dashboard, settings, billing, plans)');
+// Version 1 routes (canonical)
+app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/admin', adminRouter);
+app.use('/api/v1/dashboard', dashboardRouter);
+app.use('/api/v1/settings', settingsRouter);
+app.use('/api/v1/billing', billingRouter);
+app.get('/api/v1/plans', plansHandler);
+
+// Backward compatibility (alias /api → /api/v1)
+app.use('/api/auth', authRouter);
+app.use('/api/admin', adminRouter);
+app.use('/api/dashboard', dashboardRouter);
+app.use('/api/settings', settingsRouter);
+app.use('/api/billing', billingRouter);
+app.get('/api/plans', plansHandler);
+
+console.log('✓ Loaded Express Router modules with /api/v1/ versioning');
 
 // Remaining individual routes (signup, team, keys, analytics)
 const remainingRoutes = [

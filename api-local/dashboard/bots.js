@@ -71,7 +71,8 @@ module.exports = async (req, res) => {
     // Get plan from first bot (all bots under same user have same plan)
     const plan = bots.length > 0 ? bots[0].plan : 'starter';
 
-    return res.status(200).json({
+    const { withETag } = require('../util/etag.js');
+    return withETag(req, res, {
       bots,
       plan,
       maxBots: getMaxBots(plan),

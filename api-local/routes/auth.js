@@ -1,3 +1,9 @@
+/**
+ * Auth Router — /api/auth/*
+ * Auth matrix: ALL routes are PUBLIC (no auth required)
+ *   ALL  /magic-link   — public (generates/verifies magic links, rate-limited)
+ *   ALL  /session      — public (validates existing session tokens)
+ */
 const router = require('express').Router();
 const path = require('path');
 

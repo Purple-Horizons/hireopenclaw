@@ -10,6 +10,12 @@ const logger = require('../util/logger.js');
 const { requireAdmin } = require('../auth/middleware.js');
 const { validateTenantId, validateLines } = require('../util/validate.js');
 
+// Named constants (TASK-306)
+const RESTART_TIMEOUT_MS = 30000;
+const LOGS_TIMEOUT_MS = 10000;
+const CONFIG_TIMEOUT_MS = 5000;
+const INSPECT_TIMEOUT_MS = 5000;
+
 module.exports = async (req, res) => {
   const admin = requireAdmin(req, res);
   if (!admin) return;
@@ -25,28 +31,28 @@ module.exports = async (req, res) => {
     switch (action) {
       case 'restart': {
         logger.info('admin', `Restarting container`, { admin, container: containerName });
-        await dockerExec(['restart', containerName], { timeout: 30000 });
+        await dockerExec(['restart', containerName], { timeout: RESTART_TIMEOUT_MS });
         return res.json({ ok: true, message: `Restarted ${containerName}` });
       }
 
       case 'logs': {
         const lines = validateLines(req.query.lines);
         const logs = await dockerExec(['logs', containerName, '--tail', String(lines)], {
-          timeout: 10000
+          timeout: LOGS_TIMEOUT_MS
         });
         return res.json({ ok: true, logs: logs.split('\n') });
       }
 
       case 'config': {
         const config = await dockerExec(['exec', containerName, 'cat', '/app/.openclaw/openclaw.json'], {
-          timeout: 5000
+          timeout: CONFIG_TIMEOUT_MS
         });
         return res.json({ ok: true, config: JSON.parse(config) });
       }
 
       case 'info': {
         const inspect = await dockerExec(['inspect', containerName], {
-          timeout: 5000
+          timeout: INSPECT_TIMEOUT_MS
         });
         const data = JSON.parse(inspect)[0];
         return res.json({
