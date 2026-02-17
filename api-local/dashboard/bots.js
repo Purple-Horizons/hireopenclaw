@@ -8,7 +8,7 @@
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 const { QueryCommand: RawQueryCommand } = require('@aws-sdk/client-dynamodb');
 const { QueryCommand } = require('@aws-sdk/lib-dynamodb');
-const { docClient, TABLES } = require('../util/dynamodb.js');
+const { client: dynamoClient, docClient, TABLES } = require('../util/dynamodb.js');
 const { getEmailFromSession } = require('../auth/middleware.js');
 const { getUserPlan, getMaxBots: getMaxBotsForUser } = require('../auth/team-plan.js');
 

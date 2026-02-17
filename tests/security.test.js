@@ -26,43 +26,43 @@ describe('CLI Admin Bypass (TASK-205)', () => {
     return require('../api-local/auth/middleware.js');
   }
 
-  test('CLI bypass rejected when no CLI_SECRET env var set', () => {
+  test('CLI bypass rejected when no CLI_SECRET env var set', async () => {
     process.env.NODE_ENV = 'development';
     // No CLI_SECRET set
     const { requireAdmin } = loadMiddleware();
     req = { headers: { 'x-cli-secret': 'anything', cookie: '' } };
-    const result = requireAdmin(req, res);
+    const result = await requireAdmin(req, res);
     expect(result).toBeNull();
     expect(req.isAdmin).toBeUndefined();
   });
 
-  test('CLI bypass rejected in production mode', () => {
+  test('CLI bypass rejected in production mode', async () => {
     process.env.NODE_ENV = 'production';
     process.env.CLI_SECRET = 'my-secret';
     const { requireAdmin } = loadMiddleware();
     req = { headers: { 'x-cli-secret': 'my-secret', cookie: '' } };
-    const result = requireAdmin(req, res);
+    const result = await requireAdmin(req, res);
     expect(result).toBeNull();
     expect(req.isCLI).toBeUndefined();
   });
 
-  test('CLI bypass works with correct secret in dev mode', () => {
+  test('CLI bypass works with correct secret in dev mode', async () => {
     process.env.NODE_ENV = 'development';
     process.env.CLI_SECRET = 'test-secret-123';
     const { requireAdmin } = loadMiddleware();
     req = { headers: { 'x-cli-secret': 'test-secret-123', cookie: '' }, ip: '127.0.0.1' };
-    const result = requireAdmin(req, res);
+    const result = await requireAdmin(req, res);
     expect(result).toBe('cli@localhost');
     expect(req.isAdmin).toBe(true);
     expect(req.isCLI).toBe(true);
   });
 
-  test('CLI bypass rejected with wrong secret', () => {
+  test('CLI bypass rejected with wrong secret', async () => {
     process.env.NODE_ENV = 'development';
     process.env.CLI_SECRET = 'correct-secret';
     const { requireAdmin } = loadMiddleware();
     req = { headers: { 'x-cli-secret': 'wrong-secret', cookie: '' } };
-    const result = requireAdmin(req, res);
+    const result = await requireAdmin(req, res);
     expect(result).toBeNull();
   });
 });

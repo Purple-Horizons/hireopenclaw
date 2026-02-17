@@ -69,6 +69,11 @@ const store = {
   entries() {
     return memoryStore.entries();
   },
+
+  // Test helper — clears in-memory store only
+  clear() {
+    memoryStore.clear();
+  },
 };
 
 module.exports = store;

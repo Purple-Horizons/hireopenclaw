@@ -11,31 +11,31 @@ const { isAdmin, getEmailFromSession, getEffectiveEmail, ADMIN_EMAILS } = requir
 // ─── Admin Auth ───
 
 describe('Admin Auth', () => {
-  test('g@purplehorizons.io is admin', () => {
+  test('g@purplehorizons.io is admin', async () => {
     expect(isAdmin('g@purplehorizons.io')).toBe(true);
   });
 
-  test('case insensitive admin check', () => {
+  test('case insensitive admin check', async () => {
     expect(isAdmin('G@purplehorizons.io')).toBe(true);
     expect(isAdmin('G@PURPLEHORIZONS.IO')).toBe(true);
   });
 
-  test('random email is not admin', () => {
+  test('random email is not admin', async () => {
     expect(isAdmin('test@test.com')).toBe(false);
     expect(isAdmin('admin@evil.com')).toBe(false);
   });
 
-  test('null/undefined is not admin', () => {
+  test('null/undefined is not admin', async () => {
     expect(!isAdmin(null)).toBeTruthy();
     expect(!isAdmin(undefined)).toBeTruthy();
     expect(!isAdmin('')).toBeTruthy();
   });
 
-  test('gianni@purplehorizons.io is NOT admin (removed)', () => {
+  test('gianni@purplehorizons.io is NOT admin (removed)', async () => {
     expect(isAdmin('gianni@purplehorizons.io')).toBe(false);
   });
 
-  test('only expected emails in allowlist', () => {
+  test('only expected emails in allowlist', async () => {
     expect(ADMIN_EMAILS.size).toBe(1);
     expect(ADMIN_EMAILS.has('g@purplehorizons.io')).toBeTruthy();
   });
@@ -48,34 +48,34 @@ describe('Impersonation', () => {
     tokenStore.clear();
   });
 
-  test('getEffectiveEmail returns session email normally', () => {
+  test('getEffectiveEmail returns session email normally', async () => {
     tokenStore.set('sess123', { type: 'session', email: 'g@purplehorizons.io', expiresAt: Date.now() + 60000 });
     const req = { headers: { cookie: 'session=sess123' } };
-    expect(getEffectiveEmail(req)).toBe('g@purplehorizons.io');
+    expect(await getEffectiveEmail(req)).toBe('g@purplehorizons.io');
   });
 
-  test('getEffectiveEmail returns impersonated email for admin', () => {
+  test('getEffectiveEmail returns impersonated email for admin', async () => {
     tokenStore.set('sess123', { type: 'session', email: 'g@purplehorizons.io', expiresAt: Date.now() + 60000, impersonating: 'client@test.com' });
     const req = { headers: { cookie: 'session=sess123' } };
-    expect(getEffectiveEmail(req)).toBe('client@test.com');
+    expect(await getEffectiveEmail(req)).toBe('client@test.com');
   });
 
-  test('getEffectiveEmail ignores impersonation for non-admin', () => {
+  test('getEffectiveEmail ignores impersonation for non-admin', async () => {
     tokenStore.set('sess456', { type: 'session', email: 'test@test.com', expiresAt: Date.now() + 60000, impersonating: 'victim@test.com' });
     const req = { headers: { cookie: 'session=sess456' } };
     // Non-admin with impersonating flag should still return their own email
-    expect(getEffectiveEmail(req)).toBe('test@test.com');
+    expect(await getEffectiveEmail(req)).toBe('test@test.com');
   });
 
-  test('getEffectiveEmail returns null for expired session', () => {
+  test('getEffectiveEmail returns null for expired session', async () => {
     tokenStore.set('expired', { type: 'session', email: 'g@purplehorizons.io', expiresAt: Date.now() - 1000 });
     const req = { headers: { cookie: 'session=expired' } };
-    expect(getEffectiveEmail(req)).toBe(null);
+    expect(await getEffectiveEmail(req)).toBe(null);
   });
 
-  test('getEffectiveEmail returns null for missing cookie', () => {
+  test('getEffectiveEmail returns null for missing cookie', async () => {
     const req = { headers: { cookie: '' } };
-    expect(getEffectiveEmail(req)).toBe(null);
+    expect(await getEffectiveEmail(req)).toBe(null);
   });
 });
 
@@ -117,14 +117,14 @@ describe('Secrets Encryption', () => {
     return value.slice(0, 4) + '••••' + value.slice(-4);
   }
 
-  test('encrypts and decrypts correctly', () => {
+  test('encrypts and decrypts correctly', async () => {
     const original = 'sk-ant-api03-test1234567890';
     const encrypted = encrypt(original);
     const decrypted = decrypt(encrypted);
     expect(decrypted).toBe(original);
   });
 
-  test('different encryptions produce different ciphertext (random IV)', () => {
+  test('different encryptions produce different ciphertext (random IV)', async () => {
     const original = 'same-key-same-value';
     const e1 = encrypt(original);
     const e2 = encrypt(original);
@@ -133,7 +133,7 @@ describe('Secrets Encryption', () => {
     expect(decrypt(e2)).toBe(original);
   });
 
-  test('ciphertext format is iv:tag:encrypted', () => {
+  test('ciphertext format is iv:tag:encrypted', async () => {
     const encrypted = encrypt('test');
     const parts = encrypted.split(':');
     expect(parts.length).toBe(3);
@@ -142,7 +142,7 @@ describe('Secrets Encryption', () => {
     expect(parts[2].length > 0).toBeTruthy(); // encrypted data
   });
 
-  test('tampered ciphertext throws', () => {
+  test('tampered ciphertext throws', async () => {
     const encrypted = encrypt('secret-value');
     const parts = encrypted.split(':');
     // Tamper with the encrypted data
@@ -150,18 +150,18 @@ describe('Secrets Encryption', () => {
     expect(() => decrypt(parts.join(':'))).toThrow();
   });
 
-  test('masks short values', () => {
+  test('masks short values', async () => {
     expect(maskValue('short')).toBe('••••••••');
     expect(maskValue('')).toBe('••••••••');
     expect(maskValue(null)).toBe('••••••••');
   });
 
-  test('masks long values showing first4 and last4', () => {
+  test('masks long values showing first4 and last4', async () => {
     expect(maskValue('sk-ant-api03-test1234')).toBe('sk-a••••1234');
     expect(maskValue('fal-test-key-abcdef')).toBe('fal-••••cdef');
   });
 
-  test('handles unicode in secret values', () => {
+  test('handles unicode in secret values', async () => {
     const original = 'key-with-émojis-🔐-and-ñ';
     const encrypted = encrypt(original);
     expect(decrypt(encrypted)).toBe(original);
@@ -175,34 +175,34 @@ describe('Chat Proxy Auth', () => {
     tokenStore.clear();
   });
 
-  test('valid session returns email', () => {
+  test('valid session returns email', async () => {
     tokenStore.set('good', { type: 'session', email: 'user@test.com', expiresAt: Date.now() + 60000 });
     const req = { headers: { cookie: 'session=good' } };
-    expect(getEmailFromSession(req)).toBe('user@test.com');
+    expect(await getEmailFromSession(req)).toBe('user@test.com');
   });
 
-  test('wrong type token rejected', () => {
+  test('wrong type token rejected', async () => {
     tokenStore.set('magic', { type: 'magic-link', email: 'user@test.com', expiresAt: Date.now() + 60000 });
     const req = { headers: { cookie: 'session=magic' } };
-    expect(getEmailFromSession(req)).toBe(null);
+    expect(await getEmailFromSession(req)).toBe(null);
   });
 
-  test('expired session rejected', () => {
+  test('expired session rejected', async () => {
     tokenStore.set('old', { type: 'session', email: 'user@test.com', expiresAt: Date.now() - 1 });
     const req = { headers: { cookie: 'session=old' } };
-    expect(getEmailFromSession(req)).toBe(null);
+    expect(await getEmailFromSession(req)).toBe(null);
   });
 
-  test('no cookie returns null', () => {
-    expect(getEmailFromSession({ headers: { cookie: '' } })).toBe(null);
-    expect(getEmailFromSession({ headers: {} })).toBe(null);
+  test('no cookie returns null', async () => {
+    expect(await getEmailFromSession({ headers: { cookie: '' } })).toBe(null);
+    expect(await getEmailFromSession({ headers: {} })).toBe(null);
   });
 
-  test('Bearer token auth works', () => {
+  test('Bearer token auth works', async () => {
     tokenStore.set('bearer123', { type: 'session', email: 'api@test.com', expiresAt: Date.now() + 60000 });
     // getEmailFromSession only checks cookies, not Bearer — that's in chat proxy
     // This verifies cookie-only path
     const req = { headers: { cookie: '', authorization: 'Bearer bearer123' } };
-    expect(getEmailFromSession(req)).toBe(null); // Cookie path only
+    expect(await getEmailFromSession(req)).toBe(null); // Cookie path only
   });
 });
