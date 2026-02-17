@@ -11,7 +11,7 @@ const { requireAdmin } = require('../auth/middleware.js');
 const { validateTenantId, validateLines } = require('../util/validate.js');
 
 module.exports = async (req, res) => {
-  const admin = requireAdmin(req, res);
+  const admin = await requireAdmin(req, res);
   if (!admin) return;
 
   const { tenantId } = req.params;

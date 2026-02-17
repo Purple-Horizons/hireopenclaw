@@ -16,7 +16,7 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'sessionToken is required' });
     }
     
-    const sessionData = sessionStore.get(sessionToken);
+    const sessionData = await sessionStore.get(sessionToken);
     
     if (!sessionData) {
       return res.status(401).json({ valid: false, error: 'Invalid session' });

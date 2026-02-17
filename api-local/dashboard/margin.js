@@ -111,7 +111,7 @@ module.exports = async (req, res) => {
   }
 
   // Use session email (trusted)
-  const email = getEmailFromSession(req) || req.query.email;
+  const email = await getEmailFromSession(req) || req.query.email;
 
   if (!email) {
     return res.status(401).json({ error: 'Unauthorized — no valid session' });

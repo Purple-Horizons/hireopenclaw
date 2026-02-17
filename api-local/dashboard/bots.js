@@ -17,7 +17,7 @@ module.exports = async (req, res) => {
   }
 
   // Prefer session-based auth, fall back to query param
-  const email = getEmailFromSession(req) || req.query.email;
+  const email = await getEmailFromSession(req) || req.query.email;
 
   if (!email) {
     return res.status(401).json({ error: 'Unauthorized — no valid session' });

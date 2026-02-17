@@ -144,7 +144,7 @@ module.exports = async (req, res) => {
       return res.status(429).json({ error: 'Too many requests. Please try again later.' });
     }
     
-    const tokenData = tokenStore.get(token);
+    const tokenData = await tokenStore.get(token);
     
     if (!tokenData) {
       return res.status(401).json({ error: 'Invalid token' });

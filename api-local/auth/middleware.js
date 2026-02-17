@@ -17,12 +17,12 @@ const IMPERSONATION_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
  * Extract email from session cookie
  * Returns email string or null
  */
-function getEmailFromSession(req) {
+async function getEmailFromSession(req) {
   const cookies = req.headers.cookie || '';
   const match = cookies.match(/session=([^;]+)/);
   const sessionToken = match ? match[1] : null;
   if (!sessionToken) return null;
-  const session = tokenStore.get(sessionToken);
+  const session = await tokenStore.get(sessionToken);
   if (!session || session.type !== 'session' || session.expiresAt < Date.now()) return null;
   return session.email;
 }
@@ -31,8 +31,8 @@ function getEmailFromSession(req) {
  * Require auth — returns 401 if not authenticated
  * Sets req.userEmail if authenticated
  */
-function requireAuth(req, res) {
-  const email = getEmailFromSession(req);
+async function requireAuth(req, res) {
+  const email = await getEmailFromSession(req);
   if (!email) {
     res.status(ERROR_CODES.AUTH_REQUIRED.status).json(apiError(ERROR_CODES.AUTH_REQUIRED));
     return null;
@@ -45,7 +45,7 @@ function requireAuth(req, res) {
  * Verify bot ownership — returns bot data or null (with error response)
  */
 async function requireBotOwnership(req, res, botId) {
-  const email = requireAuth(req, res);
+  const email = await requireAuth(req, res);
   if (!email) return null;
   
   try {
@@ -82,7 +82,7 @@ function isAdmin(email) {
 /**
  * Require admin auth — returns 403 if not admin
  */
-function requireAdmin(req, res) {
+async function requireAdmin(req, res) {
   // CLI bypass — local development only
   if (process.env.NODE_ENV !== 'production') {
     const cliSecret = req.headers['x-cli-secret'];
@@ -96,7 +96,7 @@ function requireAdmin(req, res) {
     }
   }
   
-  const email = getEmailFromSession(req);
+  const email = await getEmailFromSession(req);
   if (!email) {
     res.status(ERROR_CODES.AUTH_REQUIRED.status).json(apiError(ERROR_CODES.AUTH_REQUIRED));
     return null;
@@ -114,12 +114,12 @@ function requireAdmin(req, res) {
  * Get impersonated email (admin viewing as client)
  * Falls back to actual session email
  */
-function getEffectiveEmail(req) {
+async function getEffectiveEmail(req) {
   const cookies = req.headers.cookie || '';
   const match = cookies.match(/session=([^;]+)/);
   const sessionToken = match ? match[1] : null;
   if (!sessionToken) return null;
-  const session = tokenStore.get(sessionToken);
+  const session = await tokenStore.get(sessionToken);
   if (!session || session.type !== 'session' || session.expiresAt < Date.now()) return null;
   
   // If admin is impersonating, use impersonated email

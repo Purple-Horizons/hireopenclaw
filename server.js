@@ -308,9 +308,9 @@ app.get('/dashboard', (req, res, next) => {
 });
 
 // Admin dashboard — requires admin email
-app.get('/admin', (req, res) => {
+app.get('/admin', async (req, res) => {
   const { getEmailFromSession, isAdmin } = require(path.join(__dirname, 'api-local', 'auth', 'middleware.js'));
-  const email = getEmailFromSession(req);
+  const email = await getEmailFromSession(req);
   if (!email) return res.redirect('/?login=true');
   if (!isAdmin(email)) return res.status(403).send('<h1>403 Forbidden</h1><p>Admin access required.</p>');
   res.sendFile(path.join(__dirname, 'admin.html'));

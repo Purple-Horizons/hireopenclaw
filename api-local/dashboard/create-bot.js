@@ -21,7 +21,7 @@ module.exports = async (req, res) => {
   }
 
   // Auth check — infer email from session
-  const sessionEmail = requireAuth(req, res);
+  const sessionEmail = await requireAuth(req, res);
   if (!sessionEmail) return;
 
   const { 

@@ -39,7 +39,7 @@ async function verifyBotOwnership(email, tenantId) {
 }
 
 module.exports = async (req, res) => {
-  const email = getEmailFromSession(req);
+  const email = await getEmailFromSession(req);
   if (!email) {
     return res.status(401).json({ error: 'Unauthorized — no valid session' });
   }

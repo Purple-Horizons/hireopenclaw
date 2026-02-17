@@ -8,7 +8,7 @@ const { requireAdmin, isAdmin } = require('../auth/middleware.js');
 const tokenStore = require('../auth/token-store.js');
 
 module.exports = async (req, res) => {
-  const admin = requireAdmin(req, res);
+  const admin = await requireAdmin(req, res);
   if (!admin) return;
 
   const action = req.path.includes('stop') ? 'stop' : 'start';

@@ -19,7 +19,7 @@ function dynamo(cmd) {
 }
 
 module.exports = async (req, res) => {
-  const admin = requireAdmin(req, res);
+  const admin = await requireAdmin(req, res);
   if (!admin) return;
 
   try {

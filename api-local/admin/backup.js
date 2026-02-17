@@ -190,7 +190,7 @@ async function restoreBackup(tenantId, backupId, triggeredBy) {
 // ─── Admin handlers ───
 
 async function handleAdminBackup(req, res) {
-  const admin = requireAdmin(req, res);
+  const admin = await requireAdmin(req, res);
   if (!admin) return;
 
   const { tenantId } = req.params;
@@ -237,7 +237,7 @@ async function handleAdminBackup(req, res) {
 // ─── Client handlers ───
 
 async function handleClientBackup(req, res) {
-  const email = getEmailFromSession(req);
+  const email = await getEmailFromSession(req);
   if (!email) return res.status(401).json({ error: 'Unauthorized' });
 
   const { botId } = req.body || req.query;

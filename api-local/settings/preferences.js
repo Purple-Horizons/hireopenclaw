@@ -18,7 +18,7 @@ const DEFAULTS = {
 const { getEmailFromSession } = require('../auth/middleware.js');
 
 module.exports = async (req, res) => {
-  const email = getEmailFromSession(req);
+  const email = await getEmailFromSession(req);
   if (!email) return res.status(401).json({ error: 'Unauthorized' });
 
   if (req.method === 'GET') {

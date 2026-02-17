@@ -161,7 +161,7 @@ async function getMergedSecrets(tenantId, email) {
 
 // ─── Admin handler: platform secrets ───
 async function handleAdminSecrets(req, res) {
-  const admin = requireAdmin(req, res);
+  const admin = await requireAdmin(req, res);
   if (!admin) return;
 
   const scope = req.query.scope || req.body?.scope || 'platform';
@@ -194,7 +194,7 @@ async function handleAdminSecrets(req, res) {
 
 // ─── Client handler: own secrets ───
 async function handleClientSecrets(req, res) {
-  const email = getEmailFromSession(req);
+  const email = await getEmailFromSession(req);
   if (!email) return res.status(401).json({ error: 'Unauthorized' });
 
   const scope = `client:${email}`;
