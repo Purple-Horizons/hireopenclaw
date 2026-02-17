@@ -3,30 +3,19 @@
  * Creates initial tenant record in DynamoDB
  */
 
-const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, PutCommand } = require('@aws-sdk/lib-dynamodb');
-
-// Configure DynamoDB client for LocalStack
-const dynamoClient = new DynamoDBClient({
-  region: process.env.AWS_DEFAULT_REGION || 'us-east-1',
-  endpoint: process.env.AWS_ENDPOINT_URL || 'http://localhost:4566',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'test',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'test'
-  }
-});
-
-const docClient = DynamoDBDocumentClient.from(dynamoClient);
+const { PutCommand } = require('@aws-sdk/lib-dynamodb');
+const { docClient, TABLES } = require('./util/dynamodb.js');
+const { ERROR_CODES, apiError } = require('./util/error-codes.js');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json(apiError(ERROR_CODES.METHOD_NOT_ALLOWED));
   }
 
   const { name, email, phone, company } = req.body || {};
 
   if (!name || !email) {
-    return res.status(400).json({ error: 'Name and email are required' });
+    return res.status(400).json(apiError(ERROR_CODES.MISSING_FIELD, 'Name and email are required'));
   }
 
   console.log(`[Signup] New lead: ${name} | ${email} | ${phone || 'no phone'}`);
@@ -38,7 +27,7 @@ module.exports = async (req, res) => {
     const tenantId = `tenant-${timestamp}-${random}`;
 
     // Create tenant record in DynamoDB
-    const tableName = process.env.DYNAMODB_TABLE || 'clawops-tenants';
+    const tableName = TABLES.TENANTS;
     
     await docClient.send(new PutCommand({
       TableName: tableName,
@@ -94,8 +83,6 @@ module.exports = async (req, res) => {
 
   } catch (error) {
     console.error('[Signup] Database error:', error);
-    return res.status(500).json({ 
-      error: 'Failed to create account'
-    });
+    return res.status(500).json(apiError(ERROR_CODES.INTERNAL));
   }
 };

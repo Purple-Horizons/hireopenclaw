@@ -1,20 +1,7 @@
-const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, PutCommand } = require('@aws-sdk/lib-dynamodb');
 const crypto = require('crypto');
+const { PutCommand } = require('@aws-sdk/lib-dynamodb');
+const { docClient: db, TABLES } = require('../util/dynamodb.js');
 
-const isLocal = process.env.NODE_ENV !== 'production';
-const client = new DynamoDBClient({
-  region: 'us-east-1',
-  ...(isLocal && {
-    endpoint: 'http://localhost:4566',
-    credentials: {
-      accessKeyId: 'test',
-      secretAccessKey: 'test'
-    }
-  })
-});
-
-const db = DynamoDBDocumentClient.from(client);
 
 module.exports = async (req, res) => {
   try {

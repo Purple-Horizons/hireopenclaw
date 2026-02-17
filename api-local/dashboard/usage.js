@@ -4,13 +4,10 @@
  * Queries clawops-usage table for real-time cost tracking
  */
 
-const { DynamoDBClient, QueryCommand } = require('@aws-sdk/client-dynamodb');
+const { QueryCommand, ScanCommand, GetItemCommand } = require('@aws-sdk/client-dynamodb');
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
-
-const dynamodb = new DynamoDBClient({
-  region: process.env.AWS_REGION || 'us-east-1',
-  endpoint: process.env.AWS_ENDPOINT_URL || 'http://localhost:4566'
-});
+const { client: dynamodb, TABLES } = require('../util/dynamodb.js');
+const { requireBotOwnership } = require('../auth/middleware.js');
 
 // Plan budget limits (API cost budgets per plan)
 const PLAN_BUDGETS = {
@@ -19,8 +16,6 @@ const PLAN_BUDGETS = {
   business: 180.00,
   enterprise: 480.00
 };
-
-const { requireBotOwnership } = require('../auth/middleware.js');
 
 module.exports = async (req, res) => {
   try {
@@ -50,11 +45,9 @@ module.exports = async (req, res) => {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     
     const command = new QueryCommand({
-      TableName: 'clawops-usage',
+      TableName: TABLES.USAGE,
       KeyConditionExpression: 'tenantId = :tid AND #d >= :monthStart',
-      ExpressionAttributeNames: {
-        '#d': 'date'
-      },
+      ExpressionAttributeNames: { '#d': 'date' },
       ExpressionAttributeValues: {
         ':tid': { S: tenantId },
         ':monthStart': { S: monthStart }
@@ -68,38 +61,31 @@ module.exports = async (req, res) => {
     let requestCount = 0;
     let tokensIn = 0;
     let tokensOut = 0;
-    const breakdown = {}; // Cost by provider
-    const dailyCosts = {}; // Cost by day
+    const breakdown = {};
+    const dailyCosts = {};
     
     if (response.Items) {
       for (const item of response.Items) {
         const record = unmarshall(item);
-        
         const cost = parseFloat(record.cost || 0);
         totalCost += cost;
         requestCount += 1;
         tokensIn += parseInt(record.inputTokens || record.tokensIn || 0);
         tokensOut += parseInt(record.outputTokens || record.tokensOut || 0);
         
-        // By provider
         const provider = record.provider || 'unknown';
         breakdown[provider] = (breakdown[provider] || 0) + cost;
         
-        // By day
-        const day = (record.timestamp || record.date || record.lastUpdated || '').substring(0, 10); // YYYY-MM-DD
+        const day = (record.timestamp || record.date || record.lastUpdated || '').substring(0, 10);
         dailyCosts[day] = (dailyCosts[day] || 0) + cost;
       }
     }
     
-    // Today's cost
     const today = now.toISOString().substring(0, 10);
     const todayCost = dailyCosts[today] || 0;
-    
-    // Budget utilization
     const utilization = (totalCost / budgetLimit) * 100;
     const remaining = budgetLimit - totalCost;
     
-    // Alert level
     let alertLevel = 'ok';
     if (utilization >= 100) alertLevel = 'critical';
     else if (utilization >= 90) alertLevel = 'danger';
@@ -115,52 +101,35 @@ module.exports = async (req, res) => {
         utilization: Math.min(100, utilization),
         alertLevel
       },
-      usage: {
-        totalCost,
-        todayCost,
-        requestCount,
-        tokensIn,
-        tokensOut
-      },
+      usage: { totalCost, todayCost, requestCount, tokensIn, tokensOut },
       breakdown,
-      dailyCosts: Object.entries(dailyCosts).map(([date, cost]) => ({
-        date,
-        cost
-      })).sort((a, b) => a.date.localeCompare(b.date))
+      dailyCosts: Object.entries(dailyCosts).map(([date, cost]) => ({ date, cost })).sort((a, b) => a.date.localeCompare(b.date))
     });
     
   } catch (err) {
     console.error('Error getting usage:', err);
-    res.status(500).json({ 
-      error: 'Failed to get usage',
-      message: err.message 
-    });
+    res.status(500).json({ error: 'Failed to get usage', message: err.message });
   }
 };
 
-const { ScanCommand } = require('@aws-sdk/client-dynamodb');
-
 async function handleEmailUsage(req, res, email) {
-  // Get all bots for this email
   const scan = await dynamodb.send(new ScanCommand({
-    TableName: 'clawops-tenants',
+    TableName: TABLES.TENANTS,
     FilterExpression: 'email = :email',
     ExpressionAttributeValues: { ':email': { S: email } }
   }));
   
   const tenants = (scan.Items || []).map(i => unmarshall(i));
-  
   const now = new Date();
   const days = parseInt(req.query.days) || 30;
   const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
   
-  // Query usage for each bot
   const dailyMap = {};
   
   for (const tenant of tenants) {
     try {
       const result = await dynamodb.send(new QueryCommand({
-        TableName: 'clawops-usage',
+        TableName: TABLES.USAGE,
         KeyConditionExpression: 'tenantId = :tid AND #d >= :start',
         ExpressionAttributeNames: { '#d': 'date' },
         ExpressionAttributeValues: {
@@ -183,32 +152,18 @@ async function handleEmailUsage(req, res, email) {
   const dailyUsage = Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date));
   
   return res.json({
-    ok: true,
-    email,
-    days,
-    dailyUsage,
+    ok: true, email, days, dailyUsage,
     bots: tenants.map(t => ({ tenantId: t.tenantId, name: t.name || t.botName }))
   });
 }
 
 async function getTenant(tenantId) {
-  const { GetItemCommand } = require('@aws-sdk/client-dynamodb');
-  
   try {
-    const command = new GetItemCommand({
-      TableName: 'clawops-tenants',
-      Key: {
-        tenantId: { S: tenantId }
-      }
-    });
-    
-    const response = await dynamodb.send(command);
-    
-    if (response.Item) {
-      return unmarshall(response.Item);
-    }
-    
-    return null;
+    const response = await dynamodb.send(new GetItemCommand({
+      TableName: TABLES.TENANTS,
+      Key: { tenantId: { S: tenantId } }
+    }));
+    return response.Item ? unmarshall(response.Item) : null;
   } catch (err) {
     console.error('Error getting tenant:', err);
     return null;

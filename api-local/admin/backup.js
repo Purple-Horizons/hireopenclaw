@@ -18,17 +18,9 @@ const { execFileSync } = require('child_process');
 const crypto = require('crypto');
 const { requireAdmin, getEmailFromSession } = require('../auth/middleware.js');
 const { validateTenantId, validateBackupId } = require('../util/validate.js');
-const { DynamoDBClient, PutItemCommand, QueryCommand } = require('@aws-sdk/client-dynamodb');
+const { PutItemCommand, QueryCommand, GetItemCommand } = require('@aws-sdk/client-dynamodb');
 const { marshall, unmarshall } = require('@aws-sdk/util-dynamodb');
-
-const dynamodb = new DynamoDBClient({
-  region: process.env.AWS_DEFAULT_REGION || 'us-east-1',
-  endpoint: process.env.AWS_ENDPOINT_URL || 'http://localhost:4566',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'test',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'test'
-  }
-});
+const { client: dynamodb, TABLES } = require('../util/dynamodb.js');
 
 const S3_BUCKET = 'clawops-backups';
 const BACKUP_TABLE = 'clawops-backups';
@@ -253,7 +245,6 @@ async function handleClientBackup(req, res) {
   if (!validateTenantId(botId)) return res.status(400).json({ error: 'Invalid botId format' });
 
   // Verify ownership (inline check)
-  const { GetItemCommand } = require('@aws-sdk/client-dynamodb');
   const result = await dynamodb.send(new GetItemCommand({
     TableName: 'clawops-tenants',
     Key: { tenantId: { S: botId } }

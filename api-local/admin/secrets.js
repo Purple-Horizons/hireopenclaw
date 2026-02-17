@@ -18,18 +18,10 @@
  */
 
 const crypto = require('crypto');
-const { DynamoDBClient, PutItemCommand, QueryCommand, DeleteItemCommand, GetItemCommand } = require('@aws-sdk/client-dynamodb');
 const { unmarshall, marshall } = require('@aws-sdk/util-dynamodb');
 const { requireAdmin, getEmailFromSession } = require('../auth/middleware.js');
-
-const dynamodb = new DynamoDBClient({
-  region: process.env.AWS_DEFAULT_REGION || 'us-east-1',
-  endpoint: process.env.AWS_ENDPOINT_URL || 'http://localhost:4566',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'test',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'test'
-  }
-});
+const { QueryCommand, PutItemCommand, DeleteItemCommand, GetItemCommand } = require('@aws-sdk/client-dynamodb');
+const { client: dynamodb, TABLES } = require('../util/dynamodb.js');
 
 const TABLE = 'clawops-secrets';
 

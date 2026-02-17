@@ -316,6 +316,10 @@ app.use((req, res) => {
   res.status(404).send('<h1>404 Not Found</h1>');
 });
 
+// Global error handler (must be last middleware)
+const { globalErrorHandler } = require(path.join(__dirname, 'api-local', 'util', 'error-handler.js'));
+app.use(globalErrorHandler);
+
 // Start server
 app.listen(PORT, () => {
   console.log('');

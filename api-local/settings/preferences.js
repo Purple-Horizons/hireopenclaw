@@ -4,18 +4,10 @@
  * POST /api/settings/preferences - Save preferences
  */
 
-const { DynamoDBClient, GetItemCommand, PutItemCommand } = require('@aws-sdk/client-dynamodb');
+const { GetItemCommand, PutItemCommand } = require('@aws-sdk/client-dynamodb');
+const { client: dynamodb, TABLES } = require('../util/dynamodb.js');
 
-const dynamodb = new DynamoDBClient({
-  region: process.env.AWS_DEFAULT_REGION || 'us-east-1',
-  endpoint: process.env.AWS_ENDPOINT_URL || 'http://localhost:4566',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'test',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'test'
-  }
-});
-
-const TABLE = 'clawops-user-preferences';
+const TABLE = TABLES.USER_PREFERENCES;
 
 const DEFAULTS = {
   usageSpikeAlerts: true,

@@ -10,18 +10,6 @@
  * - invoice.payment_failed → Alert
  */
 
-const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, UpdateCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
-
-const isLocal = process.env.NODE_ENV !== 'production';
-const client = new DynamoDBClient({
-  region: 'us-east-1',
-  ...(isLocal && {
-    endpoint: 'http://localhost:4566',
-    credentials: { accessKeyId: 'test', secretAccessKey: 'test' }
-  })
-});
-const db = DynamoDBDocumentClient.from(client);
 
 module.exports = async (req, res) => {
   try {
@@ -33,6 +21,8 @@ module.exports = async (req, res) => {
     if (stripeKey && webhookSecret) {
       // Production: verify webhook signature
       const stripe = require('stripe')(stripeKey);
+const { ScanCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { docClient: db, TABLES } = require('../util/dynamodb.js');
       const sig = req.headers['stripe-signature'];
       
       try {

@@ -10,18 +10,10 @@
  * making chat.send fail. The HTTP endpoint bypasses this entirely.
  */
 
-const { DynamoDBClient, GetItemCommand } = require('@aws-sdk/client-dynamodb');
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 const tokenStore = require('../auth/token-store.js');
-
-const dynamodb = new DynamoDBClient({
-  region: process.env.AWS_DEFAULT_REGION || 'us-east-1',
-  endpoint: process.env.AWS_ENDPOINT_URL || 'http://localhost:4566',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'test',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'test'
-  }
-});
+const { GetItemCommand } = require('@aws-sdk/client-dynamodb');
+const { client: dynamodb, TABLES } = require('../util/dynamodb.js');
 
 // In-memory conversation history per bot (ephemeral — lost on portal restart)
 // botId -> { messages: [{role, content}], lastActivity }

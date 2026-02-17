@@ -5,21 +5,14 @@
  */
 
 const crypto = require('crypto');
-const { DynamoDBClient, ScanCommand } = require('@aws-sdk/client-dynamodb');
-
-const dynamodb = new DynamoDBClient({
-  region: process.env.AWS_DEFAULT_REGION || 'us-east-1',
-  endpoint: process.env.AWS_ENDPOINT_URL || 'http://localhost:4566',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'test',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'test'
-  }
-});
+const { ScanCommand } = require('@aws-sdk/client-dynamodb');
+const { client: dynamodb, TABLES } = require('../util/dynamodb.js');
+const { ERROR_CODES, apiError } = require('../util/error-codes.js');
 
 async function emailExists(email) {
   try {
     const result = await dynamodb.send(new ScanCommand({
-      TableName: 'clawops-tenants',
+      TableName: TABLES.TENANTS,
       FilterExpression: 'email = :email',
       ExpressionAttributeValues: { ':email': { S: email } }
     }));

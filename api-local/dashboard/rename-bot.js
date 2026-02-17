@@ -4,22 +4,10 @@
  * Updates bot name in DynamoDB
  */
 
-const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
-
-// Configure DynamoDB client for LocalStack
-const dynamoClient = new DynamoDBClient({
-  region: process.env.AWS_DEFAULT_REGION || 'us-east-1',
-  endpoint: process.env.AWS_ENDPOINT_URL || 'http://localhost:4566',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'test',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'test'
-  }
-});
-
-const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 const { requireBotOwnership } = require('../auth/middleware.js');
+const { UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { docClient, TABLES } = require('../util/dynamodb.js');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {

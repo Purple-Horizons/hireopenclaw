@@ -5,22 +5,12 @@
  * Falls back to ?email= query param for backwards compat (will be removed)
  */
 
-const { DynamoDBClient, QueryCommand: RawQueryCommand } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, QueryCommand } = require('@aws-sdk/lib-dynamodb');
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 const tokenStore = require('../auth/token-store.js');
+const { QueryCommand: RawQueryCommand } = require('@aws-sdk/client-dynamodb');
+const { QueryCommand } = require('@aws-sdk/lib-dynamodb');
+const { docClient, TABLES } = require('../util/dynamodb.js');
 
-// Configure DynamoDB client for LocalStack
-const dynamoClient = new DynamoDBClient({
-  region: process.env.AWS_DEFAULT_REGION || 'us-east-1',
-  endpoint: process.env.AWS_ENDPOINT_URL || 'http://localhost:4566',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'test',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'test'
-  }
-});
-
-const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 function getEmailFromSession(req) {
   const cookies = req.headers.cookie || '';
