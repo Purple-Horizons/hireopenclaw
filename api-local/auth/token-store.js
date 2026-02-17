@@ -18,7 +18,7 @@ const store = {
       dynamodb.send(new PutItemCommand({
         TableName: TABLE,
         Item: {
-          tokenId: { S: token },
+          token: { S: token },
           email: { S: data.email },
           type: { S: 'session' },
           expiresAt: { N: String(data.expiresAt) },
@@ -36,7 +36,7 @@ const store = {
     try {
       const result = await dynamodb.send(new GetItemCommand({
         TableName: TABLE,
-        Key: { tokenId: { S: token } },
+        Key: { token: { S: token } },
       }));
       if (result.Item) {
         const data = {
@@ -58,7 +58,7 @@ const store = {
     memoryStore.delete(token);
     dynamodb.send(new DeleteItemCommand({
       TableName: TABLE,
-      Key: { tokenId: { S: token } },
+      Key: { token: { S: token } },
     })).catch(err => console.error('[TokenStore] DynamoDB delete failed:', err.message));
   },
 
