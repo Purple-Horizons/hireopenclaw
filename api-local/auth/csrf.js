@@ -11,8 +11,8 @@ function validateCsrf(req, res, next) {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
   // Skip for webhooks and public endpoints
   if (req.path.includes('/webhook') || req.path.includes('/magic-link') || req.path.includes('/auth/session')) return next();
-  // In test mode, skip CSRF
-  if (process.env.NODE_ENV === 'test') return next();
+  // In test/development mode, skip CSRF
+  if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') return next();
   
   const token = req.headers['x-csrf-token'];
   const cookies = req.headers.cookie || '';
