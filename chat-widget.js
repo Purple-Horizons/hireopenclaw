@@ -96,9 +96,10 @@ class IntakeChat {
   }
 
   formatMessage(text) {
-    return text
+    const html = text
       .replace(/\n/g, '<br>')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    return typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(html) : html;
   }
 
   async sendMessage() {

@@ -1239,7 +1239,8 @@
                     throw new Error('Signup failed');
                 }
             } catch (error) {
-                alert('Something went wrong. Please try again.');
+                if (typeof showToast === 'function') showToast('Something went wrong. Please try again.', 'error');
+                else { const t = document.createElement('div'); t.textContent = 'Something went wrong. Please try again.'; t.style.cssText = 'position:fixed;bottom:20px;right:20px;padding:12px 20px;border-radius:8px;color:white;background:#ef4444;z-index:10000;font-size:14px;'; document.body.appendChild(t); setTimeout(() => t.remove(), 4000); }
                 btnText.style.display = 'inline';
                 btnLoading.style.display = 'none';
                 btn.disabled = false;

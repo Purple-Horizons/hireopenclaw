@@ -219,7 +219,8 @@
                     throw new Error(data.error || 'Checkout failed');
                 }
             } catch (err) {
-                alert('Something went wrong. Please try again or email hello@hireopenclaw.com');
+                if (typeof showToast === 'function') showToast('Something went wrong. Please try again or email hello@hireopenclaw.com', 'error');
+                else { const t = document.createElement('div'); t.textContent = 'Something went wrong. Please try again or email hello@hireopenclaw.com'; t.style.cssText = 'position:fixed;bottom:20px;right:20px;padding:12px 20px;border-radius:8px;color:white;background:#ef4444;z-index:10000;font-size:14px;max-width:400px;'; document.body.appendChild(t); setTimeout(() => t.remove(), 4000); }
                 btn.disabled = false;
                 btn.textContent = 'Continue to Payment →';
             }
