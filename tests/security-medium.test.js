@@ -16,7 +16,8 @@ describe('TASK-218: Rate Limiting', () => {
 
   test('allows requests up to MAX_ATTEMPTS', () => {
     for (let i = 0; i < MAX_ATTEMPTS; i++) {
-      expect(rateLimit('test-key')).toBe(true);
+      const result = rateLimit('test-key');
+      expect(typeof result === 'boolean' ? result : result.allowed).toBe(true);
     }
   });
 
@@ -24,15 +25,18 @@ describe('TASK-218: Rate Limiting', () => {
     for (let i = 0; i < MAX_ATTEMPTS; i++) {
       rateLimit('test-key');
     }
-    expect(rateLimit('test-key')).toBe(false);
+    const result = rateLimit('test-key');
+    expect(typeof result === 'boolean' ? result : result.allowed).toBe(false);
   });
 
   test('different keys are independent', () => {
     for (let i = 0; i < MAX_ATTEMPTS; i++) {
       rateLimit('key-a');
     }
-    expect(rateLimit('key-a')).toBe(false);
-    expect(rateLimit('key-b')).toBe(true);
+    const resultA = rateLimit('key-a');
+    const resultB = rateLimit('key-b');
+    expect(typeof resultA === 'boolean' ? resultA : resultA.allowed).toBe(false);
+    expect(typeof resultB === 'boolean' ? resultB : resultB.allowed).toBe(true);
   });
 });
 

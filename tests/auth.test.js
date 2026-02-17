@@ -3,250 +3,160 @@
  * Covers: magic link, session, enumeration protection, bot ownership
  */
 
-const assert = require('assert');
-const { describe, it, before, beforeEach } = require('node:test');
-
-// We need to mock DynamoDB for tests
 const tokenStore = require('../api-local/auth/token-store.js');
 
 describe('Token Store', () => {
-  beforeEach(() => {
-    tokenStore.clear();
-  });
+  beforeEach(() => { tokenStore.clear(); });
 
-  it('stores and retrieves tokens', () => {
+  test('stores and retrieves tokens', () => {
     tokenStore.set('abc', { email: 'test@test.com', expiresAt: Date.now() + 60000 });
     const data = tokenStore.get('abc');
-    assert.strictEqual(data.email, 'test@test.com');
+    expect(data.email).toBe('test@test.com');
   });
 
-  it('returns undefined for missing tokens', () => {
-    assert.strictEqual(tokenStore.get('nonexistent'), undefined);
+  test('returns undefined for missing tokens', () => {
+    expect(tokenStore.get('nonexistent')).toBeUndefined();
   });
 });
 
 describe('Magic Link - Token Generation', () => {
-  // We test the createMagicLink logic by checking tokenStore
-  beforeEach(() => {
-    tokenStore.clear();
-  });
+  beforeEach(() => { tokenStore.clear(); });
 
-  it('generated tokens are 64-char hex strings', () => {
+  test('generated tokens are 64-char hex strings', () => {
     const crypto = require('crypto');
     const token = crypto.randomBytes(32).toString('hex');
-    assert.strictEqual(token.length, 64);
-    assert.match(token, /^[a-f0-9]+$/);
+    expect(token).toHaveLength(64);
+    expect(token).toMatch(/^[a-f0-9]+$/);
   });
 
-  it('tokens expire after 15 minutes', () => {
+  test('tokens expire after 15 minutes', () => {
     const TOKEN_EXPIRY_MS = 15 * 60 * 1000;
     const expiresAt = Date.now() + TOKEN_EXPIRY_MS;
     tokenStore.set('test-token', { email: 'a@b.com', expiresAt, used: false });
-    
     const data = tokenStore.get('test-token');
-    assert.ok(data.expiresAt > Date.now());
-    assert.ok(data.expiresAt <= Date.now() + TOKEN_EXPIRY_MS);
+    expect(data.expiresAt).toBeGreaterThan(Date.now());
+    expect(data.expiresAt).toBeLessThanOrEqual(Date.now() + TOKEN_EXPIRY_MS);
   });
 
-  it('expired tokens should be rejected', () => {
-    tokenStore.set('expired-token', { 
-      email: 'a@b.com', 
-      expiresAt: Date.now() - 1000, // expired 1 second ago
-      used: false 
-    });
-    
+  test('expired tokens are detectable', () => {
+    tokenStore.set('expired-token', { email: 'a@b.com', expiresAt: Date.now() - 1000, used: false });
     const data = tokenStore.get('expired-token');
-    assert.ok(data.expiresAt < Date.now(), 'Token should be expired');
+    expect(data.expiresAt).toBeLessThan(Date.now());
   });
 });
 
 describe('Magic Link - Single Use', () => {
-  beforeEach(() => {
-    tokenStore.clear();
-  });
+  beforeEach(() => { tokenStore.clear(); });
 
-  it('token can be marked as used', () => {
+  test('token can be marked as used', () => {
     tokenStore.set('once-token', { email: 'a@b.com', expiresAt: Date.now() + 60000, used: false });
-    
     const data = tokenStore.get('once-token');
-    assert.strictEqual(data.used, false);
-    
+    expect(data.used).toBe(false);
     data.used = true;
     tokenStore.set('once-token', data);
-    
-    const recheck = tokenStore.get('once-token');
-    assert.strictEqual(recheck.used, true);
+    expect(tokenStore.get('once-token').used).toBe(true);
   });
 
-  it('used tokens should be rejected on verify', () => {
+  test('used tokens are flagged', () => {
     tokenStore.set('used-token', { email: 'a@b.com', expiresAt: Date.now() + 60000, used: true });
-    
-    const data = tokenStore.get('used-token');
-    assert.strictEqual(data.used, true, 'Token should be marked as used');
+    expect(tokenStore.get('used-token').used).toBe(true);
   });
 });
 
 describe('Session Validation', () => {
-  beforeEach(() => {
-    tokenStore.clear();
-  });
+  beforeEach(() => { tokenStore.clear(); });
 
-  it('valid session token returns email', () => {
-    tokenStore.set('session-abc', { 
-      email: 'user@test.com', 
-      expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
-      type: 'session'
-    });
-    
+  test('valid session token returns email', () => {
+    tokenStore.set('session-abc', { email: 'user@test.com', expiresAt: Date.now() + 30 * 86400000, type: 'session' });
     const session = tokenStore.get('session-abc');
-    assert.strictEqual(session.type, 'session');
-    assert.strictEqual(session.email, 'user@test.com');
-    assert.ok(session.expiresAt > Date.now());
+    expect(session.type).toBe('session');
+    expect(session.email).toBe('user@test.com');
+    expect(session.expiresAt).toBeGreaterThan(Date.now());
   });
 
-  it('non-session tokens are rejected', () => {
-    tokenStore.set('magic-token', { 
-      email: 'user@test.com', 
-      expiresAt: Date.now() + 60000,
-      used: false
-      // no type: 'session'
-    });
-    
+  test('non-session tokens are rejected', () => {
+    tokenStore.set('magic-token', { email: 'user@test.com', expiresAt: Date.now() + 60000, used: false });
     const data = tokenStore.get('magic-token');
-    assert.notStrictEqual(data.type, 'session');
+    expect(data.type).not.toBe('session');
   });
 
-  it('expired session tokens are rejected', () => {
-    tokenStore.set('expired-session', { 
-      email: 'user@test.com', 
-      expiresAt: Date.now() - 1000,
-      type: 'session'
-    });
-    
-    const data = tokenStore.get('expired-session');
-    assert.ok(data.expiresAt < Date.now());
+  test('expired session tokens are detectable', () => {
+    tokenStore.set('expired-session', { email: 'user@test.com', expiresAt: Date.now() - 1000, type: 'session' });
+    expect(tokenStore.get('expired-session').expiresAt).toBeLessThan(Date.now());
   });
 });
 
 describe('Anti-Enumeration Protection', () => {
-  it('response shape is identical for existing and non-existing emails', () => {
-    // Both should return: { ok: true, message: "If an account exists...", expiresIn: "15 minutes" }
-    const existingResponse = {
-      ok: true,
-      message: 'If an account exists with that email, a login link has been sent.',
-      expiresIn: '15 minutes'
-    };
-    
-    const nonExistingResponse = {
-      ok: true,
-      message: 'If an account exists with that email, a login link has been sent.',
-      expiresIn: '15 minutes'
-    };
-    
-    // Responses must be identical
-    assert.deepStrictEqual(existingResponse, nonExistingResponse);
-    
+  test('response shape is identical for existing and non-existing emails', () => {
+    const response = { ok: true, message: 'If an account exists with that email, a login link has been sent.', expiresIn: '15 minutes' };
     // Neither should contain email-specific info
-    assert.ok(!existingResponse.email);
-    assert.ok(!existingResponse.magicLink);
-    assert.ok(!nonExistingResponse.email);
-    assert.ok(!nonExistingResponse.magicLink);
+    expect(response.email).toBeUndefined();
+    expect(response.magicLink).toBeUndefined();
   });
 });
 
 describe('Dashboard Auth Gate', () => {
-  it('requests without session cookie should be redirected', () => {
-    // Simulate: no cookie → should redirect to /?login=true
+  test('requests without session cookie fail check', () => {
     const hasCookie = '';
-    const hasSession = hasCookie.includes('session=');
-    assert.strictEqual(hasSession, false, 'No session cookie should mean redirect');
+    expect(hasCookie.includes('session=')).toBe(false);
   });
 
-  it('requests with session cookie should pass', () => {
+  test('requests with session cookie pass check', () => {
     const hasCookie = 'session=abc123; other=val';
-    const hasSession = hasCookie.includes('session=');
-    assert.strictEqual(hasSession, true, 'Session cookie present should pass');
+    expect(hasCookie.includes('session=')).toBe(true);
   });
 });
 
 describe('Bot Ownership Check', () => {
-  it('user email must match bot email', () => {
+  test('user email must match bot email', () => {
     const bot = { email: 'owner@test.com', status: 'active' };
-    const requestingEmail = 'hacker@evil.com';
-    
-    assert.notStrictEqual(bot.email, requestingEmail, 'Different emails should deny access');
+    expect(bot.email).not.toBe('hacker@evil.com');
   });
 
-  it('terminated bots should be inaccessible', () => {
+  test('terminated bots should be inaccessible', () => {
     const bot = { email: 'owner@test.com', status: 'terminated' };
-    
-    assert.strictEqual(bot.status, 'terminated', 'Terminated bots should be inaccessible');
+    expect(bot.status).toBe('terminated');
   });
 
-  it('owner can access their own active bot', () => {
+  test('owner can access their own active bot', () => {
     const bot = { email: 'owner@test.com', status: 'active' };
-    const requestingEmail = 'owner@test.com';
-    
-    assert.strictEqual(bot.email, requestingEmail);
-    assert.notStrictEqual(bot.status, 'terminated');
+    expect(bot.email).toBe('owner@test.com');
+    expect(bot.status).not.toBe('terminated');
   });
 });
 
 describe('Chat Proxy Auth', () => {
-  it('chat send requires session token', () => {
-    // No token → 401
-    const sessionToken = null;
-    assert.strictEqual(sessionToken, null, 'Missing token should return 401');
-  });
-
-  it('chat send requires bot ownership', () => {
-    // Valid session but wrong bot → 403
-    const userEmail = 'user@test.com';
-    const botEmail = 'other@test.com';
-    assert.notStrictEqual(userEmail, botEmail, 'Wrong owner should return 403');
-  });
-
-  it('session extraction from cookie', () => {
+  test('session extraction from cookie', () => {
     const cookie = 'session=abc123def; theme=dark';
     const match = cookie.match(/session=([^;]+)/);
-    assert.ok(match);
-    assert.strictEqual(match[1], 'abc123def');
+    expect(match).toBeTruthy();
+    expect(match[1]).toBe('abc123def');
   });
 
-  it('session extraction from Authorization header', () => {
+  test('session extraction from Authorization header', () => {
     const auth = 'Bearer my-secret-token';
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-    assert.strictEqual(token, 'my-secret-token');
+    expect(token).toBe('my-secret-token');
   });
 });
 
 describe('Security: Gateway Token Never Exposed', () => {
-  it('bots API response should not contain gatewayToken', () => {
-    // Simulate what the API returns
-    const bot = {
-      id: 'tenant-123',
-      name: 'Test Bot',
-      endpoint: 'http://localhost:18814',
-      // gatewayToken intentionally excluded
-    };
-    
-    assert.strictEqual(bot.gatewayToken, undefined, 'gatewayToken should not be in API response');
+  test('bots API response should not contain gatewayToken', () => {
+    const bot = { id: 'tenant-123', name: 'Test Bot', endpoint: 'http://localhost:18814' };
+    expect(bot.gatewayToken).toBeUndefined();
   });
 
-  it('chat proxy sends botId, not token, to frontend', () => {
+  test('chat proxy sends botId, not token, to frontend', () => {
     const botId = 'tenant-268193-renj';
-    const botName = 'Test Bot';
-    const chatUrl = `/chat?botId=${encodeURIComponent(botId)}&name=${encodeURIComponent(botName)}`;
-    
-    assert.ok(!chatUrl.includes('token='), 'Chat URL should not contain token');
-    assert.ok(!chatUrl.includes('gatewayToken'), 'Chat URL should not contain gatewayToken');
-    assert.ok(chatUrl.includes('botId='), 'Chat URL should contain botId');
+    const chatUrl = `/chat?botId=${encodeURIComponent(botId)}&name=Test`;
+    expect(chatUrl).not.toContain('token=');
+    expect(chatUrl).not.toContain('gatewayToken');
+    expect(chatUrl).toContain('botId=');
   });
 });
 
 describe('Security: All Dashboard Endpoints Require Auth', () => {
-  it('endpoints should validate session before processing', () => {
-    // List of endpoints that MUST check auth
+  test('protected endpoints list is comprehensive', () => {
     const protectedEndpoints = [
       '/api/dashboard/bots',
       '/api/dashboard/bot-action',
@@ -259,10 +169,6 @@ describe('Security: All Dashboard Endpoints Require Auth', () => {
       '/api/chat/:botId/events',
       '/api/chat/:botId/history'
     ];
-    
-    // Verify all endpoints exist in our list
-    assert.ok(protectedEndpoints.length >= 10, 'Should have at least 10 protected endpoints');
+    expect(protectedEndpoints.length).toBeGreaterThanOrEqual(10);
   });
 });
-
-console.log('All auth tests defined. Run with: node --test tests/auth.test.js');

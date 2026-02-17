@@ -103,7 +103,8 @@ module.exports = async (req, res) => {
     
   } catch (err) {
     console.error('Error getting usage:', err);
-    res.status(500).json({ error: 'Failed to get usage', message: err.message });
+    console.error('[Usage] Error:', err.message);
+    res.status(500).json({ error: 'Failed to get usage' });
   }
 };
 

@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "./local-dev.sh",
     "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --forceExit --detectOpenHandles --testPathIgnorePatterns='integration'",
+    "test:all": "jest --forceExit --detectOpenHandles",
+    "test:unit": "jest --forceExit tests/unit/"
   },
   "repository": {
     "type": "git",

@@ -45,11 +45,14 @@ describe('TASK-234: Global Error Handler', () => {
   });
 
   test('globalErrorHandler returns 500 for generic errors', () => {
+    const origEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
     const req = { method: 'GET', path: '/test' };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     const err = new Error('something broke');
     
     globalErrorHandler(err, req, res, () => {});
+    process.env.NODE_ENV = origEnv;
     
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith(
