@@ -248,13 +248,52 @@ app.get('/auth/verify', async (req, res) => {
         });
         return res.redirect(`/dashboard#session=${data.sessionToken}&email=${encodeURIComponent(data.email)}`);
       } else {
-        return res.status(401).send(`<h1>Login failed</h1><p>${data.error || 'Invalid or expired link.'}</p><p><a href="/">Try again</a></p>`);
+        const errorMsg = data.error || 'Invalid or expired link.';
+        const isExpired = errorMsg.includes('expired') || errorMsg.includes('already used') || errorMsg.includes('Invalid token');
+        return res.status(401).send(`<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Login Failed</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0a;color:#e0e0e0}
+  .card{max-width:420px;padding:48px 40px;text-align:center;background:#141414;border:1px solid #222;border-radius:12px}
+  .icon{font-size:48px;margin-bottom:16px}
+  h1{font-size:22px;margin-bottom:8px;color:#fff}
+  .msg{color:#888;margin-bottom:24px;line-height:1.5}
+  .btn{display:inline-block;padding:12px 32px;background:#7c3aed;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;transition:background .2s}
+  .btn:hover{background:#6d28d9}
+  .hint{margin-top:16px;font-size:13px;color:#555}
+</style></head><body>
+<div class="card">
+  <div class="icon">${isExpired ? '⏱️' : '🔒'}</div>
+  <h1>${isExpired ? 'Link Expired' : 'Login Failed'}</h1>
+  <p class="msg">${isExpired ? 'This login link has already been used or has expired. Magic links are single-use and valid for 15 minutes.' : errorMsg}</p>
+  <a href="/" class="btn">Get a New Link</a>
+  <p class="hint">Run <code>clawops login your@email.com</code> to generate a fresh link</p>
+</div></body></html>`);
       }
     };
     await handler(req, res);
   } catch (err) {
     console.error('[Auth Verify Error]', err);
-    res.status(500).send('<h1>Something went wrong</h1><p><a href="/">Try again</a></p>');
+    res.status(500).send(`<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Error</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0a;color:#e0e0e0}
+  .card{max-width:420px;padding:48px 40px;text-align:center;background:#141414;border:1px solid #222;border-radius:12px}
+  .icon{font-size:48px;margin-bottom:16px}
+  h1{font-size:22px;margin-bottom:8px;color:#fff}
+  .msg{color:#888;margin-bottom:24px;line-height:1.5}
+  .btn{display:inline-block;padding:12px 32px;background:#7c3aed;color:#fff;text-decoration:none;border-radius:8px;font-weight:600}
+</style></head><body>
+<div class="card">
+  <div class="icon">⚠️</div>
+  <h1>Something Went Wrong</h1>
+  <p class="msg">We hit an unexpected error. Please try again.</p>
+  <a href="/" class="btn">Back to Home</a>
+</div></body></html>`);
   }
 });
 
