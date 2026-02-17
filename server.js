@@ -15,12 +15,22 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// CORS for local development
+// CORS — explicit allowed origins only
+const ALLOWED_ORIGINS = new Set([
+  'http://localhost:3000',
+  'http://localhost:18790',
+  process.env.PORTAL_URL,
+].filter(Boolean));
+
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-CLI-Secret');
+  }
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
   // No caching in dev
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   next();
@@ -227,9 +237,11 @@ app.get('/auth/verify', async (req, res) => {
       if (data.ok && data.sessionToken) {
         // Redirect to dashboard with session in hash fragment (picked up by JS)
         res.cookie('session', data.sessionToken, { 
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
           maxAge: 30 * 24 * 60 * 60 * 1000,
-          httpOnly: false,
-          sameSite: 'lax'
+          path: '/',
         });
         return res.redirect(`/dashboard#session=${data.sessionToken}&email=${encodeURIComponent(data.email)}`);
       } else {

@@ -86,13 +86,17 @@ function isAdmin(email) {
  * Require admin auth — returns 403 if not admin
  */
 function requireAdmin(req, res) {
-  // CLI bypass for local development
-  const cliSecret = req.headers['x-cli-secret'];
-  if (cliSecret && cliSecret === (process.env.CLI_SECRET || 'clawops-local-cli')) {
-    req.userEmail = 'cli@localhost';
-    req.isAdmin = true;
-    req.isCLI = true;
-    return 'cli@localhost';
+  // CLI bypass — local development only
+  if (process.env.NODE_ENV !== 'production') {
+    const cliSecret = req.headers['x-cli-secret'];
+    const expectedSecret = process.env.CLI_SECRET;
+    if (cliSecret && expectedSecret && cliSecret === expectedSecret) {
+      console.log(`[Auth] CLI admin access from ${req.ip}`);
+      req.userEmail = 'cli@localhost';
+      req.isAdmin = true;
+      req.isCLI = true;
+      return 'cli@localhost';
+    }
   }
   
   const email = getEmailFromSession(req);

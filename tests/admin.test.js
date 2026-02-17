@@ -84,8 +84,10 @@ describe('Impersonation', () => {
 describe('Secrets Encryption', () => {
   // Import the encrypt/decrypt functions directly
   const crypto = require('crypto');
+  // Explicitly set test encryption key
+  const TEST_KEY = 'test-encryption-key-for-unit-tests';
   const ENCRYPTION_KEY = crypto.scryptSync(
-    process.env.SECRETS_ENCRYPTION_KEY || 'clawops-local-dev-key-change-in-production',
+    TEST_KEY,
     'clawops-secrets-salt',
     32
   );
