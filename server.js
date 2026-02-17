@@ -112,6 +112,14 @@ app.get('/api/plans', plansHandler);
 console.log('✓ Loaded Express Router modules with /api/v1/ versioning');
 
 // Remaining individual routes (signup, team, keys, analytics)
+// Auth matrix:
+//   /api/signup — PUBLIC (lead capture, no auth)
+//   /api/team/* — requireAuth (session-based)
+//   /api/keys/* — requireAuth (session-based)
+//   /api/analytics/* — requireAuth (session-based)
+const { requireAuth: requireAuthMiddleware } = require(path.join(__dirname, 'api-local', 'auth', 'middleware.js'));
+
+const publicRoutes = new Set(['signup']);
 const remainingRoutes = [
   'signup',
   'team/create',
@@ -128,19 +136,29 @@ const remainingRoutes = [
 
 remainingRoutes.forEach(route => {
   const routePath = `/api/${route}`;
+  const routePathV1 = `/api/v1/${route}`;
   const handlerPath = path.join(__dirname, 'api-local', `${route}.js`);
+  const routeBase = route.split('/')[0];
+  const needsAuth = !publicRoutes.has(routeBase);
   
   try {
     const handler = require(handlerPath);
-    app.all(routePath, async (req, res) => {
+    const wrappedHandler = async (req, res) => {
       try {
+        // Enforce auth for non-public routes
+        if (needsAuth) {
+          const email = requireAuthMiddleware(req, res);
+          if (!email) return; // response already sent
+        }
         await handler(req, res);
       } catch (err) {
         console.error(`[API Error] ${routePath}:`, err);
         res.status(500).json({ error: 'Internal server error' });
       }
-    });
-    console.log(`✓ Loaded ${routePath}`);
+    };
+    app.all(routePath, wrappedHandler);
+    app.all(routePathV1, wrappedHandler);
+    console.log(`✓ Loaded ${routePath}${needsAuth ? ' (auth)' : ' (public)'}`);
   } catch (err) {
     console.warn(`✗ Failed to load ${routePath}: ${err.message}`);
   }
