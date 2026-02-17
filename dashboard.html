@@ -429,6 +429,55 @@
         .add-bot-card .icon { font-size: 32px; margin-bottom: 8px; }
         .add-bot-card .text { color: var(--gray); font-size: 14px; }
 
+        /* TASK-409: Button loading spinner */
+        .btn.loading { pointer-events: none; opacity: 0.7; }
+        .btn .btn-spinner {
+            display: none;
+            width: 14px; height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: btn-spin 0.6s linear infinite;
+        }
+        .btn.loading .btn-spinner { display: inline-block; }
+        .btn.loading .btn-label { opacity: 0.7; }
+        @keyframes btn-spin { to { transform: rotate(360deg); } }
+
+        /* TASK-415: Skeleton loading placeholders */
+        .skeleton {
+            background: linear-gradient(90deg, #1a1a2e 25%, #252547 50%, #1a1a2e 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 8px;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .skeleton-card {
+            height: 280px;
+            margin-bottom: 16px;
+            border-radius: 12px;
+            border: 1px solid var(--light-gray);
+            padding: 24px;
+        }
+        .skeleton-text { height: 16px; margin-bottom: 12px; border-radius: 4px; }
+        .skeleton-text.w60 { width: 60%; }
+        .skeleton-text.w40 { width: 40%; }
+        .skeleton-text.w80 { width: 80%; }
+        .skeleton-block { height: 60px; margin-bottom: 12px; border-radius: 8px; }
+
+        /* TASK-412: Unified button size system */
+        .btn { 
+            display: inline-flex; align-items: center; gap: 6px;
+            border-radius: 8px; font-weight: 500;
+            transition: all 0.15s ease; cursor: pointer;
+            border: none; font-family: inherit;
+        }
+        .btn-sm { padding: 6px 12px; font-size: 13px; }
+        .btn-md { padding: 10px 20px; font-size: 14px; }
+        .btn-lg { padding: 14px 28px; font-size: 16px; }
+
         /* Usage Chart Container */
         .activity-log {
             background: var(--bg-card);
@@ -755,9 +804,26 @@
             </select>
         </div>
 
-        <div class="bots-grid">
-            <!-- Bots will be populated dynamically by dashboard-dynamic.js -->
-            <p style="color: var(--gray); text-align: center; padding: 40px;">Loading your AI employees...</p>
+        <div class="bots-grid" id="botsGrid">
+            <!-- TASK-415: Skeleton placeholders shown while loading -->
+            <div class="skeleton-card skeleton">
+                <div class="skeleton-text w60 skeleton"></div>
+                <div class="skeleton-text w40 skeleton"></div>
+                <div class="skeleton-block skeleton"></div>
+                <div class="skeleton-text w80 skeleton"></div>
+            </div>
+            <div class="skeleton-card skeleton">
+                <div class="skeleton-text w60 skeleton"></div>
+                <div class="skeleton-text w40 skeleton"></div>
+                <div class="skeleton-block skeleton"></div>
+                <div class="skeleton-text w80 skeleton"></div>
+            </div>
+            <div class="skeleton-card skeleton">
+                <div class="skeleton-text w60 skeleton"></div>
+                <div class="skeleton-text w40 skeleton"></div>
+                <div class="skeleton-block skeleton"></div>
+                <div class="skeleton-text w80 skeleton"></div>
+            </div>
         </div>
 
         <!-- Usage Chart -->

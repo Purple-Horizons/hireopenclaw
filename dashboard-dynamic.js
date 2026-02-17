@@ -284,13 +284,13 @@ function createBotCard(bot) {
                     <div style="color:var(--red);font-weight:600;">🗑 Deleted ${bot.terminatedAt ? 'on ' + new Date(bot.terminatedAt).toLocaleDateString() : ''}</div>
                     <div style="font-size:11px;color:var(--gray);margin-top:4px;">Historical stats preserved</div>
                    </div>`
-                : `<button class="btn btn-primary" aria-label="Open chat with ${escapeHtml(bot.name)}" onclick="openBot('${bot.id}', '${bot.endpoint}')">💬 Open Chat</button>
+                : `<button class="btn btn-sm btn-primary" aria-label="Open chat with ${escapeHtml(bot.name)}" onclick="openBot('${bot.id}', '${bot.endpoint}')">💬 Open Chat</button>
                    ${bot.status === 'active' 
-                       ? `<button class="btn btn-secondary" aria-label="Pause ${escapeHtml(bot.name)}" onclick="botAction('${bot.id}', 'pause')">⏸ Pause</button>
-                          <button class="btn btn-secondary" aria-label="Restart ${escapeHtml(bot.name)}" onclick="botAction('${bot.id}', 'restart')">🔄 Restart</button>`
-                       : `<button class="btn btn-primary" aria-label="Resume ${escapeHtml(bot.name)}" onclick="botAction('${bot.id}', 'resume')">▶ Resume</button>`
+                       ? `<button class="btn btn-sm btn-secondary" aria-label="Pause ${escapeHtml(bot.name)}" onclick="botAction('${bot.id}', 'pause')">⏸ Pause</button>
+                          <button class="btn btn-sm btn-secondary" aria-label="Restart ${escapeHtml(bot.name)}" onclick="botAction('${bot.id}', 'restart')">🔄 Restart</button>`
+                       : `<button class="btn btn-sm btn-primary" aria-label="Resume ${escapeHtml(bot.name)}" onclick="botAction('${bot.id}', 'resume')">▶ Resume</button>`
                    }
-                   <button class="btn btn-danger" aria-label="Delete ${escapeHtml(bot.name)}" onclick="showDeleteModal('${bot.id}', '${escapeHtml(bot.name)}')">🗑 Delete</button>`
+                   <button class="btn btn-sm btn-danger" aria-label="Delete ${escapeHtml(bot.name)}" onclick="showDeleteModal('${bot.id}', '${escapeHtml(bot.name)}')">🗑 Delete</button>`
             }
         </div>
     `;
@@ -382,11 +382,24 @@ async function botAction(tenantId, action) {
         if (!confirmed) return;
     }
     
-    // Lock buttons and show transitional state
+    // Lock buttons and show transitional state (TASK-409)
     pendingActions.add(actionKey);
     const card = document.getElementById(`bot-${tenantId}`);
     const buttons = card ? card.querySelectorAll('.bot-actions button') : [];
-    buttons.forEach(btn => { btn.disabled = true; btn.style.opacity = '0.5'; });
+    // Find the clicked button via matching action text
+    const actionTextMap = { pause: '⏸ Pause', resume: '▶ Resume', restart: '🔄 Restart' };
+    let clickedBtn = null;
+    buttons.forEach(btn => {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        if (btn.textContent.trim() === actionTextMap[action]) {
+            clickedBtn = btn;
+            btn.classList.add('loading');
+            const origHTML = btn.innerHTML;
+            btn.dataset.origHtml = origHTML;
+            btn.innerHTML = `<span class="btn-spinner"></span><span class="btn-label">${btn.textContent.trim()}…</span>`;
+        }
+    });
     
     // Update badge to show action in progress
     const actionLabels = { restart: 'Restarting…', pause: 'Pausing…', resume: 'Resuming…' };
@@ -420,7 +433,14 @@ async function botAction(tenantId, action) {
         showToast('Action failed. Try again.', 'error');
     } finally {
         pendingActions.delete(actionKey);
-        buttons.forEach(btn => { btn.disabled = false; btn.style.opacity = '1'; });
+        buttons.forEach(btn => {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            if (btn.classList.contains('loading')) {
+                btn.classList.remove('loading');
+                if (btn.dataset.origHtml) btn.innerHTML = btn.dataset.origHtml;
+            }
+        });
     }
 }
 
