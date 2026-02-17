@@ -14,9 +14,10 @@
  *   POST /api/settings/restore               — User restores own bot
  */
 
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const crypto = require('crypto');
 const { requireAdmin, getEmailFromSession } = require('../auth/middleware.js');
+const { validateTenantId, validateBackupId } = require('../util/validate.js');
 const { DynamoDBClient, PutItemCommand, QueryCommand } = require('@aws-sdk/client-dynamodb');
 const { marshall, unmarshall } = require('@aws-sdk/util-dynamodb');
 
@@ -55,20 +56,22 @@ const BACKUP_PATHS = [
 
 function ensureBucket() {
   try {
-    execSync(`aws s3 mb s3://${S3_BUCKET} --endpoint-url ${EP} 2>/dev/null`, { encoding: 'utf8', env: ENV });
+    execFileSync('aws', ['s3', 'mb', `s3://${S3_BUCKET}`, '--endpoint-url', EP], { encoding: 'utf8', env: ENV, stdio: 'pipe' });
   } catch {} // Already exists
 }
 
 function ensureTable() {
   try {
-    execSync(`aws dynamodb describe-table --table-name ${BACKUP_TABLE} --endpoint-url ${EP} --region us-east-1 2>/dev/null`, { encoding: 'utf8', env: ENV });
+    execFileSync('aws', ['dynamodb', 'describe-table', '--table-name', BACKUP_TABLE, '--endpoint-url', EP, '--region', 'us-east-1'], { encoding: 'utf8', env: ENV, stdio: 'pipe' });
   } catch {
     try {
-      execSync(`aws dynamodb create-table --table-name ${BACKUP_TABLE} \
-        --attribute-definitions AttributeName=tenantId,AttributeType=S AttributeName=backupId,AttributeType=S \
-        --key-schema AttributeName=tenantId,KeyType=HASH AttributeName=backupId,KeyType=RANGE \
-        --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 \
-        --endpoint-url ${EP} --region us-east-1 2>/dev/null`, { encoding: 'utf8', env: ENV });
+      execFileSync('aws', [
+        'dynamodb', 'create-table', '--table-name', BACKUP_TABLE,
+        '--attribute-definitions', 'AttributeName=tenantId,AttributeType=S', 'AttributeName=backupId,AttributeType=S',
+        '--key-schema', 'AttributeName=tenantId,KeyType=HASH', 'AttributeName=backupId,KeyType=RANGE',
+        '--provisioned-throughput', 'ReadCapacityUnits=5,WriteCapacityUnits=5',
+        '--endpoint-url', EP, '--region', 'us-east-1'
+      ], { encoding: 'utf8', env: ENV, stdio: 'pipe' });
     } catch {}
   }
 }
@@ -78,33 +81,39 @@ ensureBucket();
 ensureTable();
 
 async function createBackup(tenantId, triggeredBy, reason) {
+  if (!validateTenantId(tenantId)) throw new Error('Invalid tenantId format');
+
   const containerName = `clawops-${tenantId}`;
   const backupId = `bk-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
   const s3Key = `${tenantId}/${backupId}.tar.gz`;
 
-  // Create tarball inside the container
-  const tarPaths = BACKUP_PATHS.map(p => `/app/${p}`).join(' ');
   try {
     // Check container is running
-    execSync(`docker inspect ${containerName} --format '{{.State.Status}}' 2>/dev/null`, { encoding: 'utf8', env: ENV }).trim();
+    execFileSync('docker', ['inspect', containerName, '--format', '{{.State.Status}}'], {
+      encoding: 'utf8', env: ENV, stdio: 'pipe'
+    });
   } catch {
-    throw new Error(`Container ${containerName} not found or not running`);
+    throw new Error('Container not found or not running');
   }
 
-  // Create tar inside container (ignore missing files)
-  const tarCmd = `docker exec ${containerName} sh -c "cd /app && tar czf /tmp/backup.tar.gz ${BACKUP_PATHS.join(' ')} 2>/dev/null || tar czf /tmp/backup.tar.gz --ignore-failed-read ${BACKUP_PATHS.join(' ')} 2>/dev/null || true"`;
-  execSync(tarCmd, { encoding: 'utf8', timeout: 30000, env: ENV });
+  // Create tar inside container — inputs are validated, using execFileSync with array args
+  // For the sh -c command, we build the shell string from validated inputs
+  const tarPathsStr = BACKUP_PATHS.join(' ');
+  execFileSync('docker', [
+    'exec', containerName, 'sh', '-c',
+    `cd /app && tar czf /tmp/backup.tar.gz ${tarPathsStr} 2>/dev/null || tar czf /tmp/backup.tar.gz --ignore-failed-read ${tarPathsStr} 2>/dev/null || true`
+  ], { encoding: 'utf8', timeout: 30000, env: ENV });
 
   // Copy tar out of container
   const tmpPath = `/tmp/${backupId}.tar.gz`;
-  execSync(`docker cp ${containerName}:/tmp/backup.tar.gz ${tmpPath}`, { encoding: 'utf8', env: ENV });
+  execFileSync('docker', ['cp', `${containerName}:/tmp/backup.tar.gz`, tmpPath], { encoding: 'utf8', env: ENV });
 
   // Get file size
   const stats = require('fs').statSync(tmpPath);
   const sizeBytes = stats.size;
 
   // Upload to S3
-  execSync(`aws s3 cp ${tmpPath} s3://${S3_BUCKET}/${s3Key} --endpoint-url ${EP} --region us-east-1`, { encoding: 'utf8', env: ENV });
+  execFileSync('aws', ['s3', 'cp', tmpPath, `s3://${S3_BUCKET}/${s3Key}`, '--endpoint-url', EP, '--region', 'us-east-1'], { encoding: 'utf8', env: ENV });
 
   // Clean up tmp
   try { require('fs').unlinkSync(tmpPath); } catch {}
@@ -130,6 +139,8 @@ async function createBackup(tenantId, triggeredBy, reason) {
 }
 
 async function listBackups(tenantId) {
+  if (!validateTenantId(tenantId)) throw new Error('Invalid tenantId format');
+
   const result = await dynamodb.send(new QueryCommand({
     TableName: BACKUP_TABLE,
     KeyConditionExpression: 'tenantId = :tid',
@@ -151,6 +162,9 @@ async function listBackups(tenantId) {
 }
 
 async function restoreBackup(tenantId, backupId, triggeredBy) {
+  if (!validateTenantId(tenantId)) throw new Error('Invalid tenantId format');
+  if (!validateBackupId(backupId)) throw new Error('Invalid backupId format');
+
   const containerName = `clawops-${tenantId}`;
 
   // Get backup info
@@ -162,13 +176,16 @@ async function restoreBackup(tenantId, backupId, triggeredBy) {
   const tmpPath = `/tmp/${backupId}-restore.tar.gz`;
 
   // Download from S3
-  execSync(`aws s3 cp s3://${S3_BUCKET}/${s3Key} ${tmpPath} --endpoint-url ${EP} --region us-east-1`, { encoding: 'utf8', env: ENV });
+  execFileSync('aws', ['s3', 'cp', `s3://${S3_BUCKET}/${s3Key}`, tmpPath, '--endpoint-url', EP, '--region', 'us-east-1'], { encoding: 'utf8', env: ENV });
 
   // Copy into container
-  execSync(`docker cp ${tmpPath} ${containerName}:/tmp/restore.tar.gz`, { encoding: 'utf8', env: ENV });
+  execFileSync('docker', ['cp', tmpPath, `${containerName}:/tmp/restore.tar.gz`], { encoding: 'utf8', env: ENV });
 
   // Extract inside container
-  execSync(`docker exec ${containerName} sh -c "cd /app && tar xzf /tmp/restore.tar.gz; rm -f /tmp/restore.tar.gz 2>/dev/null || true"`, { encoding: 'utf8', timeout: 30000, env: ENV });
+  execFileSync('docker', [
+    'exec', containerName, 'sh', '-c',
+    'cd /app && tar xzf /tmp/restore.tar.gz; rm -f /tmp/restore.tar.gz 2>/dev/null || true'
+  ], { encoding: 'utf8', timeout: 30000, env: ENV });
 
   // Clean up
   try { require('fs').unlinkSync(tmpPath); } catch {}
@@ -186,6 +203,7 @@ async function handleAdminBackup(req, res) {
 
   const { tenantId } = req.params;
   if (!tenantId) return res.status(400).json({ error: 'tenantId required' });
+  if (!validateTenantId(tenantId)) return res.status(400).json({ error: 'Invalid tenantId format' });
 
   // Determine action from URL path first, then query param
   let action = req.query.action;
@@ -212,6 +230,7 @@ async function handleAdminBackup(req, res) {
       if (req.method !== 'POST') return res.status(405).json({ error: 'POST required' });
       const { backupId } = req.body;
       if (!backupId) return res.status(400).json({ error: 'backupId required' });
+      if (!validateBackupId(backupId)) return res.status(400).json({ error: 'Invalid backupId format' });
       const result = await restoreBackup(tenantId, backupId, admin);
       return res.json({ ok: true, ...result });
     }
@@ -219,7 +238,7 @@ async function handleAdminBackup(req, res) {
     return res.status(400).json({ error: `Unknown action: ${action}` });
   } catch (err) {
     console.error(`[Backup] Error:`, err.message);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: 'Backup operation failed' });
   }
 }
 
@@ -231,6 +250,7 @@ async function handleClientBackup(req, res) {
 
   const { botId } = req.body || req.query;
   if (!botId) return res.status(400).json({ error: 'botId required' });
+  if (!validateTenantId(botId)) return res.status(400).json({ error: 'Invalid botId format' });
 
   // Verify ownership (inline check)
   const { GetItemCommand } = require('@aws-sdk/client-dynamodb');
@@ -246,6 +266,7 @@ async function handleClientBackup(req, res) {
     if (req.path.includes('restore')) {
       const { backupId } = req.body;
       if (!backupId) return res.status(400).json({ error: 'backupId required' });
+      if (!validateBackupId(backupId)) return res.status(400).json({ error: 'Invalid backupId format' });
       const r = await restoreBackup(botId, backupId, email);
       return res.json({ ok: true, ...r });
     }
@@ -259,7 +280,7 @@ async function handleClientBackup(req, res) {
     const backups = await listBackups(botId);
     return res.json({ ok: true, backups });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: 'Backup operation failed' });
   }
 }
 

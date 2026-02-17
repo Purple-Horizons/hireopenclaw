@@ -6,10 +6,10 @@
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const { promisify } = require('util');
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 // Configure DynamoDB client for LocalStack
 const dynamoClient = new DynamoDBClient({
@@ -24,6 +24,7 @@ const dynamoClient = new DynamoDBClient({
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 const { requireAuth } = require('../auth/middleware.js');
+const { validateTenantId, validateBotName, validateEmail, validatePlan, validateTemplate } = require('../util/validate.js');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -50,6 +51,20 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'botName is required' });
   }
 
+  // Validate all inputs
+  if (!validateBotName(botName)) {
+    return res.status(400).json({ error: 'Invalid bot name format' });
+  }
+  if (!validateEmail(email)) {
+    return res.status(400).json({ error: 'Invalid email format' });
+  }
+  if (!validatePlan(plan)) {
+    return res.status(400).json({ error: 'Invalid plan' });
+  }
+  if (!validateTemplate(template)) {
+    return res.status(400).json({ error: 'Invalid template' });
+  }
+
   console.log(`[Create Bot] Request from ${email}: "${botName}" (${template || 'blank'})`);
 
   try {
@@ -63,6 +78,11 @@ module.exports = async (req, res) => {
       const timestamp = Date.now().toString().slice(-6);
       const random = Math.random().toString(36).substring(2, 6);
       finalTenantId = `tenant-${timestamp}-${random}`;
+    }
+
+    // Validate the tenantId (whether provided or generated)
+    if (!validateTenantId(finalTenantId)) {
+      return res.status(400).json({ error: 'Invalid tenantId format' });
     }
 
     // Update tenant record with bot details
@@ -91,25 +111,36 @@ module.exports = async (req, res) => {
     console.log(`[Create Bot] Updated tenant record: ${finalTenantId}`);
 
     // Call MasterControl to provision bot locally
-    // This runs the clawops CLI to provision a local Docker container
     const clawopsPath = '/Users/giannidalerta/.openclaw/workspace/repos/clawops';
-    const cmd = `cd ${clawopsPath} && bin/clawops provision --tenant-id ${finalTenantId} --email ${email} --name "${botName}" --plan ${plan || 'starter'} --template ${template || 'blank'} --mode managed`;
 
-    console.log(`[Create Bot] Running: ${cmd}`);
+    console.log(`[Create Bot] Provisioning ${finalTenantId}...`);
 
     try {
-      const { stdout, stderr } = await execAsync(cmd, {
-        timeout: 30000,  // 30 second timeout
-        env: {
-          ...process.env,
-          AWS_ENDPOINT_URL: 'http://localhost:4566',
-          AWS_ACCESS_KEY_ID: 'test',
-          AWS_SECRET_ACCESS_KEY: 'test',
-          AWS_DEFAULT_REGION: 'us-east-1',
-          DYNAMODB_TABLE: 'clawops-tenants',
-          S3_BUCKET: 'clawops-artifacts'
+      const { stdout, stderr } = await execFileAsync(
+        'bin/clawops',
+        [
+          'provision',
+          '--tenant-id', finalTenantId,
+          '--email', email,
+          '--name', botName,
+          '--plan', plan || 'starter',
+          '--template', template || 'blank',
+          '--mode', 'managed'
+        ],
+        {
+          cwd: clawopsPath,
+          timeout: 30000,
+          env: {
+            ...process.env,
+            AWS_ENDPOINT_URL: 'http://localhost:4566',
+            AWS_ACCESS_KEY_ID: 'test',
+            AWS_SECRET_ACCESS_KEY: 'test',
+            AWS_DEFAULT_REGION: 'us-east-1',
+            DYNAMODB_TABLE: 'clawops-tenants',
+            S3_BUCKET: 'clawops-artifacts'
+          }
         }
-      });
+      );
 
       console.log('[Create Bot] Provision output:', stdout);
       if (stderr) console.error('[Create Bot] Provision errors:', stderr);
@@ -129,7 +160,7 @@ module.exports = async (req, res) => {
         ExpressionAttributeValues: {
           ':status': 'active',
           ':health': 'healthy',
-          ':now': Math.floor(Date.now() / 1000)  // Unix timestamp in seconds
+          ':now': Math.floor(Date.now() / 1000)
         }
       }));
 
@@ -144,7 +175,7 @@ module.exports = async (req, res) => {
       });
 
     } catch (provisionError) {
-      console.error('[Create Bot] Provision failed:', provisionError);
+      console.error('[Create Bot] Provision failed:', provisionError.message);
 
       // Update status to error
       await docClient.send(new UpdateCommand({
@@ -162,16 +193,14 @@ module.exports = async (req, res) => {
       }));
 
       return res.status(500).json({
-        error: 'Provisioning failed',
-        details: provisionError.message
+        error: 'Provisioning failed'
       });
     }
 
   } catch (error) {
-    console.error('[Create Bot] Error:', error);
+    console.error('[Create Bot] Error:', error.message);
     return res.status(500).json({ 
-      error: 'Failed to create bot',
-      details: error.message 
+      error: 'Failed to create bot'
     });
   }
 };

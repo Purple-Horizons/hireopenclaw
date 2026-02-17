@@ -5,8 +5,9 @@
  * GET /api/admin/bots/:tenantId/config — Get bot's openclaw.json
  */
 
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const { requireAdmin } = require('../auth/middleware.js');
+const { validateTenantId, validateLines } = require('../util/validate.js');
 
 module.exports = async (req, res) => {
   const admin = requireAdmin(req, res);
@@ -14,6 +15,7 @@ module.exports = async (req, res) => {
 
   const { tenantId } = req.params;
   if (!tenantId) return res.status(400).json({ error: 'tenantId required' });
+  if (!validateTenantId(tenantId)) return res.status(400).json({ error: 'Invalid tenantId format' });
 
   const containerName = `clawops-${tenantId}`;
   const action = req.query.action || (req.method === 'POST' ? 'restart' : 'info');
@@ -22,13 +24,13 @@ module.exports = async (req, res) => {
     switch (action) {
       case 'restart': {
         console.log(`[Admin] ${admin} restarting ${containerName}`);
-        execSync(`docker restart ${containerName}`, { encoding: 'utf8', timeout: 30000 });
+        execFileSync('docker', ['restart', containerName], { encoding: 'utf8', timeout: 30000 });
         return res.json({ ok: true, message: `Restarted ${containerName}` });
       }
 
       case 'logs': {
-        const lines = parseInt(req.query.lines) || 50;
-        const logs = execSync(`docker logs ${containerName} --tail ${lines} 2>&1`, {
+        const lines = validateLines(req.query.lines);
+        const logs = execFileSync('docker', ['logs', containerName, '--tail', String(lines)], {
           encoding: 'utf8',
           timeout: 10000
         });
@@ -36,7 +38,7 @@ module.exports = async (req, res) => {
       }
 
       case 'config': {
-        const config = execSync(`docker exec ${containerName} cat /app/.openclaw/openclaw.json 2>/dev/null`, {
+        const config = execFileSync('docker', ['exec', containerName, 'cat', '/app/.openclaw/openclaw.json'], {
           encoding: 'utf8',
           timeout: 5000
         });
@@ -44,7 +46,7 @@ module.exports = async (req, res) => {
       }
 
       case 'info': {
-        const inspect = execSync(`docker inspect ${containerName} 2>/dev/null`, {
+        const inspect = execFileSync('docker', ['inspect', containerName], {
           encoding: 'utf8',
           timeout: 5000
         });
@@ -67,6 +69,6 @@ module.exports = async (req, res) => {
     }
   } catch (err) {
     console.error(`[Admin] Bot action failed for ${tenantId}:`, err.message);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: 'Bot operation failed' });
   }
 };

@@ -5,11 +5,12 @@
  * Auth: session cookie required + bot ownership validated
  */
 
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const { promisify } = require('util');
 const { requireBotOwnership } = require('../auth/middleware.js');
+const { validateTenantId } = require('../util/validate.js');
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -20,6 +21,10 @@ module.exports = async (req, res) => {
 
   if (!tenantId || !action) {
     return res.status(400).json({ error: 'tenantId and action are required' });
+  }
+
+  if (!validateTenantId(tenantId)) {
+    return res.status(400).json({ error: 'Invalid tenantId format' });
   }
 
   // Auth + ownership check
@@ -35,32 +40,25 @@ module.exports = async (req, res) => {
 
   try {
     const clawopsPath = '/Users/giannidalerta/.openclaw/workspace/repos/clawops';
-    let cmd;
 
-    switch (action) {
-      case 'pause':
-        cmd = `cd ${clawopsPath} && bin/clawops pause ${tenantId}`;
-        break;
-      case 'resume':
-        cmd = `cd ${clawopsPath} && bin/clawops resume ${tenantId}`;
-        break;
-      case 'restart':
-        cmd = `cd ${clawopsPath} && bin/clawops restart ${tenantId}`;
-        break;
-      case 'terminate':
-        cmd = `cd ${clawopsPath} && bin/clawops terminate ${tenantId} --force`;
-        break;
-    }
+    const args = action === 'terminate'
+      ? [action, tenantId, '--force']
+      : [action, tenantId];
 
-    const { stdout, stderr } = await execAsync(cmd, {
-      timeout: 30000,
-      env: {
-        ...process.env,
-        AWS_ENDPOINT_URL: process.env.AWS_ENDPOINT_URL || 'http://localhost:4566',
-        AWS_ACCESS_KEY_ID: 'test',
-        AWS_SECRET_ACCESS_KEY: 'test'
+    const { stdout, stderr } = await execFileAsync(
+      'bin/clawops',
+      args,
+      {
+        cwd: clawopsPath,
+        timeout: 30000,
+        env: {
+          ...process.env,
+          AWS_ENDPOINT_URL: process.env.AWS_ENDPOINT_URL || 'http://localhost:4566',
+          AWS_ACCESS_KEY_ID: 'test',
+          AWS_SECRET_ACCESS_KEY: 'test'
+        }
       }
-    });
+    );
 
     console.log(`[Bot Action] Output:`, stdout);
     if (stderr) console.error(`[Bot Action] Errors:`, stderr);
@@ -69,15 +67,13 @@ module.exports = async (req, res) => {
       ok: true,
       tenantId,
       action,
-      message: `${action} completed successfully`,
-      output: stdout
+      message: `${action} completed successfully`
     });
 
   } catch (error) {
-    console.error(`[Bot Action] ${action} failed:`, error);
+    console.error(`[Bot Action] ${action} failed:`, error.message);
     return res.status(500).json({
-      error: `${action} failed`,
-      details: error.message
+      error: `${action} failed`
     });
   }
 };
