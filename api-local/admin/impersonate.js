@@ -33,8 +33,9 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'email required' });
     }
 
-    // Set impersonation
+    // Set impersonation with timestamp for timeout
     session.impersonating = email;
+    session.impersonatedAt = Date.now();
     tokenStore.set(sessionToken, session);
 
     console.log(`[Admin] ${admin} started impersonating ${email}`);
@@ -44,6 +45,7 @@ module.exports = async (req, res) => {
   if (action === 'stop') {
     const was = session.impersonating;
     delete session.impersonating;
+    delete session.impersonatedAt;
     tokenStore.set(sessionToken, session);
 
     console.log(`[Admin] ${admin} stopped impersonating ${was}`);

@@ -185,8 +185,7 @@ module.exports = async (req, res) => {
   } catch (error) {
     console.error(`[Margin API] Error:`, error);
     return res.status(500).json({
-      error: 'Failed to calculate margin',
-      details: error.message
+      error: 'Failed to calculate margin'
     });
   }
 };

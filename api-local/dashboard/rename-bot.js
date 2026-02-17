@@ -70,8 +70,7 @@ module.exports = async (req, res) => {
   } catch (error) {
     console.error('[Rename Bot] Error:', error);
     return res.status(500).json({
-      error: 'Failed to rename bot',
-      details: error.message
+      error: 'Failed to rename bot'
     });
   }
 };

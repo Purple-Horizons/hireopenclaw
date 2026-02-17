@@ -95,8 +95,7 @@ module.exports = async (req, res) => {
   } catch (error) {
     console.error('[Signup] Database error:', error);
     return res.status(500).json({ 
-      error: 'Failed to create account',
-      details: error.message 
+      error: 'Failed to create account'
     });
   }
 };

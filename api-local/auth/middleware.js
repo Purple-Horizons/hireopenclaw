@@ -127,6 +127,15 @@ function getEffectiveEmail(req) {
   
   // If admin is impersonating, use impersonated email
   if (session.impersonating && isAdmin(session.email)) {
+    // Check timeout (1 hour)
+    if (session.impersonatedAt && Date.now() - session.impersonatedAt > 3600000) {
+      console.log(`[Auth] Impersonation expired: ${session.email} was impersonating ${session.impersonating}`);
+      delete session.impersonating;
+      delete session.impersonatedAt;
+      tokenStore.set(sessionToken, session);
+      return session.email;
+    }
+    console.log(`[Auth] Admin ${session.email} impersonating ${session.impersonating}`);
     return session.impersonating;
   }
   return session.email;

@@ -79,6 +79,8 @@ async function sendMagicLinkEmail(email, magicLink) {
   return true;
 }
 
+const { rateLimit } = require('./rate-limit.js');
+
 module.exports = async (req, res) => {
   const { action } = req.query;
   
@@ -88,6 +90,13 @@ module.exports = async (req, res) => {
     
     if (!email || !email.includes('@')) {
       return res.status(400).json({ error: 'Valid email is required' });
+    }
+    
+    // Rate limit by IP + email
+    const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+    const rateLimitKey = `magic:${ip}:${email.toLowerCase()}`;
+    if (!rateLimit(rateLimitKey)) {
+      return res.status(429).json({ error: 'Too many requests. Please try again later.' });
     }
     
     console.log(`[Magic Link] Generating for ${email}`);
@@ -112,12 +121,12 @@ module.exports = async (req, res) => {
     await sendMagicLinkEmail(email, magicLink);
     
     // In dev mode, return token for CLI usage. In production, omit it.
-    const isDev = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+    const showDevTokens = process.env.NODE_ENV === 'development' && process.env.MAGIC_LINK_DEV_TOKENS === 'true';
     return res.status(200).json({
       ok: true,
       message: 'If an account exists with that email, a login link has been sent.',
       expiresIn: '15 minutes',
-      ...(isDev && { token, magicLink })
+      ...(showDevTokens && { token, magicLink })
     });
   }
   
@@ -127,6 +136,12 @@ module.exports = async (req, res) => {
     
     if (!token) {
       return res.status(400).json({ error: 'Token is required' });
+    }
+    
+    // Rate limit verify by IP
+    const verifyIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+    if (!rateLimit(`verify:${verifyIp}`)) {
+      return res.status(429).json({ error: 'Too many requests. Please try again later.' });
     }
     
     const tokenData = tokenStore.get(token);

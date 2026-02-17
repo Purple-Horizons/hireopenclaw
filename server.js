@@ -15,6 +15,22 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '0');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
+
+// CSRF protection
+const { validateCsrf, generateCsrfToken } = require(path.join(__dirname, 'api-local', 'auth', 'csrf.js'));
+
 // CORS — explicit allowed origins only
 const ALLOWED_ORIGINS = new Set([
   'http://localhost:3000',
@@ -28,12 +44,28 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-CLI-Secret');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-CLI-Secret, X-CSRF-Token');
   }
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   // No caching in dev
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   next();
+});
+
+// CSRF validation middleware for state-changing requests
+app.use(validateCsrf);
+
+// CSRF token endpoint
+app.get('/api/auth/csrf', (req, res) => {
+  const cookies = req.headers.cookie || '';
+  const match = cookies.match(/session=([^;]+)/);
+  const sessionToken = match ? match[1] : null;
+  if (!sessionToken) return res.status(401).json({ error: 'No session' });
+  const tokenStore = require(path.join(__dirname, 'api-local', 'auth', 'token-store.js'));
+  const session = tokenStore.get(sessionToken);
+  if (!session) return res.status(401).json({ error: 'Invalid session' });
+  const csrfToken = generateCsrfToken(sessionToken);
+  res.json({ csrfToken });
 });
 
 // API routes (load from api-local directory)
@@ -77,7 +109,7 @@ apiRoutes.forEach(route => {
         await handler(req, res);
       } catch (err) {
         console.error(`[API Error] ${routePath}:`, err);
-        res.status(500).json({ error: 'Internal server error', details: err.message });
+        res.status(500).json({ error: 'Internal server error' });
       }
     });
     console.log(`✓ Loaded ${routePath}`);
@@ -93,7 +125,7 @@ app.get('/api/dashboard/usage/:tenantId', async (req, res) => {
     await handler(req, res);
   } catch (err) {
     console.error('[API Error] /api/dashboard/usage/:tenantId:', err);
-    res.status(500).json({ error: 'Internal server error', details: err.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

@@ -86,8 +86,7 @@ module.exports = async (req, res) => {
   } catch (error) {
     console.error('[Container Stats] Error:', error);
     return res.status(500).json({
-      error: 'Failed to get container stats',
-      details: error.message
+      error: 'Failed to get container stats'
     });
   }
 };

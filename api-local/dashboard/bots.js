@@ -103,8 +103,7 @@ module.exports = async (req, res) => {
   } catch (error) {
     console.error('[Dashboard Bots] Error:', error);
     return res.status(500).json({ 
-      error: 'Failed to fetch bots',
-      details: error.message 
+      error: 'Failed to fetch bots'
     });
   }
 };
