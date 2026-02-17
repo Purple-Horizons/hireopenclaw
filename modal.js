@@ -127,6 +127,14 @@ function confirmDialogResolve(value) {
 
 // Add bot modal
 function showAddBotModal() {
+    // TASK-138: Bot quota enforcement on client side
+    if (typeof currentBots !== 'undefined' && typeof currentMaxBots !== 'undefined') {
+        if (currentBots.length >= currentMaxBots) {
+            showToast(`You've reached the maximum bots (${currentMaxBots}) for your plan. Upgrade to add more.`, 'warning', 5000);
+            return;
+        }
+    }
+    
     openModal('addBotModal');
     document.getElementById('newBotName').value = '';
     document.getElementById('newBotRole').value = 'blank';
@@ -141,7 +149,24 @@ async function confirmAddBot() {
         return;
     }
     
-    closeModal();
+    // Double-check quota enforcement before API call
+    if (typeof currentBots !== 'undefined' && typeof currentMaxBots !== 'undefined') {
+        if (currentBots.length >= currentMaxBots) {
+            showToast(`You've reached the maximum bots (${currentMaxBots}) for your plan. Upgrade to add more.`, 'warning', 5000);
+            closeModal();
+            return;
+        }
+    }
+    
+    // Find and disable the Create button, add loading state
+    const createBtn = document.querySelector('#addBotModal .btn-primary');
+    if (createBtn) {
+        createBtn.dataset.origHtml = createBtn.innerHTML;
+        createBtn.innerHTML = '<span class="btn-spinner"></span> Creating…';
+        createBtn.disabled = true;
+        createBtn.classList.add('loading');
+        createBtn.style.cursor = 'not-allowed';
+    }
     
     try {
         const res = await fetch('/api/dashboard/create-bot', {
@@ -158,6 +183,7 @@ async function confirmAddBot() {
         const data = await res.json();
         
         if (data.ok) {
+            closeModal();
             showToast(`Bot "${name}" provisioning...`, 'info', 2000);
             // Refresh immediately to show "provisioning" status
             if (typeof loadDashboard === 'function') loadDashboard(currentEmail);
@@ -173,10 +199,24 @@ async function confirmAddBot() {
             }, 5000);
         } else {
             showToast(`Failed to create bot: ${data.error}`, 'error');
+            // Re-enable button on error
+            if (createBtn && createBtn.dataset.origHtml) {
+                createBtn.innerHTML = createBtn.dataset.origHtml;
+                createBtn.disabled = false;
+                createBtn.classList.remove('loading');
+                createBtn.style.cursor = 'pointer';
+            }
         }
     } catch (err) {
         console.error('Create bot failed:', err);
         showToast('Failed to create bot. Check your connection and try again.', 'error');
+        // Re-enable button on error
+        if (createBtn && createBtn.dataset.origHtml) {
+            createBtn.innerHTML = createBtn.dataset.origHtml;
+            createBtn.disabled = false;
+            createBtn.classList.remove('loading');
+            createBtn.style.cursor = 'pointer';
+        }
     }
 }
 
@@ -228,7 +268,16 @@ async function confirmDelete() {
     
     const botId = pendingDeleteBotId;
     pendingDeleteBotId = null;
-    closeModal();
+    
+    // Add loading state to delete button
+    const deleteBtn = document.getElementById('deleteConfirmBtn');
+    if (deleteBtn) {
+        deleteBtn.dataset.origHtml = deleteBtn.innerHTML;
+        deleteBtn.innerHTML = '<span class="btn-spinner"></span> Deleting…';
+        deleteBtn.disabled = true;
+        deleteBtn.classList.add('loading');
+        deleteBtn.style.cursor = 'not-allowed';
+    }
     
     try {
         const res = await fetch('/api/dashboard/bot-action', {
@@ -240,16 +289,31 @@ async function confirmDelete() {
         const data = await res.json();
         
         if (data.ok) {
+            closeModal();
             showToast('Bot deleted successfully', 'success');
             setTimeout(() => {
                 if (typeof loadDashboard === 'function') loadDashboard(currentEmail);
             }, 1500);
         } else {
             showToast(`Failed to delete bot: ${data.error}`, 'error');
+            // Re-enable button on error
+            if (deleteBtn && deleteBtn.dataset.origHtml) {
+                deleteBtn.innerHTML = deleteBtn.dataset.origHtml;
+                deleteBtn.disabled = false;
+                deleteBtn.classList.remove('loading');
+                deleteBtn.style.cursor = 'pointer';
+            }
         }
     } catch (err) {
         console.error('Delete failed:', err);
         showToast('Failed to delete bot. Check your connection and try again.', 'error');
+        // Re-enable button on error
+        if (deleteBtn && deleteBtn.dataset.origHtml) {
+            deleteBtn.innerHTML = deleteBtn.dataset.origHtml;
+            deleteBtn.disabled = false;
+            deleteBtn.classList.remove('loading');
+            deleteBtn.style.cursor = 'pointer';
+        }
     }
 }
 
@@ -265,7 +329,16 @@ async function confirmRename() {
     }
     
     pendingRenameBotId = null;
-    closeModal();
+    
+    // Add loading state to rename button
+    const renameBtn = document.querySelector('#renameModal .btn-primary');
+    if (renameBtn) {
+        renameBtn.dataset.origHtml = renameBtn.innerHTML;
+        renameBtn.innerHTML = '<span class="btn-spinner"></span> Renaming…';
+        renameBtn.disabled = true;
+        renameBtn.classList.add('loading');
+        renameBtn.style.cursor = 'not-allowed';
+    }
     
     try {
         const res = await fetch('/api/dashboard/rename-bot', {
@@ -277,16 +350,31 @@ async function confirmRename() {
         const data = await res.json();
         
         if (data.ok) {
+            closeModal();
             showToast(`Bot renamed to "${newName}"`, 'success');
             setTimeout(() => {
                 if (typeof loadDashboard === 'function') loadDashboard(currentEmail);
             }, 1000);
         } else {
             showToast(`Failed to rename: ${data.error}`, 'error');
+            // Re-enable button on error
+            if (renameBtn && renameBtn.dataset.origHtml) {
+                renameBtn.innerHTML = renameBtn.dataset.origHtml;
+                renameBtn.disabled = false;
+                renameBtn.classList.remove('loading');
+                renameBtn.style.cursor = 'pointer';
+            }
         }
     } catch (err) {
         console.error('Rename failed:', err);
         showToast('Failed to rename bot. Check your connection and try again.', 'error');
+        // Re-enable button on error
+        if (renameBtn && renameBtn.dataset.origHtml) {
+            renameBtn.innerHTML = renameBtn.dataset.origHtml;
+            renameBtn.disabled = false;
+            renameBtn.classList.remove('loading');
+            renameBtn.style.cursor = 'pointer';
+        }
     }
 }
 

@@ -545,22 +545,27 @@ async function botAction(tenantId, action) {
         if (!confirmed) return;
     }
     
-    // Lock buttons and show transitional state (TASK-409)
+    // Lock buttons and show transitional state with loading spinner
     pendingActions.add(actionKey);
     const card = document.getElementById(`bot-${tenantId}`);
     const buttons = card ? card.querySelectorAll('.bot-actions button') : [];
     // Find the clicked button via matching action text
-    const actionTextMap = { pause: '⏸ Pause', resume: '▶ Resume', restart: '🔄 Restart' };
+    const actionTextMap = { pause: 'Pausing…', resume: 'Resuming…', restart: 'Restarting…' };
     let clickedBtn = null;
     buttons.forEach(btn => {
         btn.disabled = true;
         btn.style.opacity = '0.5';
-        if (btn.textContent.trim() === actionTextMap[action]) {
-            clickedBtn = btn;
-            btn.classList.add('loading');
-            const origHTML = btn.innerHTML;
-            btn.dataset.origHtml = origHTML;
-            btn.innerHTML = `<span class="btn-spinner"></span><span class="btn-label">${btn.textContent.trim()}…</span>`;
+        btn.style.cursor = 'not-allowed';
+        const btnText = btn.textContent.trim();
+        if (btnText.includes('Pause') || btnText.includes('Resume') || btnText.includes('Restart')) {
+            if ((action === 'pause' && btnText.includes('Pause')) ||
+                (action === 'resume' && btnText.includes('Resume')) ||
+                (action === 'restart' && btnText.includes('Restart'))) {
+                clickedBtn = btn;
+                btn.classList.add('loading');
+                btn.dataset.origHtml = btn.innerHTML;
+                btn.innerHTML = `<span class="btn-spinner"></span> ${actionTextMap[action]}`;
+            }
         }
     });
     
@@ -590,20 +595,32 @@ async function botAction(tenantId, action) {
             }, 1500);
         } else {
             showToast(`Failed to ${action} bot: ${data.error}`, 'error');
+            // Re-enable buttons on error
+            buttons.forEach(btn => {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.style.cursor = 'pointer';
+                if (btn.classList.contains('loading')) {
+                    btn.classList.remove('loading');
+                    if (btn.dataset.origHtml) btn.innerHTML = btn.dataset.origHtml;
+                }
+            });
         }
     } catch (err) {
         console.error('Bot action failed:', err);
         showToast('Could not complete that action. Check your connection and try again.', 'error');
-    } finally {
-        pendingActions.delete(actionKey);
+        // Re-enable buttons on error
         buttons.forEach(btn => {
             btn.disabled = false;
             btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
             if (btn.classList.contains('loading')) {
                 btn.classList.remove('loading');
                 if (btn.dataset.origHtml) btn.innerHTML = btn.dataset.origHtml;
             }
         });
+    } finally {
+        pendingActions.delete(actionKey);
     }
 }
 
@@ -849,8 +866,11 @@ async function handleLogin() {
 
     const btn = document.querySelector('#loginScreen .btn-primary');
     const origText = btn.textContent;
-    btn.textContent = 'Sending...';
+    const origHtml = btn.innerHTML;
+    btn.innerHTML = '<span class="btn-spinner"></span> Sending…';
     btn.disabled = true;
+    btn.classList.add('loading');
+    btn.style.cursor = 'not-allowed';
 
     try {
         const response = await fetch('/api/auth/magic-link', {
@@ -884,14 +904,26 @@ async function handleLogin() {
     } catch (err) {
         showToast('Network error. Please try again.', 'error');
     } finally {
-        btn.textContent = origText;
+        btn.innerHTML = origHtml;
         btn.disabled = false;
+        btn.classList.remove('loading');
+        btn.style.cursor = 'pointer';
     }
 }
 
 // Handle logout
 async function handleLogout() {
     const sessionToken = localStorage.getItem('clawops_session_token');
+    
+    // Show loading state on logout button
+    const logoutBtn = event?.target;
+    if (logoutBtn) {
+        const origHtml = logoutBtn.innerHTML;
+        logoutBtn.innerHTML = '<span class="btn-spinner"></span> Logging out…';
+        logoutBtn.disabled = true;
+        logoutBtn.classList.add('loading');
+        logoutBtn.style.cursor = 'not-allowed';
+    }
     
     if (sessionToken) {
         try {
@@ -910,8 +942,12 @@ async function handleLogout() {
     localStorage.removeItem('clawops_email');
     localStorage.removeItem('clawops_session_expires');
     
-    document.getElementById('dashboardScreen').style.display = 'none';
-    document.getElementById('loginScreen').style.display = 'flex';
+    showToast('Logged out successfully', 'success');
+    
+    setTimeout(() => {
+        document.getElementById('dashboardScreen').style.display = 'none';
+        document.getElementById('loginScreen').style.display = 'flex';
+    }, 500);
 }
 
 // Manage billing
@@ -1053,12 +1089,32 @@ function showChannelSetup(botId, channelId) {
 async function saveChannelToken(botId, tokenKey, channelName) {
     const input = document.getElementById(`channel-token-${botId}`);
     const status = document.getElementById(`channel-status-${botId}`);
-    if (!input || !input.value.trim()) return;
+    if (!input || !input.value.trim()) {
+        if (status) {
+            status.style.display = 'block';
+            status.style.color = 'var(--red)';
+            status.textContent = 'Please enter a token';
+        }
+        return;
+    }
 
     const token = input.value.trim();
-    status.style.display = 'block';
-    status.style.color = 'var(--gray)';
-    status.textContent = `Saving ${channelName} token...`;
+    
+    // Find and disable the Save button, add loading state
+    const saveBtn = event?.target;
+    if (saveBtn) {
+        saveBtn.dataset.origHtml = saveBtn.innerHTML;
+        saveBtn.innerHTML = '<span class="btn-spinner"></span> Saving…';
+        saveBtn.disabled = true;
+        saveBtn.classList.add('loading');
+        saveBtn.style.cursor = 'not-allowed';
+    }
+    
+    if (status) {
+        status.style.display = 'block';
+        status.style.color = 'var(--gray)';
+        status.textContent = `Saving ${channelName} token...`;
+    }
 
     try {
         const res = await fetch(`/api/dashboard/bots/${encodeURIComponent(botId)}/secrets`, {
@@ -1069,25 +1125,45 @@ async function saveChannelToken(botId, tokenKey, channelName) {
         const data = await res.json();
 
         if (res.ok) {
-            status.style.color = '#00c853';
-            status.textContent = `✅ ${channelName} connected! Restarting bot...`;
+            if (status) {
+                status.style.color = '#00c853';
+                status.textContent = `✅ ${channelName} connected! Restarting bot...`;
+            }
             // Restart bot to pick up new channel config
             try {
                 await fetch(`/api/dashboard/bot-action?tenantId=${encodeURIComponent(botId)}&action=restart`, { method: 'POST' });
                 setTimeout(() => {
-                    status.textContent = `✅ ${channelName} connected and bot restarted!`;
+                    if (status) status.textContent = `✅ ${channelName} connected and bot restarted!`;
                     setTimeout(() => loadChannelStatus(botId), 2000);
                 }, 3000);
             } catch {
-                status.textContent = `✅ Token saved. Restart bot manually to activate.`;
+                if (status) status.textContent = `✅ Token saved. Restart bot manually to activate.`;
             }
         } else {
-            status.style.color = 'var(--red)';
-            status.textContent = `Error: ${data.error || 'Failed to save'}`;
+            if (status) {
+                status.style.color = 'var(--red)';
+                status.textContent = `Error: ${data.error || 'Failed to save'}`;
+            }
+            // Re-enable button on error
+            if (saveBtn && saveBtn.dataset.origHtml) {
+                saveBtn.innerHTML = saveBtn.dataset.origHtml;
+                saveBtn.disabled = false;
+                saveBtn.classList.remove('loading');
+                saveBtn.style.cursor = 'pointer';
+            }
         }
     } catch (err) {
-        status.style.color = 'var(--red)';
-        status.textContent = `Error: ${err.message}`;
+        if (status) {
+            status.style.color = 'var(--red)';
+            status.textContent = `Error: ${err.message}`;
+        }
+        // Re-enable button on error
+        if (saveBtn && saveBtn.dataset.origHtml) {
+            saveBtn.innerHTML = saveBtn.dataset.origHtml;
+            saveBtn.disabled = false;
+            saveBtn.classList.remove('loading');
+            saveBtn.style.cursor = 'pointer';
+        }
     }
 }
 
