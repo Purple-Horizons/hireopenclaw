@@ -5,13 +5,17 @@
  * Requires STRIPE_SECRET_KEY env var
  */
 
-const PLANS = {
-  starter: { priceId: null, amount: 2900, name: 'Starter' },    // $29/mo
-  pro:     { priceId: null, amount: 9900, name: 'Pro' },         // $99/mo
-  team:    { priceId: null, amount: 19900, name: 'Team' },       // $199/mo
-  agency:  { priceId: null, amount: 49900, name: 'Agency' },     // $499/mo
-  enterprise: { priceId: null, amount: 99900, name: 'Enterprise' } // $999/mo
-};
+// Import from single source of truth
+const { plans } = require('../data/plans.js');
+
+// Derive Stripe amounts from plans.json (price in dollars → cents)
+const PLANS = {};
+for (const [key, plan] of Object.entries(plans)) {
+  if (plan.price === null || plan.price === 0) continue; // skip free/enterprise
+  PLANS[key] = { priceId: null, amount: plan.price * 100, name: plan.name };
+}
+// Enterprise is custom/contact-us
+PLANS.enterprise = { priceId: null, amount: 99900, name: 'Enterprise' };
 
 module.exports = async (req, res) => {
   try {

@@ -110,7 +110,10 @@ async function loadDashboard(email) {
             
             // Update header user info
             document.querySelector('.user-info .email').textContent = email;
-            document.querySelector('.user-info .plan-badge').textContent = data.plan.toUpperCase();
+            // Update plan badge and billing card from plans data
+            const planBadge = document.getElementById('plan-badge') || document.querySelector('.user-info .plan-badge');
+            if (planBadge) planBadge.textContent = (data.plan || 'starter').toUpperCase();
+            updateBillingCard(data.plan, data.billing);
             
             // Update stats
             updateStats(data);
@@ -766,6 +769,31 @@ async function manageBilling() {
 }
 
 // Upgrade plan
+// Plan display names and pricing (client-side mirror of plans.json)
+const PLAN_DISPLAY = {
+    free: { name: 'Free Plan', price: '$0/mo' },
+    starter: { name: 'Starter Plan', price: '$29/mo' },
+    pro: { name: 'Pro Plan', price: '$99/mo' },
+    business: { name: 'Business Plan', price: '$299/mo' },
+    enterprise: { name: 'Enterprise', price: 'Custom' }
+};
+
+function updateBillingCard(planId, billing) {
+    const plan = PLAN_DISPLAY[planId] || PLAN_DISPLAY.starter;
+    const nameEl = document.getElementById('billing-plan-name');
+    const dateEl = document.getElementById('billing-next-date');
+    if (nameEl) nameEl.textContent = `${plan.name} - ${plan.price}`;
+    if (dateEl) {
+        if (billing && billing.nextBillingDate) {
+            dateEl.textContent = `Next billing date: ${new Date(billing.nextBillingDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+        } else if (planId === 'free') {
+            dateEl.textContent = 'Free tier — no billing';
+        } else {
+            dateEl.textContent = 'Billing not configured';
+        }
+    }
+}
+
 function upgradePlan() {
     window.location.href = '/#pricing';
 }

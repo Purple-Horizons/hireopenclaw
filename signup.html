@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up — HireOpenClaw</title>
+    <meta name="description" content="Get your AI employee in 48 hours">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg: #0a0a0a;
+            --bg-secondary: #141414;
+            --bg-card: #1a1a1a;
+            --white: #ffffff;
+            --gray: #888888;
+            --light-gray: #333333;
+            --accent: #ff6b35;
+            --accent-dim: #ff6b3520;
+            --green: #10b981;
+            --red: #ef4444;
+            --yellow: #fbbf24;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--white);
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        .container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        
+        .signup-card {
+            background: var(--bg-card);
+            border: 1px solid var(--light-gray);
+            border-radius: 16px;
+            padding: 48px;
+            max-width: 540px;
+            width: 100%;
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        
+        .logo a {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--white);
+            text-decoration: none;
+        }
+        
+        .logo a span {
+            color: var(--accent);
+        }
+        
+        h1 {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            font-size: 15px;
+            color: var(--gray);
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--white);
+        }
+        
+        input, select {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--light-gray);
+            border-radius: 8px;
+            padding: 14px 16px;
+            font-size: 15px;
+            color: var(--white);
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        
+        input::placeholder {
+            color: var(--gray);
+        }
+        
+        select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23888888' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            padding-right: 40px;
+        }
+        
+        .plan-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .plan-option {
+            position: relative;
+        }
+        
+        .plan-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .plan-label {
+            display: block;
+            padding: 16px;
+            background: var(--bg);
+            border: 2px solid var(--light-gray);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .plan-option input[type="radio"]:checked + .plan-label {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+        
+        .plan-label:hover {
+            border-color: var(--accent);
+        }
+        
+        .plan-name {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        
+        .plan-price {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+        
+        .plan-price .small {
+            font-size: 14px;
+            font-weight: 400;
+            color: var(--gray);
+        }
+        
+        .plan-description {
+            font-size: 12px;
+            color: var(--gray);
+        }
+        
+        .plan-badge {
+            display: inline-block;
+            background: var(--yellow);
+            color: var(--bg);
+            padding: 2px 8px;
+            font-size: 10px;
+            font-weight: 700;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+        
+        .btn {
+            width: 100%;
+            background: var(--accent);
+            color: var(--bg);
+            padding: 14px 20px;
+            font-size: 16px;
+            font-weight: 700;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(255, 107, 53, 0.3);
+        }
+        
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        
+        .message {
+            margin-top: 16px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .message.success {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--green);
+            display: block;
+        }
+        
+        .message.error {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--red);
+            display: block;
+        }
+        
+        .divider {
+            text-align: center;
+            margin: 28px 0;
+            color: var(--gray);
+            font-size: 14px;
+            position: relative;
+        }
+        
+        .divider::before,
+        .divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 45%;
+            height: 1px;
+            background: var(--light-gray);
+        }
+        
+        .divider::before {
+            left: 0;
+        }
+        
+        .divider::after {
+            right: 0;
+        }
+        
+        .login-link {
+            text-align: center;
+            font-size: 14px;
+            color: var(--gray);
+        }
+        
+        .login-link a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+        
+        footer {
+            border-top: 1px solid var(--light-gray);
+            padding: 24px;
+            text-align: center;
+        }
+        
+        footer p {
+            color: var(--gray);
+            font-size: 13px;
+        }
+        
+        footer a {
+            color: var(--gray);
+            text-decoration: none;
+        }
+        
+        footer a:hover {
+            color: var(--accent);
+        }
+        
+        @media (max-width: 768px) {
+            .signup-card {
+                padding: 32px 24px;
+            }
+            
+            .plan-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            /* Touch targets */
+            button, .btn, a, .plan-label { min-height: 44px; }
+            /* Prevent iOS zoom */
+            input, select { font-size: 16px !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="signup-card">
+            <div class="logo">
+                <a href="/">Hire<span>OpenClaw</span></a>
+            </div>
+            
+            <h1>Get your AI employee</h1>
+            <p class="subtitle">Ready to work in 48 hours. Fixed pricing. No surprises.</p>
+            
+            <form id="signup-form">
+                <div class="form-group">
+                    <label for="name">Full name</label>
+                    <input 
+                        type="text" 
+                        id="name" 
+                        name="name" 
+                        required 
+                        placeholder="John Smith"
+                        autocomplete="name"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email address</label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        required 
+                        placeholder="john@company.com"
+                        autocomplete="email"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label>Choose your plan</label>
+                    <div class="plan-grid">
+                        <div class="plan-option">
+                            <input type="radio" id="plan-starter" name="plan" value="starter" checked>
+                            <label for="plan-starter" class="plan-label">
+                                <div class="plan-name">Starter</div>
+                                <div class="plan-price">$29<span class="small">/mo</span></div>
+                                <div class="plan-description">1 AI employee</div>
+                            </label>
+                        </div>
+                        
+                        <div class="plan-option">
+                            <input type="radio" id="plan-pro" name="plan" value="pro">
+                            <label for="plan-pro" class="plan-label">
+                                <div class="plan-name">
+                                    Pro
+                                    <span class="plan-badge">POPULAR</span>
+                                </div>
+                                <div class="plan-price">$99<span class="small">/mo</span></div>
+                                <div class="plan-description">Up to 3 AI employees</div>
+                            </label>
+                        </div>
+                        
+                        <div class="plan-option">
+                            <input type="radio" id="plan-business" name="plan" value="business">
+                            <label for="plan-business" class="plan-label">
+                                <div class="plan-name">Business</div>
+                                <div class="plan-price">$299<span class="small">/mo</span></div>
+                                <div class="plan-description">Up to 10 AI employees</div>
+                            </label>
+                        </div>
+                        
+                        <div class="plan-option">
+                            <input type="radio" id="plan-enterprise" name="plan" value="enterprise">
+                            <label for="plan-enterprise" class="plan-label">
+                                <div class="plan-name">Enterprise</div>
+                                <div class="plan-price">Custom</div>
+                                <div class="plan-description">Up to 50 AI employees</div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn">
+                    <span class="btn-text">Get Started →</span>
+                    <span class="btn-loading" style="display:none;">Creating account...</span>
+                </button>
+                
+                <div id="message" class="message"></div>
+            </form>
+            
+            <div class="divider">or</div>
+            
+            <p class="login-link">
+                Already have an account? <a href="/login">Log in</a>
+            </p>
+        </div>
+    </div>
+    
+    <footer>
+        <p><a href="/">← Back to home</a></p>
+    </footer>
+
+    <script>
+        // Pre-select plan from query param (e.g., /signup?plan=pro)
+        const urlParams = new URLSearchParams(window.location.search);
+        const planParam = urlParams.get('plan');
+        if (planParam) {
+            const planRadio = document.getElementById(`plan-${planParam}`);
+            if (planRadio) {
+                planRadio.checked = true;
+            }
+        }
+        
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const form = e.target;
+            const btn = form.querySelector('button');
+            const btnText = btn.querySelector('.btn-text');
+            const btnLoading = btn.querySelector('.btn-loading');
+            const message = document.getElementById('message');
+            
+            const formData = new FormData(form);
+            const data = {
+                name: formData.get('name'),
+                email: formData.get('email'),
+                plan: formData.get('plan')
+            };
+            
+            // Disable button and show loading
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline';
+            btn.disabled = true;
+            message.style.display = 'none';
+            message.className = 'message';
+            
+            try {
+                const response = await fetch('/api/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.ok) {
+                    message.className = 'message success';
+                    message.innerHTML = `✓ Account created! Redirecting to dashboard...`;
+                    
+                    // Redirect to dashboard after a brief delay
+                    setTimeout(() => {
+                        window.location.href = '/dashboard?welcome=true';
+                    }, 1500);
+                } else {
+                    throw new Error(result.error || 'Signup failed');
+                }
+            } catch (error) {
+                message.className = 'message error';
+                message.innerHTML = `✗ ${error.message}`;
+                
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

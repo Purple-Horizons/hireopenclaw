@@ -743,7 +743,7 @@
         <header class="dash-header">
             <a href="/" class="logo">Hire<span>OpenClaw</span></a>
             <div class="user-info">
-                <span class="plan-badge">STARTER</span>
+                <span class="plan-badge" id="plan-badge">—</span>
                 <span class="email">Loading...</span>
                 <button class="btn btn-secondary" onclick="handleLogout()" style="padding:6px 12px;font-size:12px;">Log Out</button>
             </div>
@@ -857,8 +857,8 @@
         </div>
         <div class="billing-card">
             <div class="billing-info">
-                <div class="plan-name">Team Plan - $799/mo</div>
-                <div class="next-billing">Next billing date: March 11, 2026</div>
+                <div class="plan-name" id="billing-plan-name">Loading...</div>
+                <div class="next-billing" id="billing-next-date">—</div>
             </div>
             <div>
                 <button class="btn btn-secondary" onclick="manageBilling()">Manage Billing</button>
