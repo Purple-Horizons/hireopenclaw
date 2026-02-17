@@ -13,10 +13,21 @@ function initTabs() {
         });
     });
     
-    // TASK-429: Restore tab from URL hash
+    // TASK-429: Restore tab from URL hash (skip if hash contains auth data — consumed by dashboard-dynamic.js)
     const hash = window.location.hash.slice(1);
     const validTabs = ['employees', 'usage', 'billing', 'settings'];
-    switchTab(validTabs.includes(hash) ? hash : 'employees');
+    if (hash.includes('session=')) {
+        // Auth redirect — activate default tab without touching URL hash
+        currentTab = 'employees';
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === 'employees');
+        });
+        document.querySelectorAll('.tab-panel').forEach(p => {
+            p.classList.toggle('active', p.id === 'tab-employees');
+        });
+    } else {
+        switchTab(validTabs.includes(hash) ? hash : 'employees');
+    }
 }
 
 function switchTab(tabName) {
