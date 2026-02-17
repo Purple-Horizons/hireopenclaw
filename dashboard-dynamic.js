@@ -53,6 +53,7 @@ function showDeleteModal(botId, botName) {
 // Check session validity
 async function checkSession() {
     const sessionToken = localStorage.getItem('clawops_session_token');
+    console.log('[auth-debug] checkSession called, token in localStorage:', sessionToken ? sessionToken.substring(0, 12) + '...' : 'NULL');
     
     if (!sessionToken) {
         return null;
@@ -66,11 +67,13 @@ async function checkSession() {
         });
         
         const data = await res.json();
+        console.log('[auth-debug] session check response:', JSON.stringify(data));
         
         if (data.valid) {
             return data.email;
         } else {
             // Invalid session, clear it
+            console.log('[auth-debug] CLEARING localStorage — session invalid');
             localStorage.removeItem('clawops_session_token');
             localStorage.removeItem('clawops_email');
             localStorage.removeItem('clawops_session_expires');
@@ -86,6 +89,7 @@ async function checkSession() {
 async function getUserEmail() {
     // Check hash fragment first (from magic link redirect)
     const hash = window.location.hash;
+    console.log('[auth-debug] getUserEmail called, hash:', hash);
     if (hash.includes('session=')) {
         const hashParams = new URLSearchParams(hash.substring(1));
         const sessionToken = hashParams.get('session');

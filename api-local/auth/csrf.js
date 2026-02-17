@@ -10,7 +10,7 @@ function validateCsrf(req, res, next) {
   // Skip for GET, HEAD, OPTIONS
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
   // Skip for webhooks and public endpoints
-  if (req.path.includes('/webhook') || req.path.includes('/magic-link')) return next();
+  if (req.path.includes('/webhook') || req.path.includes('/magic-link') || req.path.includes('/auth/session')) return next();
   // In test mode, skip CSRF
   if (process.env.NODE_ENV === 'test') return next();
   
