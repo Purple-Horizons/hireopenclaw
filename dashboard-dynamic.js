@@ -3,6 +3,24 @@
 
 let currentEmail = null;
 let currentBots = [];
+let currentMaxBots = 3; // Updated from API
+
+// ── Global Error Boundary ────────────────────────────────────────────────────
+// Catch unhandled errors and show user-friendly toast instead of breaking the page
+
+window.addEventListener('unhandledrejection', (e) => {
+    console.error('Unhandled promise rejection:', e.reason);
+    const message = e.reason?.message || e.reason || 'Something went wrong';
+    showToast(`Error: ${message}`, 'error', 5000);
+    e.preventDefault(); // Prevent default error logging
+});
+
+window.addEventListener('error', (e) => {
+    console.error('Unhandled error:', e.error);
+    const message = e.error?.message || e.message || 'Something went wrong';
+    showToast(`Error: ${message}`, 'error', 5000);
+    e.preventDefault(); // Prevent default error logging
+});
 
 function formatModelName(model) {
   if (!model) return 'Claude Sonnet';
@@ -107,6 +125,7 @@ async function loadDashboard(email) {
         
         if (data.bots) {
             currentBots = data.bots;
+            currentMaxBots = data.maxBots || 3; // Store for quota check
             
             // Update header user info
             document.querySelector('.user-info .email').textContent = email;
@@ -168,6 +187,135 @@ function updateStats(data) {
     if (statCards[3]) statCards[3].style.opacity = '0.5';
 }
 
+// Show onboarding banner for first-time users
+function showOnboardingBanner(grid) {
+    // Check if onboarding was already completed
+    if (localStorage.getItem('onboarding_completed')) {
+        return;
+    }
+    
+    // Check if banner already exists
+    if (document.getElementById('onboarding-banner')) {
+        return;
+    }
+    
+    // Create banner element
+    const banner = document.createElement('div');
+    banner.id = 'onboarding-banner';
+    banner.style.cssText = `
+        background: rgba(124,58,237,0.1);
+        border: 1px solid rgba(124,58,237,0.3);
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 24px;
+        animation: slideDown 0.4s ease-out;
+        grid-column: 1 / -1;
+    `;
+    
+    banner.innerHTML = `
+        <div style="display: flex; align-items: flex-start; gap: 16px;">
+            <div style="font-size: 32px; line-height: 1;">👋</div>
+            <div style="flex: 1;">
+                <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px; color: var(--white);">
+                    Welcome to HireOpenClaw!
+                </h3>
+                <p style="font-size: 14px; color: var(--gray); margin-bottom: 16px; line-height: 1.6;">
+                    Here's how to get started:
+                </p>
+                <div style="font-size: 14px; color: var(--white); line-height: 1.8; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
+                        <span>1️⃣</span>
+                        <span>Create your first AI employee with the "Add" card below</span>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
+                        <span>2️⃣</span>
+                        <span>Open web chat to talk with your bot</span>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; gap: 8px;">
+                        <span>3️⃣</span>
+                        <span>Connect Telegram, Discord, or WhatsApp for external chat</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="createFirstBot()" style="font-size: 14px;">
+                        Create My First Bot
+                    </button>
+                    <button class="btn btn-secondary" onclick="dismissOnboarding()" style="font-size: 14px;">
+                        Dismiss
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add animation keyframes if not already present
+    if (!document.getElementById('onboarding-animation')) {
+        const style = document.createElement('style');
+        style.id = 'onboarding-animation';
+        style.textContent = `
+            @keyframes slideDown {
+                from {
+                    opacity: 0;
+                    transform: translateY(-20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    // Insert banner as first child of grid
+    grid.insertBefore(banner, grid.firstChild);
+}
+
+// Handler for "Create My First Bot" button
+function createFirstBot() {
+    // Dismiss banner
+    dismissOnboarding();
+    // Show add bot modal
+    showAddBot();
+}
+
+// Handler for "Dismiss" button
+function dismissOnboarding() {
+    const banner = document.getElementById('onboarding-banner');
+    if (banner) {
+        // Fade out animation
+        banner.style.animation = 'slideUp 0.3s ease-out';
+        banner.style.animationFillMode = 'forwards';
+        
+        // Add slideUp animation if not present
+        if (!document.getElementById('onboarding-animation-out')) {
+            const style = document.createElement('style');
+            style.id = 'onboarding-animation-out';
+            style.textContent = `
+                @keyframes slideUp {
+                    from {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                    to {
+                        opacity: 0;
+                        transform: translateY(-20px);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        // Remove after animation
+        setTimeout(() => {
+            banner.remove();
+        }, 300);
+    }
+    
+    // Mark onboarding as completed
+    localStorage.setItem('onboarding_completed', 'true');
+}
+
 // Render bots grid
 function renderBots(bots, maxBots) {
     currentBots = bots; // Store for filtering
@@ -180,6 +328,9 @@ function renderBots(bots, maxBots) {
     
     const grid = document.querySelector('.bots-grid');
     grid.innerHTML = ''; // Clear existing
+    
+    // Show onboarding banner if first-time user
+    showOnboardingBanner(grid);
     
     // Render each bot
     bots.forEach(bot => {
