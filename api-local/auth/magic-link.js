@@ -5,16 +5,18 @@
  */
 
 const crypto = require('crypto');
-const { ScanCommand } = require('@aws-sdk/client-dynamodb');
+const { QueryCommand } = require('@aws-sdk/client-dynamodb');
 const { client: dynamodb, TABLES } = require('../util/dynamodb.js');
 const { ERROR_CODES, apiError } = require('../util/error-codes.js');
 
 async function emailExists(email) {
   try {
-    const result = await dynamodb.send(new ScanCommand({
+    const result = await dynamodb.send(new QueryCommand({
       TableName: TABLES.TENANTS,
-      FilterExpression: 'email = :email',
-      ExpressionAttributeValues: { ':email': { S: email } }
+      IndexName: 'email-index',
+      KeyConditionExpression: 'email = :email',
+      ExpressionAttributeValues: { ':email': { S: email } },
+      Limit: 1
     }));
     return result.Items && result.Items.length > 0;
   } catch (err) {

@@ -85,7 +85,7 @@ function getUsageData(email) {
         totalOutputTokens += parseInt(item.outputTokens?.N || 0);
         totalMessages += parseInt(item.messageCount?.N || 0);
       }
-    } catch {}
+    } catch (err) { console.error('[Margin] DynamoDB query failed:', err.message); }
   }
   return { totalInputTokens, totalOutputTokens, totalMessages };
 }

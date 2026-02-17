@@ -11,6 +11,7 @@ const { requireBotOwnership } = require('../auth/middleware.js');
 const { validateTenantId } = require('../util/validate.js');
 
 const execFileAsync = promisify(execFile);
+const logger = require('../util/logger.js');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -36,7 +37,7 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: `Invalid action. Must be one of: ${validActions.join(', ')}` });
   }
 
-  console.log(`[Bot Action] ${action} on ${tenantId}`);
+  logger.info('bot-action', `${action} on ${tenantId}`);
 
   try {
     const clawopsPath = '/Users/giannidalerta/.openclaw/workspace/repos/clawops';
@@ -60,8 +61,8 @@ module.exports = async (req, res) => {
       }
     );
 
-    console.log(`[Bot Action] Output:`, stdout);
-    if (stderr) console.error(`[Bot Action] Errors:`, stderr);
+    logger.info('bot-action', 'Output', { stdout: stdout.trim() });
+    if (stderr) logger.warn('bot-action', 'Stderr', { stderr: stderr.trim() });
 
     return res.status(200).json({
       ok: true,
@@ -71,7 +72,7 @@ module.exports = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(`[Bot Action] ${action} failed:`, error.message);
+    logger.error('bot-action', `${action} failed`, { error: error.message });
     return res.status(500).json({
       error: `${action} failed`
     });

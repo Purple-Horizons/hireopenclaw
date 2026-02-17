@@ -9,11 +9,18 @@ module.exports = async (req, res) => {
 
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const cursor = req.query.cursor
+      ? JSON.parse(Buffer.from(req.query.cursor, 'base64').toString())
+      : undefined;
+
     const result = await db.send(new QueryCommand({
       TableName: 'clawops-api-keys',
       IndexName: 'userId-index',
       KeyConditionExpression: 'userId = :userId',
-      ExpressionAttributeValues: { ':userId': userId }
+      ExpressionAttributeValues: { ':userId': userId },
+      Limit: limit,
+      ...(cursor && { ExclusiveStartKey: cursor })
     }));
 
     const keys = (result.Items || [])
@@ -31,7 +38,11 @@ module.exports = async (req, res) => {
       }))
       .sort((a, b) => b.createdAt - a.createdAt);
 
-    res.json({ keys, total: keys.length });
+    const nextCursor = result.LastEvaluatedKey
+      ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
+      : null;
+
+    res.json({ items: keys, total: keys.length, nextCursor });
 
   } catch (error) {
     console.error('List API keys error:', error);

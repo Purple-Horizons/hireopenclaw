@@ -8,6 +8,7 @@ const { GetItemCommand } = require('@aws-sdk/client-dynamodb');
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 const { client: dynamodb, TABLES } = require('../util/dynamodb.js');
 const { ERROR_CODES, apiError } = require('../util/error-codes.js');
+const logger = require('../util/logger.js');
 
 /**
  * Extract email from session cookie
@@ -60,7 +61,7 @@ async function requireBotOwnership(req, res, botId) {
     }
     return bot;
   } catch (err) {
-    console.error('[Auth] Bot ownership check failed:', err.message);
+    logger.error('auth', 'Bot ownership check failed', { error: err.message });
     res.status(ERROR_CODES.INTERNAL.status).json(apiError(ERROR_CODES.INTERNAL));
     return null;
   }
@@ -84,7 +85,7 @@ function requireAdmin(req, res) {
     const cliSecret = req.headers['x-cli-secret'];
     const expectedSecret = process.env.CLI_SECRET;
     if (cliSecret && expectedSecret && cliSecret === expectedSecret) {
-      console.log(`[Auth] CLI admin access from ${req.ip}`);
+      logger.info('auth', 'CLI admin access', { ip: req.ip });
       req.userEmail = 'cli@localhost';
       req.isAdmin = true;
       req.isCLI = true;
@@ -122,13 +123,13 @@ function getEffectiveEmail(req) {
   if (session.impersonating && isAdmin(session.email)) {
     // Check timeout (1 hour)
     if (session.impersonatedAt && Date.now() - session.impersonatedAt > 3600000) {
-      console.log(`[Auth] Impersonation expired: ${session.email} was impersonating ${session.impersonating}`);
+      logger.info('auth', 'Impersonation expired', { admin: session.email, target: session.impersonating });
       delete session.impersonating;
       delete session.impersonatedAt;
       tokenStore.set(sessionToken, session);
       return session.email;
     }
-    console.log(`[Auth] Admin ${session.email} impersonating ${session.impersonating}`);
+    logger.info('auth', 'Admin impersonating', { admin: session.email, target: session.impersonating });
     return session.impersonating;
   }
   return session.email;

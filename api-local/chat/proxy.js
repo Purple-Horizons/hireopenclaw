@@ -151,7 +151,7 @@ async function handleSend(req, res) {
             if (delta) fullContent += delta;
             // Forward the chunk as-is
             res.write(`data: ${data}\n\n`);
-          } catch {}
+          } catch (err) { console.error('[ChatProxy] JSON parse failed:', err.message); }
         }
       }
 

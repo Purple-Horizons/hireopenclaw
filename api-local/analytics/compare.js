@@ -1,5 +1,5 @@
 const { execSync } = require('child_process');
-const { ScanCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
+const { QueryCommand } = require('@aws-sdk/lib-dynamodb');
 const { docClient: db, TABLES } = require('../util/dynamodb.js');
 
 
@@ -18,9 +18,10 @@ module.exports = async (req, res) => {
     const fromTs = Date.now() - range;
 
     // Get user's bots
-    const bots = await db.send(new ScanCommand({
+    const bots = await db.send(new QueryCommand({
       TableName: 'clawops-tenants',
-      FilterExpression: 'userId = :userId',
+      IndexName: 'userId-index',
+      KeyConditionExpression: 'userId = :userId',
       ExpressionAttributeValues: { ':userId': userId }
     }));
 
@@ -64,8 +65,8 @@ module.exports = async (req, res) => {
           const memMatch = mem?.match(/([\d.]+)MiB/);
           memoryMb = memMatch ? parseFloat(memMatch[1]) : null;
         }
-      } catch (e) {
-        // Container might not be running
+      } catch (err) {
+        console.error('[Analytics] Container stats fetch failed:', err.message);
       }
 
       // Calculate uptime from creation

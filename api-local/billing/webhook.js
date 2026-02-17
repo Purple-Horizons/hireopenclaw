@@ -21,7 +21,7 @@ module.exports = async (req, res) => {
     if (stripeKey && webhookSecret) {
       // Production: verify webhook signature
       const stripe = require('stripe')(stripeKey);
-const { ScanCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { QueryCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const { docClient: db, TABLES } = require('../util/dynamodb.js');
       const sig = req.headers['stripe-signature'];
       
@@ -47,9 +47,10 @@ const { docClient: db, TABLES } = require('../util/dynamodb.js');
         const subscriptionId = session.subscription;
 
         // Update user with Stripe IDs
-        const users = await db.send(new ScanCommand({
+        const users = await db.send(new QueryCommand({
           TableName: 'clawops-tenants',
-          FilterExpression: 'email = :email',
+          IndexName: 'email-index',
+          KeyConditionExpression: 'email = :email',
           ExpressionAttributeValues: { ':email': email }
         }));
 

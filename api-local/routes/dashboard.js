@@ -1,0 +1,26 @@
+const router = require('express').Router();
+const path = require('path');
+
+const wrapHandler = (handlerPath) => async (req, res) => {
+  try {
+    const handler = require(handlerPath);
+    await handler(req, res);
+  } catch (err) {
+    console.error(`[API Error] ${req.path}:`, err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+const base = path.join(__dirname, '..', 'dashboard');
+
+router.all('/bots', wrapHandler(path.join(base, 'bots.js')));
+router.all('/create-bot', wrapHandler(path.join(base, 'create-bot.js')));
+router.all('/bot-action', wrapHandler(path.join(base, 'bot-action.js')));
+router.all('/rename-bot', wrapHandler(path.join(base, 'rename-bot.js')));
+router.all('/container-stats', wrapHandler(path.join(base, 'container-stats.js')));
+router.all('/billing', wrapHandler(path.join(base, 'billing.js')));
+router.all('/usage', wrapHandler(path.join(base, 'usage.js')));
+router.get('/usage/:tenantId', wrapHandler(path.join(base, 'usage.js')));
+router.all('/margin', wrapHandler(path.join(base, 'margin.js')));
+
+module.exports = router;

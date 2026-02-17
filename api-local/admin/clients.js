@@ -23,8 +23,16 @@ module.exports = async (req, res) => {
   if (!admin) return;
 
   try {
-    // Scan all tenants
-    const data = dynamo('scan --table-name clawops-tenants');
+    // Scan all tenants (acceptable for admin — small table)
+    // Support pagination via cursor
+    const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+    const cursor = req.query.cursor
+      ? JSON.parse(Buffer.from(req.query.cursor, 'base64').toString())
+      : null;
+    const startKeyArg = cursor
+      ? ` --exclusive-start-key '${JSON.stringify(cursor)}'`
+      : '';
+    const data = dynamo(`scan --table-name clawops-tenants --max-items ${limit}${startKeyArg}`);
     const items = data.Items || [];
 
     // Group by email
@@ -90,7 +98,11 @@ module.exports = async (req, res) => {
       terminatedBots: items.filter(i => i.status?.S === 'terminated').length
     };
 
-    return res.json({ ok: true, summary, clients });
+    const nextCursor = data.LastEvaluatedKey
+      ? Buffer.from(JSON.stringify(data.LastEvaluatedKey)).toString('base64')
+      : null;
+
+    return res.json({ ok: true, summary, clients, nextCursor });
   } catch (err) {
     console.error('[Admin] clients error:', err.message);
     return res.status(500).json({ error: 'Failed to load clients' });

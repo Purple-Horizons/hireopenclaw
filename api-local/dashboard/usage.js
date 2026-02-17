@@ -4,7 +4,7 @@
  * Queries clawops-usage table for real-time cost tracking
  */
 
-const { QueryCommand, ScanCommand, GetItemCommand } = require('@aws-sdk/client-dynamodb');
+const { QueryCommand, GetItemCommand } = require('@aws-sdk/client-dynamodb');
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 const { client: dynamodb, TABLES } = require('../util/dynamodb.js');
 const { requireBotOwnership } = require('../auth/middleware.js');
@@ -113,9 +113,10 @@ module.exports = async (req, res) => {
 };
 
 async function handleEmailUsage(req, res, email) {
-  const scan = await dynamodb.send(new ScanCommand({
+  const scan = await dynamodb.send(new QueryCommand({
     TableName: TABLES.TENANTS,
-    FilterExpression: 'email = :email',
+    IndexName: 'email-index',
+    KeyConditionExpression: 'email = :email',
     ExpressionAttributeValues: { ':email': { S: email } }
   }));
   
@@ -146,7 +147,7 @@ async function handleEmailUsage(req, res, email) {
         dailyMap[day].outputTokens += parseInt(record.outputTokens || 0);
         dailyMap[day].messageCount += parseInt(record.messageCount || 0);
       }
-    } catch {}
+    } catch (err) { console.error('[Usage] DynamoDB query failed:', err.message); }
   }
   
   const dailyUsage = Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date));

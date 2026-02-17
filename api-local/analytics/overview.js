@@ -1,4 +1,4 @@
-const { QueryCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
+const { QueryCommand } = require('@aws-sdk/lib-dynamodb');
 const { docClient: db, TABLES } = require('../util/dynamodb.js');
 
 module.exports = async (req, res) => {
@@ -18,9 +18,10 @@ module.exports = async (req, res) => {
     const fromTs = Date.now() - range;
 
     // Get user's bots
-    const bots = await db.send(new ScanCommand({
+    const bots = await db.send(new QueryCommand({
       TableName: 'clawops-tenants',
-      FilterExpression: 'userId = :userId',
+      IndexName: 'userId-index',
+      KeyConditionExpression: 'userId = :userId',
       ExpressionAttributeValues: { ':userId': userId }
     }));
 
@@ -88,7 +89,7 @@ module.exports = async (req, res) => {
           ? Math.round((totalCost / totalMessages) * 10000) / 10000 
           : 0
       },
-      byBot: botUsage.slice(0, 20) // top 20
+      byBot: botUsage.slice(0, Math.min(parseInt(req.query.limit) || 20, 100))
     });
 
   } catch (error) {

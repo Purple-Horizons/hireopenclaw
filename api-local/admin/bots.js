@@ -5,7 +5,8 @@
  * GET /api/admin/bots/:tenantId/config — Get bot's openclaw.json
  */
 
-const { execFileSync } = require('child_process');
+const { dockerExec } = require('../util/docker.js');
+const logger = require('../util/logger.js');
 const { requireAdmin } = require('../auth/middleware.js');
 const { validateTenantId, validateLines } = require('../util/validate.js');
 
@@ -23,31 +24,28 @@ module.exports = async (req, res) => {
   try {
     switch (action) {
       case 'restart': {
-        console.log(`[Admin] ${admin} restarting ${containerName}`);
-        execFileSync('docker', ['restart', containerName], { encoding: 'utf8', timeout: 30000 });
+        logger.info('admin', `Restarting container`, { admin, container: containerName });
+        await dockerExec(['restart', containerName], { timeout: 30000 });
         return res.json({ ok: true, message: `Restarted ${containerName}` });
       }
 
       case 'logs': {
         const lines = validateLines(req.query.lines);
-        const logs = execFileSync('docker', ['logs', containerName, '--tail', String(lines)], {
-          encoding: 'utf8',
+        const logs = await dockerExec(['logs', containerName, '--tail', String(lines)], {
           timeout: 10000
         });
         return res.json({ ok: true, logs: logs.split('\n') });
       }
 
       case 'config': {
-        const config = execFileSync('docker', ['exec', containerName, 'cat', '/app/.openclaw/openclaw.json'], {
-          encoding: 'utf8',
+        const config = await dockerExec(['exec', containerName, 'cat', '/app/.openclaw/openclaw.json'], {
           timeout: 5000
         });
         return res.json({ ok: true, config: JSON.parse(config) });
       }
 
       case 'info': {
-        const inspect = execFileSync('docker', ['inspect', containerName], {
-          encoding: 'utf8',
+        const inspect = await dockerExec(['inspect', containerName], {
           timeout: 5000
         });
         const data = JSON.parse(inspect)[0];
@@ -68,7 +66,7 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: `Unknown action: ${action}` });
     }
   } catch (err) {
-    console.error(`[Admin] Bot action failed for ${tenantId}:`, err.message);
+    logger.error('admin', 'Bot action failed', { tenantId, error: err.message });
     return res.status(500).json({ error: 'Bot operation failed' });
   }
 };

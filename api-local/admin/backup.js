@@ -49,7 +49,7 @@ const BACKUP_PATHS = [
 function ensureBucket() {
   try {
     execFileSync('aws', ['s3', 'mb', `s3://${S3_BUCKET}`, '--endpoint-url', EP], { encoding: 'utf8', env: ENV, stdio: 'pipe' });
-  } catch {} // Already exists
+  } catch (err) { /* Bucket may already exist */ }
 }
 
 function ensureTable() {
@@ -64,7 +64,7 @@ function ensureTable() {
         '--provisioned-throughput', 'ReadCapacityUnits=5,WriteCapacityUnits=5',
         '--endpoint-url', EP, '--region', 'us-east-1'
       ], { encoding: 'utf8', env: ENV, stdio: 'pipe' });
-    } catch {}
+    } catch (err) { console.error('[Backup] Failed to create backup table:', err.message); }
   }
 }
 
@@ -108,7 +108,7 @@ async function createBackup(tenantId, triggeredBy, reason) {
   execFileSync('aws', ['s3', 'cp', tmpPath, `s3://${S3_BUCKET}/${s3Key}`, '--endpoint-url', EP, '--region', 'us-east-1'], { encoding: 'utf8', env: ENV });
 
   // Clean up tmp
-  try { require('fs').unlinkSync(tmpPath); } catch {}
+  try { require('fs').unlinkSync(tmpPath); } catch (err) { /* cleanup failed */ }
 
   // Record in DynamoDB
   await dynamodb.send(new PutItemCommand({
@@ -180,7 +180,7 @@ async function restoreBackup(tenantId, backupId, triggeredBy) {
   ], { encoding: 'utf8', timeout: 30000, env: ENV });
 
   // Clean up
-  try { require('fs').unlinkSync(tmpPath); } catch {}
+  try { require('fs').unlinkSync(tmpPath); } catch (err) { /* cleanup failed */ }
 
   console.log(`[Backup] Restored ${backupId} for ${tenantId} by ${triggeredBy}`);
 

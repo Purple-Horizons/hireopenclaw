@@ -7,6 +7,10 @@
 const express = require('express');
 const path = require('path');
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const { validateEnv } = require(path.join(__dirname, 'api-local', 'util', 'env-check.js'));
+
+// Validate environment on startup
+validateEnv();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -68,22 +72,17 @@ app.get('/api/auth/csrf', (req, res) => {
   res.json({ csrfToken });
 });
 
-// API routes (load from api-local directory)
-const apiRoutes = [
+// ─── Express Router modules ───
+app.use('/api/auth', require(path.join(__dirname, 'api-local', 'routes', 'auth.js')));
+app.use('/api/admin', require(path.join(__dirname, 'api-local', 'routes', 'admin.js')));
+app.use('/api/dashboard', require(path.join(__dirname, 'api-local', 'routes', 'dashboard.js')));
+app.use('/api/settings', require(path.join(__dirname, 'api-local', 'routes', 'settings.js')));
+app.use('/api/billing', require(path.join(__dirname, 'api-local', 'routes', 'billing.js')));
+console.log('✓ Loaded Express Router modules (auth, admin, dashboard, settings, billing)');
+
+// Remaining individual routes (signup, team, keys, analytics)
+const remainingRoutes = [
   'signup',
-  'auth/magic-link',
-  'auth/session',
-  'dashboard/bots',
-  'dashboard/create-bot',
-  'dashboard/bot-action',
-  'dashboard/rename-bot',
-  'dashboard/container-stats',
-  'dashboard/billing',
-  'dashboard/usage',
-  'dashboard/margin',
-  'settings/api-keys',
-  'settings/team',
-  'settings/preferences',
   'team/create',
   'team/invite',
   'team/members',
@@ -94,11 +93,9 @@ const apiRoutes = [
   'analytics/overview',
   'analytics/timeseries',
   'analytics/compare',
-  'billing/checkout',
-  'billing/webhook'
 ];
 
-apiRoutes.forEach(route => {
+remainingRoutes.forEach(route => {
   const routePath = `/api/${route}`;
   const handlerPath = path.join(__dirname, 'api-local', `${route}.js`);
   
@@ -115,17 +112,6 @@ apiRoutes.forEach(route => {
     console.log(`✓ Loaded ${routePath}`);
   } catch (err) {
     console.warn(`✗ Failed to load ${routePath}: ${err.message}`);
-  }
-});
-
-// Parameterized dashboard routes
-app.get('/api/dashboard/usage/:tenantId', async (req, res) => {
-  try {
-    const handler = require(path.join(__dirname, 'api-local', 'dashboard', 'usage.js'));
-    await handler(req, res);
-  } catch (err) {
-    console.error('[API Error] /api/dashboard/usage/:tenantId:', err);
-    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -184,71 +170,7 @@ try {
   console.warn('✗ Chat proxy not loaded:', err.message);
 }
 
-// ─── Admin routes ───
-try {
-  const adminClients = require(path.join(__dirname, 'api-local', 'admin', 'clients.js'));
-  const adminBots = require(path.join(__dirname, 'api-local', 'admin', 'bots.js'));
-  const adminImpersonate = require(path.join(__dirname, 'api-local', 'admin', 'impersonate.js'));
-
-  app.get('/api/admin/clients', async (req, res) => {
-    try { await adminClients(req, res); }
-    catch (err) { console.error('[Admin Error]', err); res.status(500).json({ error: 'Internal error' }); }
-  });
-  app.get('/api/admin/clients/:email', async (req, res) => {
-    try { await adminClients(req, res); }
-    catch (err) { console.error('[Admin Error]', err); res.status(500).json({ error: 'Internal error' }); }
-  });
-  app.all('/api/admin/bots/:tenantId', async (req, res) => {
-    try { await adminBots(req, res); }
-    catch (err) { console.error('[Admin Error]', err); res.status(500).json({ error: 'Internal error' }); }
-  });
-  app.post('/api/admin/impersonate', async (req, res) => {
-    try { await adminImpersonate(req, res); }
-    catch (err) { console.error('[Admin Error]', err); res.status(500).json({ error: 'Internal error' }); }
-  });
-  app.post('/api/admin/stop-impersonate', async (req, res) => {
-    req.path = '/stop';
-    try { await adminImpersonate(req, res); }
-    catch (err) { console.error('[Admin Error]', err); res.status(500).json({ error: 'Internal error' }); }
-  });
-  // Backup & recovery
-  const { handleAdminBackup, handleClientBackup } = require(path.join(__dirname, 'api-local', 'admin', 'backup.js'));
-  app.post('/api/admin/bots/:tenantId/backup', async (req, res) => {
-    try { await handleAdminBackup(req, res); }
-    catch (err) { console.error('[Backup Error]', err); res.status(500).json({ error: 'Internal error' }); }
-  });
-  app.get('/api/admin/bots/:tenantId/backups', async (req, res) => {
-    try { await handleAdminBackup(req, res); }
-    catch (err) { console.error('[Backup Error]', err); res.status(500).json({ error: 'Internal error' }); }
-  });
-  app.post('/api/admin/bots/:tenantId/restore', async (req, res) => {
-    try { await handleAdminBackup(req, res); }
-    catch (err) { console.error('[Backup Error]', err); res.status(500).json({ error: 'Internal error' }); }
-  });
-  app.all('/api/settings/backup', async (req, res) => {
-    try { await handleClientBackup(req, res); }
-    catch (err) { console.error('[Backup Error]', err); res.status(500).json({ error: 'Internal error' }); }
-  });
-  app.post('/api/settings/restore', async (req, res) => {
-    try { await handleClientBackup(req, res); }
-    catch (err) { console.error('[Backup Error]', err); res.status(500).json({ error: 'Internal error' }); }
-  });
-
-  // Secrets management
-  const { handleAdminSecrets, handleClientSecrets } = require(path.join(__dirname, 'api-local', 'admin', 'secrets.js'));
-  app.all('/api/admin/secrets', async (req, res) => {
-    try { await handleAdminSecrets(req, res); }
-    catch (err) { console.error('[Admin Secrets Error]', err); res.status(500).json({ error: 'Internal error' }); }
-  });
-  app.all('/api/settings/secrets', async (req, res) => {
-    try { await handleClientSecrets(req, res); }
-    catch (err) { console.error('[Client Secrets Error]', err); res.status(500).json({ error: 'Internal error' }); }
-  });
-
-  console.log('✓ Loaded admin routes');
-} catch (err) {
-  console.warn('✗ Admin routes not loaded:', err.message);
-}
+// Admin & settings routes now loaded via Express Router modules above
 
 // Auth verify route — handles magic link callback
 app.get('/auth/verify', async (req, res) => {
