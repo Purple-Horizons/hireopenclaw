@@ -324,6 +324,28 @@ if (typeof window !== 'undefined') {
     window.addEventListener('offline', () => showToast("You're offline. Changes won't be saved.", 'error', 10000));
 }
 
+// Modal Breadcrumb for multi-step modals
+function setModalBreadcrumb(modalId, steps, currentStep, onNavigate) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    let bc = modal.querySelector('.modal-breadcrumb');
+    if (!bc) {
+        bc = document.createElement('div');
+        bc.className = 'modal-breadcrumb';
+        bc.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:16px;font-size:13px;color:var(--gray);';
+        modal.insertBefore(bc, modal.firstChild);
+    }
+    bc.innerHTML = steps.map(function(step, i) {
+        const sep = i < steps.length - 1 ? '<span class="breadcrumb-separator" style="color:var(--light-gray);">›</span>' : '';
+        const active = step === currentStep;
+        const clickable = !active && onNavigate;
+        return '<span class="breadcrumb-item' + (active ? ' active' : '') + '"' +
+            ' style="' + (active ? 'color:var(--white);font-weight:600;' : (clickable ? 'cursor:pointer;' : '')) + '"' +
+            (clickable ? ' onclick="(' + onNavigate.toString() + ')(\'' + step + '\')"' : '') +
+            '>' + step + '</span>' + sep;
+    }).join('');
+}
+
 // Close modal on overlay click
 document.addEventListener('DOMContentLoaded', () => {
     const overlay = document.getElementById('modalOverlay');
