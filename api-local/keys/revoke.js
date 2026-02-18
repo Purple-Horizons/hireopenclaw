@@ -6,7 +6,7 @@ const { docClient: db, TABLES } = require('../util/dynamodb.js');
 module.exports = async (req, res) => {
   try {
     const { keyId } = req.body;
-    const userId = req.session?.userId;
+    const userId = req.userEmail;
 
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     if (!keyId) return res.status(400).json({ error: 'keyId required' });

@@ -151,6 +151,12 @@ remainingRoutes.forEach(route => {
         if (needsAuth) {
           const email = await requireAuthMiddleware(req, res);
           if (!email) return; // response already sent
+          // Legacy handlers still read req.session.userId/email.
+          req.session = {
+            ...(req.session || {}),
+            userId: email,
+            email,
+          };
         }
         await handler(req, res);
       } catch (err) {
@@ -331,19 +337,21 @@ app.use(globalErrorHandler);
 // Start server
 module.exports = app;
 
-app.listen(PORT, () => {
-  console.log('');
-  console.log('========================================');
-  console.log('  HireOpenClaw Local Dev Server');
-  console.log('========================================');
-  console.log('');
-  console.log(`  Portal:     http://localhost:${PORT}`);
-  console.log(`  Dashboard:  http://localhost:${PORT}/dashboard`);
-  console.log(`  Onboarding: http://localhost:${PORT}/onboarding`);
-  console.log('');
-  console.log('  LocalStack:     http://localhost:4566');
-  console.log('  MasterControl:  http://localhost:18790');
-  console.log('');
-  console.log('========================================');
-  console.log('');
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log('');
+    console.log('========================================');
+    console.log('  HireOpenClaw Local Dev Server');
+    console.log('========================================');
+    console.log('');
+    console.log(`  Portal:     http://localhost:${PORT}`);
+    console.log(`  Dashboard:  http://localhost:${PORT}/dashboard`);
+    console.log(`  Onboarding: http://localhost:${PORT}/onboarding`);
+    console.log('');
+    console.log('  LocalStack:     http://localhost:4566');
+    console.log('  MasterControl:  http://localhost:18790');
+    console.log('');
+    console.log('========================================');
+    console.log('');
+  });
+}

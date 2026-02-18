@@ -241,7 +241,7 @@ async function handleClear(req, res) {
 }
 
 // Cleanup stale conversations
-setInterval(() => {
+const cleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [botId, conv] of conversationStore) {
     if (now - conv.lastActivity > HISTORY_TTL_MS) {
@@ -249,5 +249,6 @@ setInterval(() => {
     }
   }
 }, 300000);
+if (typeof cleanupTimer.unref === 'function') cleanupTimer.unref();
 
 module.exports = { handleSend, handleEvents, handleHistory, handleClear };

@@ -1,6 +1,7 @@
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { validateTenantId } = require('../../api-local/util/validate.js');
 
 const isLocal = process.env.NODE_ENV !== 'production';
 const client = new DynamoDBClient({
@@ -32,6 +33,9 @@ module.exports = async (req, res) => {
     if (!tenantId) {
       return res.status(400).json({ error: 'Bot ID required' });
     }
+    if (!validateTenantId(tenantId)) {
+      return res.status(400).json({ error: 'Invalid bot ID format' });
+    }
 
     // Verify ownership
     const bot = await db.send(new GetCommand({
@@ -43,7 +47,8 @@ module.exports = async (req, res) => {
       return res.status(404).json({ error: 'Bot not found' });
     }
 
-    if (bot.Item.userId !== userId) {
+    const isOwner = bot.Item.userId === userId || bot.Item.email === userId;
+    if (!isOwner) {
       return res.status(403).json({ error: 'Permission denied' });
     }
 
@@ -54,10 +59,11 @@ module.exports = async (req, res) => {
     // Terminate container
     try {
       const clawopsDir = process.env.CLAWOPS_DIR || '/Users/giannidalerta/.openclaw/workspace/repos/clawops';
-      execSync(
-        `bash ${clawopsDir}/skills/fleet-ops/terminate.sh ${tenantId} --force`,
-        { timeout: 30000, encoding: 'utf-8' }
-      );
+      execFileSync('bash', [
+        `${clawopsDir}/skills/fleet-ops/terminate.sh`,
+        tenantId,
+        '--force',
+      ], { timeout: 30000, encoding: 'utf-8' });
     } catch (terminateError) {
       console.error('Terminate container failed:', terminateError.message);
     }

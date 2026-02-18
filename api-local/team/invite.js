@@ -1,15 +1,20 @@
 const crypto = require('crypto');
-const { Resend } = require('resend');
 const { QueryCommand, GetCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
 const { docClient: db, TABLES } = require('../util/dynamodb.js');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resend = null;
+try {
+  const { Resend } = require('resend');
+  resend = new Resend(process.env.RESEND_API_KEY);
+} catch {
+  resend = null;
+}
 const isLocal = process.env.NODE_ENV !== 'production';
 
 module.exports = async (req, res) => {
   try {
     const { teamId, email, role = 'member', permissions = {} } = req.body;
-    const userId = req.session?.userId;
+    const userId = req.userEmail;
 
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -124,18 +129,20 @@ module.exports = async (req, res) => {
     const inviteUrl = `${process.env.BASE_URL || 'http://localhost:3000'}/invite#token=${token}`;
     
     try {
-      await resend.emails.send({
-        from: 'ClawOps <noreply@hireopenclaw.com>',
-        to: email,
-        subject: `You've been invited to join ${team.name} on ClawOps`,
-        html: `
-          <h2>You've been invited to join ${team.name}</h2>
-          <p>You've been invited to join <strong>${team.name}</strong> on ClawOps as a <strong>${role}</strong>.</p>
-          <p><a href="${inviteUrl}" style="background: #7C3AED; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Accept Invitation</a></p>
-          <p style="color: #666; font-size: 14px;">This invitation expires in 7 days.</p>
-          <p style="color: #666; font-size: 12px;">If you didn't expect this invitation, you can safely ignore this email.</p>
-        `
-      });
+      if (resend) {
+        await resend.emails.send({
+          from: 'ClawOps <noreply@hireopenclaw.com>',
+          to: email,
+          subject: `You've been invited to join ${team.name} on ClawOps`,
+          html: `
+            <h2>You've been invited to join ${team.name}</h2>
+            <p>You've been invited to join <strong>${team.name}</strong> on ClawOps as a <strong>${role}</strong>.</p>
+            <p><a href="${inviteUrl}" style="background: #7C3AED; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Accept Invitation</a></p>
+            <p style="color: #666; font-size: 14px;">This invitation expires in 7 days.</p>
+            <p style="color: #666; font-size: 12px;">If you didn't expect this invitation, you can safely ignore this email.</p>
+          `
+        });
+      }
     } catch (emailError) {
       console.error('Email send failed:', emailError);
       // Don't fail the request if email fails in local dev

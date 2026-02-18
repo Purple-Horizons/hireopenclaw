@@ -1,5 +1,5 @@
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, QueryCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, QueryCommand } = require('@aws-sdk/lib-dynamodb');
 
 const isLocal = process.env.NODE_ENV !== 'production';
 const client = new DynamoDBClient({
@@ -36,10 +36,11 @@ module.exports = async (req, res) => {
     const toTs = to ? new Date(to).getTime() : Date.now();
 
     // Get user's bots
-    const bots = await db.send(new ScanCommand({
+    const bots = await db.send(new QueryCommand({
       TableName: 'clawops-tenants',
-      FilterExpression: 'userId = :userId',
-      ExpressionAttributeValues: { ':userId': userId }
+      IndexName: 'email-index',
+      KeyConditionExpression: 'email = :email',
+      ExpressionAttributeValues: { ':email': userId }
     }));
 
     const botList = botId 
@@ -66,8 +67,8 @@ module.exports = async (req, res) => {
 
       const records = usage.Items || [];
       const botMessages = records.reduce((sum, r) => sum + (r.messageCount || 0), 0);
-      const botTokensIn = records.reduce((sum, r) => sum + (r.tokenIn || 0), 0);
-      const botTokensOut = records.reduce((sum, r) => sum + (r.tokenOut || 0), 0);
+      const botTokensIn = records.reduce((sum, r) => sum + (r.inputTokens || r.tokenIn || 0), 0);
+      const botTokensOut = records.reduce((sum, r) => sum + (r.outputTokens || r.tokenOut || 0), 0);
       const botCost = (botTokensIn / 1000000) * 3 + (botTokensOut / 1000000) * 15;
 
       totalMessages += botMessages;

@@ -6,7 +6,7 @@ const { docClient: db, TABLES } = require('../util/dynamodb.js');
 module.exports = async (req, res) => {
   try {
     const { name, plan = 'team' } = req.body;
-    const userId = req.session?.userId;
+    const userId = req.userEmail;
 
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -43,7 +43,7 @@ module.exports = async (req, res) => {
       membershipId,
       teamId,
       userId,
-      email: req.session.email,
+      email: req.userEmail,
       role: 'owner',
       status: 'active',
       permissions: {

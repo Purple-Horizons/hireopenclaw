@@ -38,13 +38,13 @@ module.exports = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const perPage = Math.min(parseInt(req.query.perPage) || 20, 100);
 
-    // Query bots
+    // Query bots from canonical tenants table by owner identity
     const result = await db.send(new QueryCommand({
-      TableName: 'clawops-bots',
-      IndexName: 'userId-index',
-      KeyConditionExpression: 'userId = :userId',
+      TableName: 'clawops-tenants',
+      IndexName: 'email-index',
+      KeyConditionExpression: 'email = :email',
       ExpressionAttributeValues: {
-        ':userId': userId
+        ':email': userId
       }
     }));
 
@@ -56,7 +56,7 @@ module.exports = async (req, res) => {
       : bots;
 
     // Sort by creation date (newest first)
-    filtered.sort((a, b) => b.createdAt - a.createdAt);
+    filtered.sort((a, b) => toTimestamp(a.createdAt) - toTimestamp(b.createdAt)).reverse();
 
     // Paginate
     const start = (page - 1) * perPage;
@@ -70,11 +70,11 @@ module.exports = async (req, res) => {
       status: bot.status,
       template: bot.template,
       plan: bot.plan,
-      createdAt: new Date(bot.createdAt).toISOString(),
+      createdAt: toIso(bot.createdAt),
       usage: {
         messages: bot.messageCount || 0,
-        tokensIn: bot.tokenIn || 0,
-        tokensOut: bot.tokenOut || 0
+        tokensIn: bot.inputTokens || bot.tokenIn || 0,
+        tokensOut: bot.outputTokens || bot.tokenOut || 0
       },
       chatUrl: `${process.env.BASE_URL || 'http://localhost:3000'}/chat/${bot.tenantId}`
     }));
@@ -92,3 +92,15 @@ module.exports = async (req, res) => {
     res.status(500).json({ error: 'Failed to list bots' });
   }
 };
+
+function toTimestamp(value) {
+  if (!value) return 0;
+  if (typeof value === 'number') return value > 1_000_000_000_000 ? value : value * 1000;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function toIso(value) {
+  const ts = toTimestamp(value);
+  return ts ? new Date(ts).toISOString() : null;
+}

@@ -159,10 +159,38 @@ jest.mock('@aws-sdk/lib-dynamodb', () => {
       return Promise.resolve({});
     }
   }
+  class ScanCommand {
+    constructor(params) { this.params = params; }
+    _execute() {
+      const db = global.__mockDB;
+      const items = [];
+      for (const [key, val] of db.entries()) {
+        if (key.startsWith(`${this.params.TableName}:`)) {
+          items.push(mockUnmarshallInner(val));
+        }
+      }
+      return Promise.resolve({
+        Items: items.slice(0, this.params.Limit || items.length),
+        Count: items.length,
+      });
+    }
+  }
+  class GetCommand {
+    constructor(params) { this.params = params; }
+    _execute() {
+      const db = global.__mockDB;
+      const pk = Object.values(this.params.Key)[0];
+      const pkStr = typeof pk === 'object' ? pk.S : pk;
+      const item = db.get(`${this.params.TableName}:${pkStr}`);
+      return Promise.resolve({ Item: item ? mockUnmarshallInner(item) : undefined });
+    }
+  }
   return {
     DynamoDBDocumentClient: { from: () => new MockDocClient() },
     QueryCommand,
     UpdateCommand,
+    ScanCommand,
+    GetCommand,
   };
 });
 
@@ -604,13 +632,7 @@ describe('POST /api/dashboard/bot-action', () => {
 describe('GET /api/admin/clients', () => {
   test('returns clients for admin user', async () => {
     const sessionToken = await createSession('g@purplehorizons.io');
-    const { execSync } = require('child_process');
-    execSync.mockReturnValueOnce(JSON.stringify({
-      Items: [
-        mockDynamoItem({ tenantId: 'tenant-1', email: 'client@example.com', status: 'active' }),
-      ],
-      Count: 1,
-    }));
+    seedTenant('tenant-1', 'client@example.com', { status: 'active' });
 
     const res = await request(app)
       .get('/api/admin/clients')
