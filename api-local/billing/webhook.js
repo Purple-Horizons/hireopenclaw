@@ -10,7 +10,7 @@
  * - invoice.payment_failed → Alert
  */
 
-const { QueryCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { QueryCommand, UpdateCommand, GetCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
 const { docClient: db, TABLES } = require('../util/dynamodb.js');
 
 module.exports = async (req, res) => {
@@ -42,6 +42,13 @@ module.exports = async (req, res) => {
 
     if (!event || !event.type) {
       return res.status(400).json({ error: 'Invalid webhook payload' });
+    }
+
+    if (event.id) {
+      const alreadyProcessed = await wasEventProcessed(event.id);
+      if (alreadyProcessed) {
+        return res.json({ received: true, duplicate: true });
+      }
     }
 
     console.log(`[Stripe Webhook] ${event.type}`, event.data?.object?.id);
@@ -118,6 +125,10 @@ module.exports = async (req, res) => {
         console.log(`[Stripe] Unhandled event type: ${event.type}`);
     }
 
+    if (event.id) {
+      await markEventProcessed(event.id, event.type);
+    }
+
     // Always return 200 to acknowledge receipt
     res.json({ received: true });
 
@@ -126,3 +137,38 @@ module.exports = async (req, res) => {
     res.status(500).json({ error: 'Webhook processing failed' });
   }
 };
+
+async function wasEventProcessed(eventId) {
+  try {
+    const existing = await db.send(new GetCommand({
+      TableName: TABLES.STRIPE_EVENTS,
+      Key: { eventId }
+    }));
+    return !!existing.Item;
+  } catch (err) {
+    if (err.name === 'ResourceNotFoundException') {
+      return false;
+    }
+    throw err;
+  }
+}
+
+async function markEventProcessed(eventId, eventType) {
+  try {
+    await db.send(new PutCommand({
+      TableName: TABLES.STRIPE_EVENTS,
+      Item: {
+        eventId,
+        eventType,
+        processedAt: new Date().toISOString(),
+      },
+      ConditionExpression: 'attribute_not_exists(eventId)',
+    }));
+  } catch (err) {
+    // Table may not be provisioned in local dev; do not fail webhook handling.
+    if (err.name === 'ResourceNotFoundException' || err.name === 'ConditionalCheckFailedException') {
+      return;
+    }
+    throw err;
+  }
+}

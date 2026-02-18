@@ -211,6 +211,7 @@ jest.mock('@aws-sdk/util-dynamodb', () => ({
 // Mock child_process (for admin clients + create-bot)
 jest.mock('child_process', () => ({
   execSync: jest.fn(() => JSON.stringify({ Items: [], Count: 0 })),
+  execFileSync: jest.fn(() => ''),
   execFile: jest.fn((cmd, args, opts, cb) => {
     if (typeof opts === 'function') { cb = opts; opts = {}; }
     if (cb) cb(null, 'Endpoint registered: http://localhost:18791', '');
