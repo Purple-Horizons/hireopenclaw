@@ -65,8 +65,15 @@ module.exports = async (req, res) => {
 
   } catch (error) {
     logger.error('bot-action', `${action} failed`, { error: error.message });
+    // Handle common Docker errors gracefully
+    if (error.message?.includes('already paused')) {
+      return res.status(200).json({ ok: true, tenantId, action, message: 'Bot is already paused' });
+    }
+    if (error.message?.includes('not paused')) {
+      return res.status(200).json({ ok: true, tenantId, action, message: 'Bot is already running' });
+    }
     return res.status(500).json({
-      error: `${action} failed`
+      error: `${action} failed: ${error.message}`
     });
   }
 };
