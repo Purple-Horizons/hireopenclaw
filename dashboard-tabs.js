@@ -137,6 +137,7 @@ async function renderUsageDetails(data) {
     const totalCost = (totalIn / 1_000_000) * 3 + (totalOut / 1_000_000) * 15;
     const budgetLimit = 20; // Starter plan default
     
+    const costBreakdown = data.costBreakdown || {};
     const budgetUtilization = budgetLimit > 0 ? (totalCost / budgetLimit) * 100 : 0;
     const budgetColor = budgetUtilization >= 90 ? 'var(--red)' : 
                        budgetUtilization >= 80 ? 'var(--yellow)' : 
