@@ -784,6 +784,16 @@ describe('GET /api/admin/clients', () => {
     const res = await request(app).get('/api/admin/clients');
     expect(res.status).toBe(401);
   });
+
+  test('rejects invalid pagination cursor', async () => {
+    const sessionToken = await createSession('g@purplehorizons.io');
+    const res = await request(app)
+      .get('/api/admin/clients?cursor=%%%not-base64%%%')
+      .set('Cookie', `session=${sessionToken}`);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/cursor/i);
+  });
 });
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

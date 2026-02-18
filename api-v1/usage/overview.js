@@ -1,5 +1,6 @@
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, QueryCommand } = require('@aws-sdk/lib-dynamodb');
+const { validateTenantId } = require('../../api-local/util/validate.js');
 
 const isLocal = process.env.NODE_ENV !== 'production';
 const client = new DynamoDBClient({
@@ -30,10 +31,19 @@ module.exports = async (req, res) => {
     const from = req.query.from;
     const to = req.query.to;
     const botId = req.query.botId;
+    if (botId && !validateTenantId(botId)) {
+      return res.status(400).json({ error: 'Invalid botId format' });
+    }
 
     // Calculate time range
-    const fromTs = from ? new Date(from).getTime() : Date.now() - (30 * 24 * 60 * 60 * 1000);
-    const toTs = to ? new Date(to).getTime() : Date.now();
+    const fromTs = from ? Date.parse(from) : Date.now() - (30 * 24 * 60 * 60 * 1000);
+    const toTs = to ? Date.parse(to) : Date.now();
+    if (Number.isNaN(fromTs) || Number.isNaN(toTs)) {
+      return res.status(400).json({ error: 'Invalid from/to date format' });
+    }
+    if (fromTs > toTs) {
+      return res.status(400).json({ error: 'from must be before to' });
+    }
 
     // Get user's bots
     const bots = await db.send(new QueryCommand({

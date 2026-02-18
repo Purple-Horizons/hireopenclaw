@@ -15,10 +15,11 @@ module.exports = async (req, res) => {
   try {
     // Scan all tenants (acceptable for admin — small table)
     // Support pagination via cursor
-    const limit = Math.min(parseInt(req.query.limit) || 100, 500);
-    const cursor = req.query.cursor
-      ? JSON.parse(Buffer.from(req.query.cursor, 'base64').toString())
-      : null;
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 500);
+    const cursor = parseCursor(req.query.cursor);
+    if (req.query.cursor && !cursor) {
+      return res.status(400).json({ error: 'Invalid cursor' });
+    }
     const data = await docClient.send(new ScanCommand({
       TableName: 'clawops-tenants',
       Limit: limit,
@@ -105,4 +106,15 @@ function toEpochMs(value) {
   if (typeof value === 'number') return value;
   const parsed = Date.parse(value);
   return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function parseCursor(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  try {
+    const decoded = Buffer.from(raw, 'base64').toString();
+    const parsed = JSON.parse(decoded);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
 }

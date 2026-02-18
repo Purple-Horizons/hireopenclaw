@@ -7,11 +7,13 @@ jest.mock('@aws-sdk/client-dynamodb', () => ({
 }));
 
 jest.mock('@aws-sdk/lib-dynamodb', () => {
+  class QueryCommand { constructor(params) { this.params = params; } }
   class PutCommand { constructor(params) { this.params = params; } }
   class GetCommand { constructor(params) { this.params = params; } }
   class UpdateCommand { constructor(params) { this.params = params; } }
   return {
     DynamoDBDocumentClient: { from: () => ({ send: mockSend }) },
+    QueryCommand,
     PutCommand,
     GetCommand,
     UpdateCommand,
@@ -121,5 +123,37 @@ describe('API v1 hardening', () => {
     expect(res.body.success).toBe(true);
     expect(mockExecFileSync).toHaveBeenCalled();
     expect(mockSend).toHaveBeenCalledTimes(2);
+  });
+
+  test('usage overview rejects invalid date range inputs', async () => {
+    const handler = require('../api-v1/usage/overview.js');
+    const req = {
+      apiKey: { scopes: ['usage:read'] },
+      userId: 'owner@example.com',
+      query: { from: 'not-a-date' },
+    };
+    const res = mockRes();
+
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toMatch(/date/i);
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+
+  test('usage overview rejects invalid botId format', async () => {
+    const handler = require('../api-v1/usage/overview.js');
+    const req = {
+      apiKey: { scopes: ['usage:read'] },
+      userId: 'owner@example.com',
+      query: { botId: 'bad/id' },
+    };
+    const res = mockRes();
+
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toMatch(/botId/i);
+    expect(mockSend).not.toHaveBeenCalled();
   });
 });

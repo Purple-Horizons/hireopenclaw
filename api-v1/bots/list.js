@@ -35,8 +35,8 @@ module.exports = async (req, res) => {
     }
 
     // Pagination
-    const page = parseInt(req.query.page) || 1;
-    const perPage = Math.min(parseInt(req.query.perPage) || 20, 100);
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const perPage = Math.min(Math.max(parseInt(req.query.perPage, 10) || 20, 1), 100);
 
     // Query bots from canonical tenants table by owner identity
     const result = await db.send(new QueryCommand({

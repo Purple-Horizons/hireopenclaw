@@ -2,6 +2,7 @@
 
 const { QueryCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
 const { docClient: db, TABLES } = require('../util/dynamodb.js');
+const { validateTenantId } = require('../util/validate.js');
 
 module.exports = async (req, res) => {
   try {
@@ -10,6 +11,7 @@ module.exports = async (req, res) => {
 
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     if (!teamId) return res.status(400).json({ error: 'teamId required' });
+    if (!validateTenantId(teamId)) return res.status(400).json({ error: 'Invalid teamId format' });
 
     // Verify requester is a member
     const requester = await db.send(new QueryCommand({
