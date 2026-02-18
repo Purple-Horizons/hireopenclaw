@@ -1,18 +1,18 @@
 /**
  * Billing API - LocalStack Version
- * GET /api/dashboard/billing?email=user@example.com
+ * GET /api/dashboard/billing
  */
+
+const { requireAuth } = require('../auth/middleware.js');
+const { getUserPlan } = require('../auth/team-plan.js');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { email } = req.query;
-
-  if (!email) {
-    return res.status(400).json({ error: 'Email parameter required' });
-  }
+  const email = await requireAuth(req, res);
+  if (!email) return;
 
   const { PLAN_PRICING, PLAN_TOKEN_LIMITS } = require('../data/plans.js');
   const PLANS = {};
@@ -20,9 +20,8 @@ module.exports = async (req, res) => {
     PLANS[k] = { price: v.price, tokens: PLAN_TOKEN_LIMITS[k], maxBots: v.maxBots };
   }
 
-  // TODO: Fetch real plan from user record / Stripe
-  const plan = 'starter';
-  const planInfo = PLANS[plan];
+  const plan = await getUserPlan(email);
+  const planInfo = PLANS[plan] || PLANS.starter;
 
   return res.status(200).json({
     plan,

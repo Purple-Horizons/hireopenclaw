@@ -2,14 +2,13 @@
  * Dashboard Bots API - LocalStack Version
  * GET /api/dashboard/bots
  * Lists all bots for the authenticated user (email from session)
- * Falls back to ?email= query param for backwards compat (will be removed)
  */
 
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 const { QueryCommand: RawQueryCommand } = require('@aws-sdk/client-dynamodb');
 const { QueryCommand } = require('@aws-sdk/lib-dynamodb');
 const { client: dynamoClient, docClient, TABLES } = require('../util/dynamodb.js');
-const { getEmailFromSession } = require('../auth/middleware.js');
+const { requireAuth } = require('../auth/middleware.js');
 const { getUserPlan, getMaxBots: getMaxBotsForUser } = require('../auth/team-plan.js');
 
 module.exports = async (req, res) => {
@@ -17,12 +16,8 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Prefer session-based auth, fall back to query param
-  const email = await getEmailFromSession(req) || req.query.email;
-
-  if (!email) {
-    return res.status(401).json({ error: 'Unauthorized — no valid session' });
-  }
+  const email = await requireAuth(req, res);
+  if (!email) return;
 
   try {
     const tableName = process.env.DYNAMODB_TABLE || 'clawops-tenants';
@@ -58,7 +53,7 @@ module.exports = async (req, res) => {
           tokensUsed: usage.tokens,
           tokensLimit: getTokenLimit(t.plan),
           messagesToday: usage.messages,
-          lastActive: t.lastActive ? (t.lastActive * 1000) : (t.createdAt * 1000),
+          lastActive: toTimestampMs(t.lastActive) || toTimestampMs(t.createdAt),
           createdAt: t.createdAt,
           endpoint: t.endpoint || null,
           model: t.model || null
@@ -122,6 +117,16 @@ async function getMonthlyUsage(tenantIds) {
   }));
 
   return usageMap;
+}
+
+function toTimestampMs(value) {
+  if (!value) return null;
+  if (typeof value === 'number') return value > 1_000_000_000_000 ? value : value * 1000;
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  return null;
 }
 
 // Helper: Get token limit by plan

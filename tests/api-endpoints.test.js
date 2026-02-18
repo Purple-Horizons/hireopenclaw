@@ -159,10 +159,38 @@ jest.mock('@aws-sdk/lib-dynamodb', () => {
       return Promise.resolve({});
     }
   }
+  class ScanCommand {
+    constructor(params) { this.params = params; }
+    _execute() {
+      const db = global.__mockDB;
+      const items = [];
+      for (const [key, val] of db.entries()) {
+        if (key.startsWith(`${this.params.TableName}:`)) {
+          items.push(mockUnmarshallInner(val));
+        }
+      }
+      return Promise.resolve({
+        Items: items.slice(0, this.params.Limit || items.length),
+        Count: items.length,
+      });
+    }
+  }
+  class GetCommand {
+    constructor(params) { this.params = params; }
+    _execute() {
+      const db = global.__mockDB;
+      const pk = Object.values(this.params.Key)[0];
+      const pkStr = typeof pk === 'object' ? pk.S : pk;
+      const item = db.get(`${this.params.TableName}:${pkStr}`);
+      return Promise.resolve({ Item: item ? mockUnmarshallInner(item) : undefined });
+    }
+  }
   return {
     DynamoDBDocumentClient: { from: () => new MockDocClient() },
     QueryCommand,
     UpdateCommand,
+    ScanCommand,
+    GetCommand,
   };
 });
 
@@ -183,6 +211,7 @@ jest.mock('@aws-sdk/util-dynamodb', () => ({
 // Mock child_process (for admin clients + create-bot)
 jest.mock('child_process', () => ({
   execSync: jest.fn(() => JSON.stringify({ Items: [], Count: 0 })),
+  execFileSync: jest.fn(() => ''),
   execFile: jest.fn((cmd, args, opts, cb) => {
     if (typeof opts === 'function') { cb = opts; opts = {}; }
     if (cb) cb(null, 'Endpoint registered: http://localhost:18791', '');
@@ -205,6 +234,25 @@ jest.mock('util', () => {
 
 // Mock docker-sdk
 jest.mock('../api-local/util/docker-sdk.js', () => ({
+  getContainer: jest.fn(() => ({
+    stats: jest.fn().mockResolvedValue({
+      cpu_stats: { cpu_usage: { total_usage: 200 }, system_cpu_usage: 1000, online_cpus: 2 },
+      precpu_stats: { cpu_usage: { total_usage: 100 }, system_cpu_usage: 800 },
+      memory_stats: { usage: 16 * 1024 * 1024, limit: 512 * 1024 * 1024 },
+      networks: { eth0: { rx_bytes: 1024, tx_bytes: 2048 } },
+      blkio_stats: { io_service_bytes_recursive: [{ op: 'Read', value: 4096 }, { op: 'Write', value: 8192 }] },
+      pids_stats: { current: 7 },
+    }),
+    inspect: jest.fn().mockResolvedValue({
+      State: {
+        Status: 'running',
+        Health: { Status: 'healthy' },
+        StartedAt: new Date(Date.now() - 60_000).toISOString(),
+        Pid: 1234,
+      },
+      RestartCount: 1,
+    }),
+  })),
   restartContainer: jest.fn().mockResolvedValue({}),
   pauseContainer: jest.fn().mockResolvedValue({}),
   unpauseContainer: jest.fn().mockResolvedValue({}),
@@ -237,10 +285,12 @@ function createApp() {
   const authRouter = require('../api-local/routes/auth.js');
   const dashboardRouter = require('../api-local/routes/dashboard.js');
   const adminRouter = require('../api-local/routes/admin.js');
+  const settingsRouter = require('../api-local/routes/settings.js');
 
   a.use('/api/auth', authRouter);
   a.use('/api/dashboard', dashboardRouter);
   a.use('/api/admin', adminRouter);
+  a.use('/api/settings', settingsRouter);
 
   const magicLinkHandler = require('../api-local/auth/magic-link.js');
   a.get('/auth/verify', (req, res) => {
@@ -341,7 +391,7 @@ describe('POST /api/auth/magic-link', () => {
 describe('GET /auth/verify', () => {
   test('returns session for valid token', async () => {
     tokenStore = require('../api-local/auth/token-store.js');
-    const token = 'valid-magic-token-abc123';
+    const token = 'a'.repeat(64);
     tokenStore.set(token, {
       email: 'g@purplehorizons.io',
       expiresAt: Date.now() + 15 * 60 * 1000,
@@ -363,26 +413,28 @@ describe('GET /auth/verify', () => {
 
   test('rejects expired token', async () => {
     tokenStore = require('../api-local/auth/token-store.js');
-    tokenStore.set('expired-magic-token', {
+    const token = 'b'.repeat(64);
+    tokenStore.set(token, {
       email: 'g@purplehorizons.io',
       expiresAt: Date.now() - 1000,
       used: false,
     });
 
-    const res = await request(app).get('/auth/verify?token=expired-magic-token');
+    const res = await request(app).get(`/auth/verify?token=${token}`);
     expect(res.status).toBe(401);
     expect(res.body.error).toMatch(/expired/i);
   });
 
   test('rejects already-used token', async () => {
     tokenStore = require('../api-local/auth/token-store.js');
-    tokenStore.set('used-magic-token', {
+    const token = 'c'.repeat(64);
+    tokenStore.set(token, {
       email: 'g@purplehorizons.io',
       expiresAt: Date.now() + 15 * 60 * 1000,
       used: true,
     });
 
-    const res = await request(app).get('/auth/verify?token=used-magic-token');
+    const res = await request(app).get(`/auth/verify?token=${token}`);
     expect(res.status).toBe(401);
     expect(res.body.error).toMatch(/used/i);
   });
@@ -449,10 +501,69 @@ describe('POST /api/auth/session', () => {
       .send({});
     expect(res.status).toBe(400);
   });
+
+  test('validates session from cookie when body token is absent', async () => {
+    const sessionToken = await createSession('cookie-user@example.com');
+    const res = await request(app)
+      .post('/api/auth/session')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body.valid).toBe(true);
+    expect(res.body.email).toBe('cookie-user@example.com');
+  });
+
+  test('does not accept session token from query params', async () => {
+    const sessionToken = await createSession('query-user@example.com');
+    const res = await request(app)
+      .post(`/api/auth/session?sessionToken=${sessionToken}`)
+      .send({});
+
+    expect(res.status).toBe(400);
+  });
 });
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 4. GET /api/dashboard/bots
+// 4. DELETE /api/auth/session
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+describe('DELETE /api/auth/session', () => {
+  test('invalidates session from cookie', async () => {
+    const sessionToken = await createSession('logout-cookie@example.com');
+
+    const logoutRes = await request(app)
+      .delete('/api/auth/session')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({});
+    expect(logoutRes.status).toBe(200);
+    expect(logoutRes.body.ok).toBe(true);
+
+    const validateRes = await request(app)
+      .post('/api/auth/session')
+      .send({ sessionToken });
+    expect(validateRes.status).toBe(401);
+    expect(validateRes.body.valid).toBe(false);
+  });
+
+  test('ignores query-param sessionToken on logout', async () => {
+    const sessionToken = await createSession('logout-query@example.com');
+
+    const logoutRes = await request(app)
+      .delete(`/api/auth/session?sessionToken=${sessionToken}`)
+      .send({});
+    expect(logoutRes.status).toBe(200);
+    expect(logoutRes.body.ok).toBe(true);
+
+    const validateRes = await request(app)
+      .post('/api/auth/session')
+      .send({ sessionToken });
+    expect(validateRes.status).toBe(200);
+    expect(validateRes.body.valid).toBe(true);
+  });
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 5. GET /api/dashboard/bots
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 describe('GET /api/dashboard/bots', () => {
   test('returns bots for authenticated user', async () => {
@@ -482,7 +593,38 @@ describe('GET /api/dashboard/bots', () => {
 });
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 5. POST /api/dashboard/create-bot
+// 5. GET /api/dashboard/container-stats
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+describe('GET /api/dashboard/container-stats', () => {
+  test('rejects invalid tenantId format', async () => {
+    const sessionToken = await createSession('client@example.com');
+
+    const res = await request(app)
+      .get('/api/dashboard/container-stats?tenantId=tenant-1;rm -rf /')
+      .set('Cookie', `session=${sessionToken}`);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/tenantId/i);
+  });
+
+  test('returns stats for owned tenant', async () => {
+    seedTenant('tenant-stats-001', 'client@example.com');
+    const sessionToken = await createSession('client@example.com');
+
+    const res = await request(app)
+      .get('/api/dashboard/container-stats?tenantId=tenant-stats-001')
+      .set('Cookie', `session=${sessionToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.tenantId).toBe('tenant-stats-001');
+    expect(res.body.stats.cpuPercent).toMatch(/%/);
+    expect(res.body.stats.memoryUsage).toContain('/');
+  });
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 6. POST /api/dashboard/create-bot
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 describe('POST /api/dashboard/create-bot', () => {
   test('creates a bot for authenticated user', async () => {
@@ -538,6 +680,24 @@ describe('POST /api/dashboard/create-bot', () => {
       .send({ botName: 'TestBot', plan: 'starter', template: 'evil-template' });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/template/i);
+  });
+
+  test('rejects tenant takeover when tenant belongs to another user', async () => {
+    seedTenant('tenant-foreign-1', 'other@example.com', { name: 'Other Bot' });
+    const sessionToken = await createSession('client@example.com');
+
+    const res = await request(app)
+      .post('/api/dashboard/create-bot')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({
+        tenantId: 'tenant-foreign-1',
+        botName: 'TakeoverAttempt',
+        template: 'blank',
+        plan: 'starter',
+      });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/access denied/i);
   });
 });
 
@@ -604,13 +764,7 @@ describe('POST /api/dashboard/bot-action', () => {
 describe('GET /api/admin/clients', () => {
   test('returns clients for admin user', async () => {
     const sessionToken = await createSession('g@purplehorizons.io');
-    const { execSync } = require('child_process');
-    execSync.mockReturnValueOnce(JSON.stringify({
-      Items: [
-        mockDynamoItem({ tenantId: 'tenant-1', email: 'client@example.com', status: 'active' }),
-      ],
-      Count: 1,
-    }));
+    seedTenant('tenant-1', 'client@example.com', { status: 'active' });
 
     const res = await request(app)
       .get('/api/admin/clients')
@@ -632,10 +786,89 @@ describe('GET /api/admin/clients', () => {
     const res = await request(app).get('/api/admin/clients');
     expect(res.status).toBe(401);
   });
+
+  test('rejects invalid pagination cursor', async () => {
+    const sessionToken = await createSession('g@purplehorizons.io');
+    const res = await request(app)
+      .get('/api/admin/clients?cursor=%%%not-base64%%%')
+      .set('Cookie', `session=${sessionToken}`);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/cursor/i);
+  });
 });
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 8. POST /api/admin/impersonate
+// 8. /api/settings/*
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+describe('/api/settings/* auth + ownership', () => {
+  test('requires session for API key list', async () => {
+    const res = await request(app).get('/api/settings/api-keys');
+    expect(res.status).toBe(401);
+  });
+
+  test('rejects revoking API key owned by another user', async () => {
+    mockDB.set('clawops-api-keys:key-foreign', mockDynamoItem({
+      keyId: 'key-foreign',
+      email: 'owner@example.com',
+      name: 'Owner Key',
+      active: true,
+      createdAt: new Date().toISOString(),
+    }));
+    const sessionToken = await createSession('attacker@example.com');
+
+    const res = await request(app)
+      .delete('/api/settings/api-keys')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({ keyId: 'key-foreign' });
+
+    expect(res.status).toBe(404);
+  });
+
+  test('allows revoking own API key', async () => {
+    mockDB.set('clawops-api-keys:key-own', mockDynamoItem({
+      keyId: 'key-own',
+      email: 'owner@example.com',
+      name: 'Owner Key',
+      active: true,
+      createdAt: new Date().toISOString(),
+    }));
+    const sessionToken = await createSession('owner@example.com');
+
+    const res = await request(app)
+      .delete('/api/settings/api-keys')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({ keyId: 'key-own' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+  });
+
+  test('rejects invalid team invite email', async () => {
+    const sessionToken = await createSession('owner@example.com');
+    const res = await request(app)
+      .post('/api/settings/team')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({ inviteEmail: 'not-an-email', role: 'member' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/inviteEmail/i);
+  });
+
+  test('rejects inviting self', async () => {
+    const sessionToken = await createSession('owner@example.com');
+    const res = await request(app)
+      .post('/api/settings/team')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({ inviteEmail: 'owner@example.com', role: 'member' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/own email/i);
+  });
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 9. POST /api/admin/impersonate
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 describe('POST /api/admin/impersonate', () => {
   test('admin can impersonate a client', async () => {

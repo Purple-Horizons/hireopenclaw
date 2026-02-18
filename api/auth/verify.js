@@ -28,22 +28,36 @@ export default async function handler(req, res) {
       .update(`${header}.${payload}`)
       .digest('base64url');
 
-    if (signature !== expectedSig) {
+    if (!safeEqual(signature, expectedSig)) {
       return res.status(401).json({ error: 'Invalid token signature' });
     }
 
     // Decode payload
     const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    const { validateEmail } = require('../../api-local/util/validate.js');
+    const { userExists } = require('../../api-local/auth/team-plan.js');
+    const { isAdmin } = require('../../api-local/auth/middleware.js');
+    const email = String(decoded.email || '').trim().toLowerCase();
 
     // Check expiry
     if (decoded.exp && decoded.exp < Math.floor(Date.now() / 1000)) {
       return res.status(401).json({ error: 'Token expired' });
     }
+    if (decoded.type && decoded.type !== 'magic-link') {
+      return res.status(401).json({ error: 'Invalid token type' });
+    }
+    if (!validateEmail(email)) {
+      return res.status(401).json({ error: 'Invalid token payload' });
+    }
+    const knownUser = await userExists(email) || isAdmin(email);
+    if (!knownUser) {
+      return res.status(401).json({ error: 'Invalid token payload' });
+    }
 
     // Generate a session token (longer-lived, 7 days)
     const sessHeader = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
     const sessPayload = Buffer.from(JSON.stringify({
-      email: decoded.email,
+      email,
       exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
       iat: Math.floor(Date.now() / 1000),
       type: 'session'
@@ -55,11 +69,18 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       ok: true,
-      email: decoded.email,
+      email,
       sessionToken
     });
   } catch (error) {
     console.error('verify error:', error);
     return res.status(401).json({ error: 'Invalid token' });
   }
+}
+
+function safeEqual(a, b) {
+  const aBuf = Buffer.from(String(a));
+  const bBuf = Buffer.from(String(b));
+  if (aBuf.length !== bBuf.length) return false;
+  return crypto.timingSafeEqual(aBuf, bBuf);
 }

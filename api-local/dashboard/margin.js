@@ -1,9 +1,11 @@
 /**
  * Cost Margin API - Calculate revenue vs. costs per customer
- * GET /api/dashboard/margin?email=user@example.com
+ * GET /api/dashboard/margin
  */
 
-const { execSync } = require('child_process');
+const { QueryCommand } = require('@aws-sdk/client-dynamodb');
+const { unmarshall } = require('@aws-sdk/util-dynamodb');
+const { client: dynamodb, TABLES } = require('../util/dynamodb.js');
 
 // Model costs per 1M tokens (as of Feb 2026)
 const MODEL_COSTS = {
@@ -20,6 +22,7 @@ const FARGATE_COST_PER_HOUR = 0.04048; // 0.25 vCPU + 0.5 GB memory
 
 // Plan pricing — from single source of truth (TASK-149)
 const { PLAN_PRICING } = require('../data/plans.js');
+const { getUserPlan } = require('../auth/team-plan.js');
 
 function calculateCost(inputTokens, outputTokens, model = 'gpt-4o', uptimeHours = 0) {
   const modelCost = MODEL_COSTS[model] || MODEL_COSTS.default;
@@ -39,60 +42,62 @@ function calculateCost(inputTokens, outputTokens, model = 'gpt-4o', uptimeHours 
   };
 }
 
-function getBotsForEmail(email) {
+async function getBotsForEmail(email) {
   try {
-    // clawops-tenants uses tenantId as PK; scan with filter for email
-    const cmd = `AWS_ENDPOINT_URL=http://localhost:4566 aws dynamodb scan \
-      --table-name clawops-tenants \
-      --filter-expression "email = :email AND #s <> :terminated" \
-      --expression-attribute-names '{"#s":"status"}' \
-      --expression-attribute-values '{":email":{"S":"${email}"},":terminated":{"S":"terminated"}}' \
-      --output json`;
-    
-    const result = execSync(cmd, { encoding: 'utf8', env: { ...process.env, AWS_ACCESS_KEY_ID: 'test', AWS_SECRET_ACCESS_KEY: 'test' } });
-    return JSON.parse(result).Items || [];
+    const result = await dynamodb.send(new QueryCommand({
+      TableName: TABLES.TENANTS,
+      IndexName: 'email-index',
+      KeyConditionExpression: 'email = :email',
+      ExpressionAttributeValues: {
+        ':email': { S: email }
+      }
+    }));
+    return (result.Items || [])
+      .map(unmarshall)
+      .filter((item) => item.status !== 'terminated');
   } catch (err) {
     console.error('Failed to fetch bots:', err.message);
     return [];
   }
 }
 
-function getUsageData(email) {
+async function getUsageData(email) {
   // Get user's bots first, then query usage per bot
-  const botItems = getBotsForEmail(email);
+  const botItems = await getBotsForEmail(email);
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
   let totalMessages = 0;
 
   for (const bot of botItems) {
-    const tenantId = bot.tenantId?.S;
+    const tenantId = bot.tenantId;
     if (!tenantId) continue;
     try {
-      const cmd = `AWS_ENDPOINT_URL=http://localhost:4566 aws dynamodb query \
-        --table-name clawops-usage \
-        --key-condition-expression "tenantId = :tid" \
-        --expression-attribute-values '{":tid":{"S":"${tenantId}"}}' \
-        --output json`;
-      const result = execSync(cmd, { encoding: 'utf8', env: { ...process.env, AWS_ACCESS_KEY_ID: 'test', AWS_SECRET_ACCESS_KEY: 'test' } });
-      const data = JSON.parse(result);
-      for (const item of (data.Items || [])) {
-        totalInputTokens += parseInt(item.inputTokens?.N || 0);
-        totalOutputTokens += parseInt(item.outputTokens?.N || 0);
-        totalMessages += parseInt(item.messageCount?.N || 0);
+      const result = await dynamodb.send(new QueryCommand({
+        TableName: TABLES.USAGE,
+        KeyConditionExpression: 'tenantId = :tid',
+        ExpressionAttributeValues: {
+          ':tid': { S: tenantId }
+        }
+      }));
+      for (const rawItem of (result.Items || [])) {
+        const item = unmarshall(rawItem);
+        totalInputTokens += parseInt(item.inputTokens || 0, 10);
+        totalOutputTokens += parseInt(item.outputTokens || 0, 10);
+        totalMessages += parseInt(item.messageCount || 0, 10);
       }
     } catch (err) { console.error('[Margin] DynamoDB query failed:', err.message); }
   }
   return { totalInputTokens, totalOutputTokens, totalMessages };
 }
 
-function getBotsData(email) {
-  const botItems = getBotsForEmail(email);
+async function getBotsData(email) {
+  const botItems = await getBotsForEmail(email);
   const bots = [];
   let totalUptimeHours = 0;
 
   for (const item of botItems) {
-    const createdAt = item.createdAt?.S || item.provisionedAt?.S;
-    const model = item.model?.S || 'gpt-4o';
+    const createdAt = item.createdAt || item.provisionedAt;
+    const model = item.model || 'gpt-4o';
 
     if (createdAt) {
       const uptimeHours = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60);
@@ -103,28 +108,24 @@ function getBotsData(email) {
   return { bots, totalUptimeHours };
 }
 
-const { requireAuth, getEmailFromSession } = require('../auth/middleware.js');
+const { requireAuth } = require('../auth/middleware.js');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Use session email (trusted)
-  const email = await getEmailFromSession(req) || req.query.email;
-
-  if (!email) {
-    return res.status(401).json({ error: 'Unauthorized — no valid session' });
-  }
+  const email = await requireAuth(req, res);
+  if (!email) return;
 
   console.log(`[Margin API] Calculating margin for ${email}`);
 
   try {
     // Get usage data
-    const usage = getUsageData(email);
+    const usage = await getUsageData(email);
     
     // Get bots data
-    const { bots, totalUptimeHours } = getBotsData(email);
+    const { bots, totalUptimeHours } = await getBotsData(email);
     
     // Calculate average model (use most common or default to gpt-4o)
     const modelCounts = {};
@@ -142,9 +143,8 @@ module.exports = async (req, res) => {
     );
     
     // Get plan and revenue
-    // TODO: Fetch real plan from user/billing record
-    const plan = 'starter';
-    const revenue = PLAN_PRICING[plan].price;
+    const plan = await getUserPlan(email);
+    const revenue = (PLAN_PRICING[plan] || PLAN_PRICING.starter).price;
     
     // Calculate margin
     const margin = revenue - costs.totalCost;

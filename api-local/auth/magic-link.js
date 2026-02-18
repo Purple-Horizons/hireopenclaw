@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const { QueryCommand } = require('@aws-sdk/client-dynamodb');
 const { client: dynamodb, TABLES } = require('../util/dynamodb.js');
 const { ERROR_CODES, apiError } = require('../util/error-codes.js');
+const { validateEmail } = require('../util/validate.js');
 
 const { userExists } = require('./team-plan.js');
 
@@ -35,11 +36,13 @@ function generateToken() {
 function createMagicLink(email) {
   const token = generateToken();
   const expiresAt = Date.now() + TOKEN_EXPIRY_MS;
+  const portalBaseUrl = (process.env.PORTAL_URL || process.env.SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
   
   tokenStore.set(token, {
     email,
     expiresAt,
-    used: false
+    used: false,
+    type: 'magic-link',
   });
   
   // Clean up expired tokens
@@ -49,25 +52,41 @@ function createMagicLink(email) {
     }
   }
   
-  const magicLink = `http://localhost:3000/auth/verify?token=${token}`;
+  const magicLink = `${portalBaseUrl}/auth/verify?token=${token}`;
   return { token, magicLink, expiresAt };
 }
 
 async function sendMagicLinkEmail(email, magicLink) {
-  // TODO: Integrate with Resend or SES
-  // For now, just log it
-  console.log(`\n🔗 Magic Link for ${email}:`);
-  console.log(`   ${magicLink}`);
-  console.log(`   Expires in 15 minutes\n`);
-  
-  // In production, send actual email:
-  // await resend.emails.send({
-  //   from: 'ClawOps <noreply@hireopenclaw.com>',
-  //   to: email,
-  //   subject: 'Your ClawOps login link',
-  //   html: `<p>Click here to log in: <a href="${magicLink}">${magicLink}</a></p>`
-  // });
-  
+  const resendApiKey = process.env.RESEND_API_KEY;
+
+  // Always log in non-production for local debugging/CLI workflows.
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`\n🔗 Magic Link for ${email}:`);
+    console.log(`   ${magicLink}`);
+    console.log(`   Expires in 15 minutes\n`);
+  }
+
+  if (resendApiKey) {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${resendApiKey}`,
+      },
+      body: JSON.stringify({
+        from: 'ClawOps <noreply@hireopenclaw.com>',
+        to: email,
+        subject: 'Your ClawOps login link',
+        html: `<p>Click here to sign in: <a href="${magicLink}">${magicLink}</a></p><p>This link expires in 15 minutes.</p>`,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Resend request failed: ${response.status} ${errText}`);
+    }
+  }
+
   return true;
 }
 
@@ -78,15 +97,16 @@ module.exports = async (req, res) => {
   
   // Generate magic link
   if (req.method === 'POST' || action === 'generate') {
-    const { email } = req.body || req.query;
+    const rawEmail = (req.body || req.query || {}).email;
+    const email = String(rawEmail || '').trim().toLowerCase();
     
-    if (!email || !email.includes('@')) {
+    if (!validateEmail(email)) {
       return res.status(400).json({ error: 'Valid email is required' });
     }
     
     // Rate limit by IP + email
     const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
-    const rateLimitKey = `magic:${ip}:${email.toLowerCase()}`;
+    const rateLimitKey = `magic:${ip}:${email}`;
     const rlResult = rateLimit(rateLimitKey);
     setRateLimitHeaders(res, rlResult);
     if (!rlResult.allowed) {
@@ -112,7 +132,12 @@ module.exports = async (req, res) => {
     const { token, magicLink, expiresAt } = createMagicLink(email);
     
     // Send email (or log for local dev)
-    await sendMagicLinkEmail(email, magicLink);
+    try {
+      await sendMagicLinkEmail(email, magicLink);
+    } catch (sendErr) {
+      // Keep response indistinguishable to prevent account enumeration.
+      console.error('[Magic Link] Email delivery failed:', sendErr.message);
+    }
     
     // In dev mode, return token for CLI usage. In production, omit it.
     const showDevTokens = process.env.NODE_ENV === 'development' && process.env.MAGIC_LINK_DEV_TOKENS === 'true';
@@ -131,6 +156,9 @@ module.exports = async (req, res) => {
     if (!token) {
       return res.status(400).json({ error: 'Token is required' });
     }
+    if (!/^[a-f0-9]{64}$/i.test(token)) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
     
     // Rate limit verify by IP
     const verifyIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
@@ -148,6 +176,9 @@ module.exports = async (req, res) => {
     
     if (tokenData.used) {
       return res.status(401).json({ error: 'Token already used' });
+    }
+    if (tokenData.type && tokenData.type !== 'magic-link') {
+      return res.status(401).json({ error: 'Invalid token' });
     }
     
     if (tokenData.expiresAt < Date.now()) {

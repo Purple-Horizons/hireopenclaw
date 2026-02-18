@@ -166,10 +166,6 @@
         }
         history.replaceState(null, '', window.location.pathname);
     }
-    // Check we have a token, otherwise redirect to login
-    if (!localStorage.getItem('clawops_session_token')) {
-        window.location.href = '/?login=true';
-    }
 })();
 </script>
 <script src="/js/admin.js?v=2"></script>

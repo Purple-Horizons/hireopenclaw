@@ -20,6 +20,11 @@ module.exports = async (req, res) => {
 
   console.log(`[Signup] New lead: ${name} | ${email} | ${phone || 'no phone'}`);
 
+  const safeName = escapeHtml(String(name));
+  const safeEmail = escapeHtml(String(email));
+  const safePhone = escapeHtml(String(phone || 'N/A'));
+  const safeCompany = escapeHtml(String(company || 'N/A'));
+
   try {
     // Generate tenant ID (simplified version)
     const timestamp = Date.now().toString().slice(-6);
@@ -60,12 +65,12 @@ module.exports = async (req, res) => {
           body: JSON.stringify({
             from: 'onboarding@resend.dev',
             to: 'g@purplehorizons.io',
-            subject: `🔥 New Signup: ${name}`,
+            subject: `🔥 New Signup: ${safeName}`,
             html: `<h2>New Signup</h2>
-              <p><strong>Name:</strong> ${name}</p>
-              <p><strong>Email:</strong> ${email}</p>
-              <p><strong>Phone:</strong> ${phone || 'N/A'}</p>
-              <p><strong>Company:</strong> ${company || 'N/A'}</p>
+              <p><strong>Name:</strong> ${safeName}</p>
+              <p><strong>Email:</strong> ${safeEmail}</p>
+              <p><strong>Phone:</strong> ${safePhone}</p>
+              <p><strong>Company:</strong> ${safeCompany}</p>
               <p><strong>Tenant ID:</strong> ${tenantId}</p>
               <p><strong>Time:</strong> ${new Date().toISOString()}</p>`
           })
@@ -86,3 +91,12 @@ module.exports = async (req, res) => {
     return res.status(500).json(apiError(ERROR_CODES.INTERNAL));
   }
 };
+
+function escapeHtml(value) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}

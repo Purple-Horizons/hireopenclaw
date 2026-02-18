@@ -7,10 +7,23 @@
 // Shared token store
 const sessionStore = require('./token-store.js');
 
+function getSessionToken(req) {
+  const cookies = req.headers.cookie || '';
+  const cookieMatch = cookies.match(/session=([^;]+)/);
+  if (cookieMatch) return cookieMatch[1];
+
+  const auth = req.headers.authorization || '';
+  if (auth.startsWith('Bearer ')) return auth.slice(7);
+
+  if (req.body?.sessionToken) return req.body.sessionToken;
+
+  return null;
+}
+
 module.exports = async (req, res) => {
   // Validate session
   if (req.method === 'POST') {
-    const { sessionToken } = req.body || req.query;
+    const sessionToken = getSessionToken(req);
     
     if (!sessionToken) {
       return res.status(400).json({ error: 'sessionToken is required' });
@@ -40,7 +53,7 @@ module.exports = async (req, res) => {
   
   // Logout
   if (req.method === 'DELETE') {
-    const { sessionToken } = req.body || req.query;
+    const sessionToken = getSessionToken(req);
     
     if (sessionToken) {
       sessionStore.delete(sessionToken);

@@ -42,7 +42,7 @@ module.exports = async (req, res) => {
       },
       ExpressionAttributeValues: {
         ':name': newName.trim(),
-        ':now': Math.floor(Date.now() / 1000)
+        ':now': new Date().toISOString()
       }
     }));
 

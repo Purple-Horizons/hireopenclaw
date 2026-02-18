@@ -54,17 +54,17 @@ function showDeleteModal(botId, botName) {
 async function checkSession() {
     const sessionToken = localStorage.getItem('clawops_session_token');
     console.log('[auth-debug] checkSession called, token in localStorage:', sessionToken ? sessionToken.substring(0, 12) + '...' : 'NULL');
-    
-    if (!sessionToken) {
-        return null;
-    }
-    
+
     try {
-        const res = await fetch('/api/auth/session', {
+        const req = {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionToken })
-        });
+            headers: { 'Content-Type': 'application/json' }
+        };
+        if (sessionToken) {
+            req.body = JSON.stringify({ sessionToken });
+        }
+
+        const res = await fetch('/api/auth/session', req);
         
         const data = await res.json();
         console.log('[auth-debug] session check response:', JSON.stringify(data));
@@ -73,10 +73,12 @@ async function checkSession() {
             return data.email;
         } else {
             // Invalid session, clear it
-            console.log('[auth-debug] CLEARING localStorage — session invalid');
-            localStorage.removeItem('clawops_session_token');
-            localStorage.removeItem('clawops_email');
-            localStorage.removeItem('clawops_session_expires');
+            if (sessionToken) {
+                console.log('[auth-debug] CLEARING localStorage — session invalid');
+                localStorage.removeItem('clawops_session_token');
+                localStorage.removeItem('clawops_email');
+                localStorage.removeItem('clawops_session_expires');
+            }
             return null;
         }
     } catch (err) {
@@ -931,16 +933,17 @@ async function handleLogout() {
         logoutBtn.style.cursor = 'not-allowed';
     }
     
-    if (sessionToken) {
-        try {
-            await fetch('/api/auth/session', {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sessionToken })
-            });
-        } catch (err) {
-            console.error('Logout API call failed:', err);
+    try {
+        const req = {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' }
+        };
+        if (sessionToken) {
+            req.body = JSON.stringify({ sessionToken });
         }
+        await fetch('/api/auth/session', req);
+    } catch (err) {
+        console.error('Logout API call failed:', err);
     }
     
     currentEmail = null;

@@ -11,8 +11,10 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { email } = req.body || {};
-  if (!email || !email.includes('@')) {
+  const rawEmail = (req.body || {}).email;
+  const email = String(rawEmail || '').trim().toLowerCase();
+  const { validateEmail } = require('../../api-local/util/validate.js');
+  if (!validateEmail(email)) {
     return res.status(400).json({ error: 'Valid email required' });
   }
 
@@ -23,10 +25,20 @@ export default async function handler(req, res) {
   }
 
   try {
+    const { userExists } = require('../../api-local/auth/team-plan.js');
+    const { isAdmin } = require('../../api-local/auth/middleware.js');
+    const knownUser = await userExists(email) || isAdmin(email);
+
+    // Never disclose whether the account exists.
+    if (!knownUser) {
+      return res.status(200).json({ ok: true, message: 'If an account exists with that email, a login link has been sent.' });
+    }
+
     // Create a simple JWT-like token: base64(header).base64(payload).signature
     const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
     const payload = Buffer.from(JSON.stringify({
       email,
+      type: 'magic-link',
       exp: Math.floor(Date.now() / 1000) + 15 * 60, // 15 min expiry
       iat: Math.floor(Date.now() / 1000),
       jti: crypto.randomUUID()
@@ -64,18 +76,15 @@ export default async function handler(req, res) {
           `
         })
       });
-      if (!emailRes.ok) {
-        console.error('Resend error:', await emailRes.text());
-        return res.status(500).json({ error: 'Failed to send email' });
-      }
+      if (!emailRes.ok) console.error('Resend error:', await emailRes.text());
     } else {
       // No Resend key — log for development
       console.log(`[DEV] Magic link for ${email}: ${magicLink}`);
     }
 
-    return res.status(200).json({ ok: true, message: 'Magic link sent. Check your email.' });
+    return res.status(200).json({ ok: true, message: 'If an account exists with that email, a login link has been sent.' });
   } catch (error) {
     console.error('send-link error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(200).json({ ok: true, message: 'If an account exists with that email, a login link has been sent.' });
   }
 }

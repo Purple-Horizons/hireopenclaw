@@ -6,7 +6,7 @@ const { docClient: db, TABLES } = require('../util/dynamodb.js');
 module.exports = async (req, res) => {
   try {
     const { teamId, membershipId } = req.body;
-    const userId = req.session?.userId;
+    const userId = req.userEmail;
 
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     if (!teamId || !membershipId) {
@@ -64,7 +64,7 @@ module.exports = async (req, res) => {
       ExpressionAttributeNames: { '#s': 'status' },
       ExpressionAttributeValues: {
         ':revoked': 'revoked',
-        ':now': Date.now(),
+        ':now': new Date().toISOString(),
         ':by': userId
       }
     }));

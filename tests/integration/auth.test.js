@@ -32,4 +32,19 @@ describe('GET /api/auth/verify (invalid token)', () => {
     // Should reject invalid token
     expect([400, 401, 302]).toContain(res.status);
   });
+
+  test('valid token redirects to /dashboard without session token in URL', async () => {
+    const tokenStore = require('../../api-local/auth/token-store.js');
+    const token = 'd'.repeat(64);
+    tokenStore.set(token, {
+      email: 'g@purplehorizons.io',
+      expiresAt: Date.now() + 10 * 60 * 1000,
+      used: false,
+    });
+
+    const res = await request(app).get(`/auth/verify?token=${token}`);
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toBe('/dashboard');
+    expect((res.headers['set-cookie'] || []).join(';')).toContain('session=');
+  });
 });

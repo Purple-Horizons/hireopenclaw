@@ -20,7 +20,7 @@ const keyCache = new Map();
 const KEY_CACHE_TTL = 5 * 60 * 1000;
 
 // Clean up expired entries every 5 minutes
-setInterval(() => {
+const cleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [key, data] of rateLimitStore.entries()) {
     if (data.resetAt < now) rateLimitStore.delete(key);
@@ -29,6 +29,7 @@ setInterval(() => {
     if (data.cachedAt + KEY_CACHE_TTL < now) keyCache.delete(key);
   }
 }, 5 * 60 * 1000);
+if (typeof cleanupTimer.unref === 'function') cleanupTimer.unref();
 
 /**
  * Rate limit middleware
@@ -67,7 +68,8 @@ async function rateLimitMiddleware(req, res, next) {
       });
     }
 
-    if (apiKey.expiresAt && apiKey.expiresAt < Date.now()) {
+    const expiresAtMs = toEpochMs(apiKey.expiresAt);
+    if (expiresAtMs && expiresAtMs < Date.now()) {
       return res.status(401).json({ 
         error: 'Unauthorized',
         message: 'API key expired'
@@ -104,7 +106,7 @@ async function rateLimitMiddleware(req, res, next) {
 
     // Attach API key data to request
     req.apiKey = apiKey;
-    req.userId = apiKey.userId;
+    req.userId = apiKey.userId || apiKey.email;
     req.teamId = apiKey.teamId;
 
     // Update last used timestamp (async, don't block)
@@ -157,11 +159,18 @@ async function updateLastUsed(keyId) {
       TableName: 'clawops-api-keys',
       Key: { keyId },
       UpdateExpression: 'SET lastUsedAt = :now',
-      ExpressionAttributeValues: { ':now': Date.now() }
+      ExpressionAttributeValues: { ':now': new Date().toISOString() }
     }));
   } catch (error) {
     console.error('Update lastUsedAt error:', error);
   }
+}
+
+function toEpochMs(value) {
+  if (!value) return 0;
+  if (typeof value === 'number') return value;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 module.exports = rateLimitMiddleware;

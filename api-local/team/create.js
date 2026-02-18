@@ -6,7 +6,7 @@ const { docClient: db, TABLES } = require('../util/dynamodb.js');
 module.exports = async (req, res) => {
   try {
     const { name, plan = 'team' } = req.body;
-    const userId = req.session?.userId;
+    const userId = req.userEmail;
 
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -18,6 +18,7 @@ module.exports = async (req, res) => {
 
     // Generate team ID
     const teamId = `team-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+    const nowIso = new Date().toISOString();
 
     // Create team
     const team = {
@@ -26,7 +27,7 @@ module.exports = async (req, res) => {
       name,
       plan,
       seats: plan === 'team' ? 5 : plan === 'agency' ? 20 : 100,
-      createdAt: Date.now(),
+      createdAt: nowIso,
       settings: {
         requireApproval: true
       }
@@ -43,7 +44,7 @@ module.exports = async (req, res) => {
       membershipId,
       teamId,
       userId,
-      email: req.session.email,
+      email: req.userEmail,
       role: 'owner',
       status: 'active',
       permissions: {
@@ -53,7 +54,7 @@ module.exports = async (req, res) => {
         manageTeam: true,
         manageBots: [] // empty = all access
       },
-      joinedAt: Date.now()
+      joinedAt: nowIso
     };
 
     await db.send(new PutCommand({

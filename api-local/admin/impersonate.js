@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
     return res.status(401).json({ error: 'No session' });
   }
 
-  const session = tokenStore.get(sessionToken);
+  const session = await tokenStore.get(sessionToken);
   if (!session) {
     return res.status(401).json({ error: 'Invalid session' });
   }

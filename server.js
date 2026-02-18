@@ -16,6 +16,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
+app.use('/api/billing/webhook', express.raw({ type: 'application/json' }));
+app.use('/api/v1/billing/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -66,13 +68,13 @@ app.use((req, res, next) => {
 app.use(validateCsrf);
 
 // CSRF token endpoint
-app.get('/api/auth/csrf', (req, res) => {
+app.get('/api/auth/csrf', async (req, res) => {
   const cookies = req.headers.cookie || '';
   const match = cookies.match(/session=([^;]+)/);
   const sessionToken = match ? match[1] : null;
   if (!sessionToken) return res.status(401).json({ error: 'No session' });
   const tokenStore = require(path.join(__dirname, 'api-local', 'auth', 'token-store.js'));
-  const session = tokenStore.get(sessionToken);
+  const session = await tokenStore.get(sessionToken);
   if (!session) return res.status(401).json({ error: 'Invalid session' });
   const csrfToken = generateCsrfToken(sessionToken);
   res.json({ csrfToken });
@@ -147,8 +149,14 @@ remainingRoutes.forEach(route => {
       try {
         // Enforce auth for non-public routes
         if (needsAuth) {
-          const email = requireAuthMiddleware(req, res);
+          const email = await requireAuthMiddleware(req, res);
           if (!email) return; // response already sent
+          // Legacy handlers still read req.session.userId/email.
+          req.session = {
+            ...(req.session || {}),
+            userId: email,
+            email,
+          };
         }
         await handler(req, res);
       } catch (err) {
@@ -246,7 +254,7 @@ app.get('/auth/verify', async (req, res) => {
           maxAge: 30 * 24 * 60 * 60 * 1000,
           path: '/',
         });
-        return res.redirect(`/dashboard#session=${data.sessionToken}&email=${encodeURIComponent(data.email)}`);
+        return res.redirect('/dashboard');
       } else {
         const errorMsg = data.error || 'Invalid or expired link.';
         const isExpired = errorMsg.includes('expired') || errorMsg.includes('already used') || errorMsg.includes('Invalid token');
@@ -329,19 +337,21 @@ app.use(globalErrorHandler);
 // Start server
 module.exports = app;
 
-app.listen(PORT, () => {
-  console.log('');
-  console.log('========================================');
-  console.log('  HireOpenClaw Local Dev Server');
-  console.log('========================================');
-  console.log('');
-  console.log(`  Portal:     http://localhost:${PORT}`);
-  console.log(`  Dashboard:  http://localhost:${PORT}/dashboard`);
-  console.log(`  Onboarding: http://localhost:${PORT}/onboarding`);
-  console.log('');
-  console.log('  LocalStack:     http://localhost:4566');
-  console.log('  MasterControl:  http://localhost:18790');
-  console.log('');
-  console.log('========================================');
-  console.log('');
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log('');
+    console.log('========================================');
+    console.log('  HireOpenClaw Local Dev Server');
+    console.log('========================================');
+    console.log('');
+    console.log(`  Portal:     http://localhost:${PORT}`);
+    console.log(`  Dashboard:  http://localhost:${PORT}/dashboard`);
+    console.log(`  Onboarding: http://localhost:${PORT}/onboarding`);
+    console.log('');
+    console.log('  LocalStack:     http://localhost:4566');
+    console.log('  MasterControl:  http://localhost:18790');
+    console.log('');
+    console.log('========================================');
+    console.log('');
+  });
+}

@@ -4,19 +4,9 @@
  * GET /api/admin/clients/:email — Single client detail
  */
 
-const { execSync } = require('child_process');
 const { requireAdmin } = require('../auth/middleware.js');
-
-const ENV = {
-  ...process.env,
-  AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID || 'test',
-  AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY || 'test'
-};
-
-function dynamo(cmd) {
-  const full = `AWS_ENDPOINT_URL=${process.env.AWS_ENDPOINT_URL || 'http://localhost:4566'} aws dynamodb ${cmd} --region ${process.env.AWS_DEFAULT_REGION || 'us-east-1'} --output json`;
-  return JSON.parse(execSync(full, { encoding: 'utf8', env: ENV }));
-}
+const { ScanCommand } = require('@aws-sdk/lib-dynamodb');
+const { docClient } = require('../util/dynamodb.js');
 
 module.exports = async (req, res) => {
   const admin = await requireAdmin(req, res);
@@ -25,27 +15,29 @@ module.exports = async (req, res) => {
   try {
     // Scan all tenants (acceptable for admin — small table)
     // Support pagination via cursor
-    const limit = Math.min(parseInt(req.query.limit) || 100, 500);
-    const cursor = req.query.cursor
-      ? JSON.parse(Buffer.from(req.query.cursor, 'base64').toString())
-      : null;
-    const startKeyArg = cursor
-      ? ` --exclusive-start-key '${JSON.stringify(cursor)}'`
-      : '';
-    const data = dynamo(`scan --table-name clawops-tenants --max-items ${limit}${startKeyArg}`);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 500);
+    const cursor = parseCursor(req.query.cursor);
+    if (req.query.cursor && !cursor) {
+      return res.status(400).json({ error: 'Invalid cursor' });
+    }
+    const data = await docClient.send(new ScanCommand({
+      TableName: 'clawops-tenants',
+      Limit: limit,
+      ...(cursor ? { ExclusiveStartKey: cursor } : {}),
+    }));
     const items = data.Items || [];
 
     // Group by email
     const clientMap = {};
     for (const item of items) {
-      const email = item.email?.S || 'unknown';
-      const status = item.status?.S || 'unknown';
-      const tenantId = item.tenantId?.S;
-      const name = item.botName?.S || item.name?.S || tenantId;
-      const createdAt = item.createdAt?.S || item.provisionedAt?.S;
-      const health = item.healthStatus?.S || 'unknown';
-      const endpoint = item.endpoint?.S;
-      const port = item.port?.N;
+      const email = item.email || 'unknown';
+      const status = item.status || 'unknown';
+      const tenantId = item.tenantId;
+      const name = item.botName || item.name || tenantId;
+      const createdAt = item.createdAt || item.provisionedAt;
+      const health = item.healthStatus || 'unknown';
+      const endpoint = item.endpoint;
+      const port = item.port;
 
       if (!clientMap[email]) {
         clientMap[email] = {
@@ -53,16 +45,16 @@ module.exports = async (req, res) => {
           bots: [],
           totalBots: 0,
           activeBots: 0,
-          firstSeen: createdAt,
-          lastActive: createdAt
+          firstSeen: createdAt || null,
+          lastActive: createdAt || null
         };
       }
 
       const client = clientMap[email];
       client.totalBots++;
       if (status === 'active') client.activeBots++;
-      if (createdAt && (!client.firstSeen || createdAt < client.firstSeen)) client.firstSeen = createdAt;
-      if (createdAt && (!client.lastActive || createdAt > client.lastActive)) client.lastActive = createdAt;
+      if (createdAt && (!client.firstSeen || toEpochMs(createdAt) < toEpochMs(client.firstSeen))) client.firstSeen = createdAt;
+      if (createdAt && (!client.lastActive || toEpochMs(createdAt) > toEpochMs(client.lastActive))) client.lastActive = createdAt;
 
       client.bots.push({
         tenantId,
@@ -70,7 +62,7 @@ module.exports = async (req, res) => {
         status,
         health,
         endpoint,
-        port: port ? parseInt(port) : null,
+        port: port ? parseInt(port, 10) : null,
         createdAt
       });
     }
@@ -94,8 +86,8 @@ module.exports = async (req, res) => {
       totalClients: clients.length,
       activeClients: clients.filter(c => c.activeBots > 0).length,
       totalBots: items.length,
-      activeBots: items.filter(i => i.status?.S === 'active').length,
-      terminatedBots: items.filter(i => i.status?.S === 'terminated').length
+      activeBots: items.filter(i => i.status === 'active').length,
+      terminatedBots: items.filter(i => i.status === 'terminated').length
     };
 
     const nextCursor = data.LastEvaluatedKey
@@ -108,3 +100,21 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: 'Failed to load clients' });
   }
 };
+
+function toEpochMs(value) {
+  if (!value) return 0;
+  if (typeof value === 'number') return value;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function parseCursor(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  try {
+    const decoded = Buffer.from(raw, 'base64').toString();
+    const parsed = JSON.parse(decoded);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}

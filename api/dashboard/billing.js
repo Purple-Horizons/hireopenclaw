@@ -10,11 +10,16 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-    const { email } = req.body;
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeKey) {
+      return res.status(503).json({ error: 'Billing not configured' });
+    }
+    const stripe = require('stripe')(stripeKey);
+    const { getEmailFromSession } = require('../../api-local/auth/middleware.js');
+    const email = await getEmailFromSession(req);
 
     if (!email) {
-      return res.status(400).json({ error: 'Email required' });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     // Find Stripe customer by email
@@ -34,6 +39,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Billing portal error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }
