@@ -13,12 +13,19 @@ function authFetch(url, opts = {}) {
 
 async function loadClients() {
     try {
+        console.log('[admin] loadClients called, token in localStorage:', localStorage.getItem('clawops_session_token') ? 'YES' : 'NO');
         const res = await authFetch('/api/admin/clients');
+        console.log('[admin] /api/admin/clients response status:', res.status);
         if (res.status === 403) {
             document.getElementById('clientList').innerHTML = '<p style="color:var(--red);text-align:center;padding:40px;">Admin access required.</p>';
             return;
         }
+        if (res.status === 401) {
+            document.getElementById('clientList').innerHTML = '<p style="color:var(--red);text-align:center;padding:40px;">Not authenticated. <a href="/?login=true" style="color:var(--primary);">Log in</a></p>';
+            return;
+        }
         const data = await res.json();
+        console.log('[admin] clients data:', data.ok, 'count:', data.clients?.length);
         if (!data.ok) throw new Error(data.error);
 
         allClients = data.clients;
