@@ -83,12 +83,21 @@ module.exports = async (req, res) => {
 
   } catch (error) {
     logger.error('bot-action', `${action} failed`, { error: error.message });
-    // Handle common Docker errors gracefully
-    if (error.message?.includes('already paused')) {
-      return res.status(200).json({ ok: true, tenantId, action, message: 'Bot is already paused' });
-    }
-    if (error.message?.includes('not paused')) {
-      return res.status(200).json({ ok: true, tenantId, action, message: 'Bot is already running' });
+    // Handle common Docker errors gracefully — still sync DB
+    const statusMap2 = { pause: 'paused', resume: 'active', restart: 'active', terminate: 'terminated' };
+    if (error.message?.includes('already paused') || error.message?.includes('not paused')) {
+      const syncStatus = error.message.includes('already paused') ? 'paused' : 'active';
+      try {
+        await docClient.send(new UpdateCommand({
+          TableName: TABLES.TENANTS,
+          Key: { tenantId },
+          UpdateExpression: 'SET #status = :status',
+          ExpressionAttributeNames: { '#status': 'status' },
+          ExpressionAttributeValues: { ':status': syncStatus }
+        }));
+      } catch (_) {}
+      const msg = error.message.includes('already paused') ? 'Bot is already paused' : 'Bot is already running';
+      return res.status(200).json({ ok: true, tenantId, action, status: syncStatus, message: msg });
     }
     return res.status(500).json({
       error: `${action} failed: ${error.message}`

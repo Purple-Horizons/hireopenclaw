@@ -123,8 +123,10 @@ async function loadDashboard(email) {
     localStorage.setItem('clawops_email', email);
     
     try {
-        // Session cookie sent automatically — server infers email from session
-        const res = await fetch(`/api/dashboard/bots`);
+        const st = localStorage.getItem('clawops_session_token');
+        const res = await fetch(`/api/dashboard/bots`, {
+            headers: st ? { 'Authorization': `Bearer ${st}` } : {}
+        });
         const data = await res.json();
         
         if (data.bots) {
