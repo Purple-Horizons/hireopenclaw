@@ -11,6 +11,8 @@ const { restartContainer, pauseContainer, unpauseContainer, stopContainer } = re
 const { requireBotOwnership } = require('../auth/middleware.js');
 const { validateTenantId } = require('../util/validate.js');
 const logger = require('../util/logger.js');
+const { docClient, TABLES } = require('../util/dynamodb.js');
+const { UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -56,10 +58,26 @@ module.exports = async (req, res) => {
         break;
     }
 
+    // Update DB status to reflect the action
+    const statusMap = { pause: 'paused', resume: 'active', restart: 'active', terminate: 'terminated' };
+    const newStatus = statusMap[action] || 'active';
+    try {
+      await docClient.send(new UpdateCommand({
+        TableName: TABLES.TENANTS,
+        Key: { tenantId },
+        UpdateExpression: 'SET #status = :status, lastActive = :now',
+        ExpressionAttributeNames: { '#status': 'status' },
+        ExpressionAttributeValues: { ':status': newStatus, ':now': new Date().toISOString() }
+      }));
+    } catch (dbErr) {
+      logger.error('bot-action', 'DB status update failed', { error: dbErr.message });
+    }
+
     return res.status(200).json({
       ok: true,
       tenantId,
       action,
+      status: newStatus,
       message: `${action} completed successfully`
     });
 
