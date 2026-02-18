@@ -429,6 +429,8 @@ function downloadInvoice() {
 async function loadSettingsTab() {
     const container = document.getElementById('settings-details');
     if (!container) return;
+    if (!currentEmail) { currentEmail = localStorage.getItem('clawops_email'); }
+    if (!currentEmail) return;
     
     // Fetch current API keys and team members
     let apiKeys = [];
@@ -563,6 +565,8 @@ async function showInviteTeamModal() {
     const result = await showPromptDialog('Invite Team Member', 'Enter email address:');
     if (!result) return;
     
+    // Wait for close animation before opening next dialog
+    await new Promise(r => setTimeout(r, 350));
     const role = await showSelectDialog('Select role:', ['admin', 'member', 'viewer']);
     if (!role) return;
     
