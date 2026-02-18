@@ -1,9 +1,19 @@
 let allClients = [];
 let impersonating = null;
 
+// Auth helper — adds Bearer token from localStorage
+function authHeaders(extra = {}) {
+    const token = localStorage.getItem('sessionToken');
+    return token ? { 'Authorization': `Bearer ${token}`, ...extra } : { ...extra };
+}
+function authFetch(url, opts = {}) {
+    opts.headers = authHeaders(opts.headers || {});
+    return fetch(url, opts);
+}
+
 async function loadClients() {
     try {
-        const res = await fetch('/api/admin/clients');
+        const res = await authFetch('/api/admin/clients');
         if (res.status === 403) {
             document.getElementById('clientList').innerHTML = '<p style="color:var(--red);text-align:center;padding:40px;">Admin access required.</p>';
             return;
@@ -98,7 +108,7 @@ async function viewLogs(tenantId) {
     document.getElementById('logModal').classList.add('open');
 
     try {
-        const res = await fetch(`/api/admin/bots/${tenantId}?action=logs&lines=100`);
+        const res = await authFetch(`/api/admin/bots/${tenantId}?action=logs&lines=100`);
         const data = await res.json();
         document.getElementById('logBody').textContent = data.ok ? data.logs.join('\n') : `Error: ${data.error}`;
     } catch (err) {
@@ -112,7 +122,7 @@ async function viewConfig(tenantId) {
     document.getElementById('logModal').classList.add('open');
 
     try {
-        const res = await fetch(`/api/admin/bots/${tenantId}?action=config`);
+        const res = await authFetch(`/api/admin/bots/${tenantId}?action=config`);
         const data = await res.json();
         document.getElementById('logBody').textContent = data.ok ? JSON.stringify(data.config, null, 2) : `Error: ${data.error}`;
     } catch (err) {
@@ -124,7 +134,7 @@ async function restartBot(tenantId, btnEl) {
     const confirmed = await inlineConfirm(btnEl.parentElement, `Restart ${tenantId}?`);
     if (!confirmed) return;
     try {
-        const res = await fetch(`/api/admin/bots/${tenantId}?action=restart`, { method: 'POST' });
+        const res = await authFetch(`/api/admin/bots/${tenantId}?action=restart`, { method: 'POST' });
         const data = await res.json();
         showToast(data.ok ? `✅ ${data.message}` : `❌ ${data.error}`, data.ok ? 'success' : 'error');
     } catch (err) {
@@ -144,7 +154,7 @@ function closeLogModal() {
 
 async function impersonate(email) {
     try {
-        const res = await fetch('/api/admin/impersonate', {
+        const res = await authFetch('/api/admin/impersonate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email })
@@ -160,7 +170,7 @@ async function impersonate(email) {
 
 async function stopImpersonate() {
     try {
-        await fetch('/api/admin/stop-impersonate', { method: 'POST' });
+        await authFetch('/api/admin/stop-impersonate', { method: 'POST' });
         impersonating = null;
         document.getElementById('impersonateBanner').classList.remove('active');
     } catch {}
@@ -170,7 +180,7 @@ async function stopImpersonate() {
 
 async function backupBot(tenantId) {
     try {
-        const res = await fetch(`/api/admin/bots/${tenantId}/backup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'admin-manual' }) });
+        const res = await authFetch(`/api/admin/bots/${tenantId}/backup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'admin-manual' }) });
         const data = await res.json();
         showToast(data.ok ? `✅ Backup created: ${data.backupId} (${(data.sizeBytes/1024).toFixed(1)} KB)` : `❌ ${data.error}`, data.ok ? 'success' : 'error');
     } catch (err) { showToast('Failed: ' + err.message, 'error'); }
@@ -182,7 +192,7 @@ async function showBackups(tenantId) {
     document.getElementById('logModal').classList.add('open');
 
     try {
-        const res = await fetch(`/api/admin/bots/${tenantId}/backups`);
+        const res = await authFetch(`/api/admin/bots/${tenantId}/backups`);
         const data = await res.json();
         if (!data.ok || !data.backups.length) {
             document.getElementById('logBody').textContent = 'No backups found.';
@@ -208,7 +218,7 @@ async function restoreBot(tenantId, backupId, btnEl) {
         if (!confirmed) return;
     }
     try {
-        const res = await fetch(`/api/admin/bots/${tenantId}/restore`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ backupId }) });
+        const res = await authFetch(`/api/admin/bots/${tenantId}/restore`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ backupId }) });
         const data = await res.json();
         showToast(data.ok ? `✅ Restored from ${backupId}` : `❌ ${data.error}`, data.ok ? 'success' : 'error');
     } catch (err) { showToast('Failed: ' + err.message, 'error'); }
@@ -219,7 +229,7 @@ async function restoreBot(tenantId, backupId, btnEl) {
 async function loadSecrets(scope, containerId) {
     const el = document.getElementById(containerId);
     try {
-        const res = await fetch(`/api/admin/secrets?scope=${encodeURIComponent(scope)}`);
+        const res = await authFetch(`/api/admin/secrets?scope=${encodeURIComponent(scope)}`);
         const data = await res.json();
         if (!data.ok || !data.secrets.length) {
             el.innerHTML = '<p style="color:var(--gray);font-size:13px;">No secrets configured.</p>';
@@ -264,7 +274,7 @@ async function saveInlineSecret(scope) {
     if (!key || !value) return;
 
     try {
-        const res = await fetch('/api/admin/secrets', {
+        const res = await authFetch('/api/admin/secrets', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ scope, key, value, label: key })
@@ -284,7 +294,7 @@ async function deleteSecret(scope, key, containerId, btnEl) {
     const confirmed = await inlineConfirm(btnEl.parentElement, `Delete ${key}?`);
     if (!confirmed) return;
     try {
-        await fetch('/api/admin/secrets', {
+        await authFetch('/api/admin/secrets', {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ scope, key })

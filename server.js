@@ -307,12 +307,13 @@ app.get('/dashboard', (req, res, next) => {
   next();
 });
 
-// Admin dashboard — requires admin email
-app.get('/admin', async (req, res) => {
-  const { getEmailFromSession, isAdmin } = require(path.join(__dirname, 'api-local', 'auth', 'middleware.js'));
-  const email = await getEmailFromSession(req);
-  if (!email) return res.redirect('/?login=true');
-  if (!isAdmin(email)) return res.status(403).send('<h1>403 Forbidden</h1><p>Admin access required.</p>');
+// Admin dashboard — auth checked client-side (same pattern as /dashboard)
+app.get('/admin', (req, res) => {
+  const cookies = req.headers.cookie || '';
+  const hasSession = cookies.includes('session=');
+  if (!hasSession) {
+    return res.redirect('/?login=true');
+  }
   res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
