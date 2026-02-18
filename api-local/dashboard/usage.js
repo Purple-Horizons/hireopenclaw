@@ -7,7 +7,7 @@
 const { QueryCommand, GetItemCommand } = require('@aws-sdk/client-dynamodb');
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 const { client: dynamodb, TABLES } = require('../util/dynamodb.js');
-const { requireBotOwnership } = require('../auth/middleware.js');
+const { requireAuth, requireBotOwnership } = require('../auth/middleware.js');
 
 // Plan budget limits — from single source of truth (TASK-149)
 const { PLAN_BUDGETS } = require('../data/plans.js');
@@ -15,15 +15,12 @@ const { PLAN_BUDGETS } = require('../data/plans.js');
 module.exports = async (req, res) => {
   try {
     const { tenantId } = req.params;
-    const email = req.query.email;
-    
-    // Email-based: aggregate usage across all bots for this user
-    if (!tenantId && email) {
-      return handleEmailUsage(req, res, email);
-    }
-    
+    const email = await requireAuth(req, res);
+    if (!email) return;
+
+    // Aggregate usage across all bots for the authenticated user
     if (!tenantId) {
-      return res.status(400).json({ error: 'tenantId required' });
+      return handleEmailUsage(req, res, email);
     }
 
     // Auth + ownership check

@@ -13,6 +13,7 @@
  */
 const router = require('express').Router();
 const path = require('path');
+const { requireAuth } = require(path.join(__dirname, '..', 'auth', 'middleware.js'));
 
 const wrapHandler = (handlerPath) => async (req, res) => {
   try {
@@ -25,6 +26,12 @@ const wrapHandler = (handlerPath) => async (req, res) => {
 };
 
 const base = path.join(__dirname, '..', 'dashboard');
+
+router.use(async (req, res, next) => {
+  const email = await requireAuth(req, res);
+  if (!email) return;
+  next();
+});
 
 router.all('/bots', wrapHandler(path.join(base, 'bots.js')));
 router.all('/create-bot', wrapHandler(path.join(base, 'create-bot.js')));

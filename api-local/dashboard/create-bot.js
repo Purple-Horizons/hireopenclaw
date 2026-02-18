@@ -11,9 +11,9 @@ const execFileAsync = promisify(execFile);
 
 
 const { requireAuth } = require('../auth/middleware.js');
-const { canCreateBot, getUserPlan, ensureTeam } = require('../auth/team-plan.js');
+const { canCreateBot, getUserPlan } = require('../auth/team-plan.js');
 const { validateTenantId, validateBotName, validateEmail, validatePlan, validateTemplate } = require('../util/validate.js');
-const { UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { UpdateCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
 const { docClient, TABLES } = require('../util/dynamodb.js');
 
 module.exports = async (req, res) => {
@@ -26,7 +26,6 @@ module.exports = async (req, res) => {
   if (!sessionEmail) return;
 
   const { 
-    email: bodyEmail,
     tenantId,  // From onboarding signup
     botName, 
     botRole, 
@@ -66,11 +65,11 @@ module.exports = async (req, res) => {
     const userPlan = await getUserPlan(email);
     const tableName = process.env.DYNAMODB_TABLE || 'clawops-tenants';
     
-    // If tenantId provided, update existing record; otherwise create new
     let finalTenantId = tenantId;
-    
+    const nowIso = new Date().toISOString();
+
     if (!finalTenantId) {
-      // Generate new tenant ID
+      // Generate new tenant ID for direct create flow
       const timestamp = Date.now().toString().slice(-6);
       const random = Math.random().toString(36).substring(2, 6);
       finalTenantId = `tenant-${timestamp}-${random}`;
@@ -81,26 +80,64 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Invalid tenantId format' });
     }
 
-    // Update tenant record with bot details
-    await docClient.send(new UpdateCommand({
-      TableName: tableName,
-      Key: { tenantId: finalTenantId },
-      UpdateExpression: 'SET #name = :name, #role = :role, #template = :template, #status = :status, email = :email, createdAt = if_not_exists(createdAt, :now), updatedAt = :now',
-      ExpressionAttributeNames: {
-        '#name': 'name',
-        '#role': 'role',
-        '#template': 'template',
-        '#status': 'status',
-      },
-      ExpressionAttributeValues: {
-        ':name': botName,
-        ':role': botRole || 'Assistant',
-        ':template': template || 'blank',
-        ':status': 'provisioning',
-        ':email': email,
-        ':now': Math.floor(Date.now() / 1000)  // Unix timestamp in seconds
+    if (tenantId) {
+      const existing = await docClient.send(new GetCommand({
+        TableName: tableName,
+        Key: { tenantId: finalTenantId }
+      }));
+      if (!existing.Item) {
+        return res.status(404).json({ error: 'Tenant not found' });
       }
-    }));
+      if (existing.Item.email && existing.Item.email !== email) {
+        return res.status(403).json({ error: 'Access denied for tenantId' });
+      }
+
+      await docClient.send(new UpdateCommand({
+        TableName: tableName,
+        Key: { tenantId: finalTenantId },
+        UpdateExpression: 'SET #name = :name, #role = :role, #template = :template, #status = :status, email = if_not_exists(email, :email), updatedAt = :now',
+        ExpressionAttributeNames: {
+          '#name': 'name',
+          '#role': 'role',
+          '#template': 'template',
+          '#status': 'status',
+        },
+        ExpressionAttributeValues: {
+          ':name': botName,
+          ':role': botRole || 'Assistant',
+          ':template': template || 'blank',
+          ':status': 'provisioning',
+          ':email': email,
+          ':now': nowIso
+        }
+      }));
+    } else {
+      await docClient.send(new UpdateCommand({
+        TableName: tableName,
+        Key: { tenantId: finalTenantId },
+        UpdateExpression: 'SET email = :email, #name = :name, #role = :role, #template = :template, #status = :status, #plan = :plan, createdAt = :createdAt, updatedAt = :updatedAt, healthStatus = :health, createdBy = :createdBy',
+        ExpressionAttributeNames: {
+          '#name': 'name',
+          '#role': 'role',
+          '#template': 'template',
+          '#status': 'status',
+          '#plan': 'plan'
+        },
+        ExpressionAttributeValues: {
+          ':email': email,
+          ':name': botName,
+          ':role': botRole || 'Assistant',
+          ':template': template || 'blank',
+          ':status': 'provisioning',
+          ':plan': userPlan,
+          ':createdAt': nowIso,
+          ':updatedAt': nowIso,
+          ':health': 'pending',
+          ':createdBy': 'dashboard-create-bot'
+        },
+        ConditionExpression: 'attribute_not_exists(tenantId)'
+      }));
+    }
 
     console.log(`[Create Bot] Updated tenant record: ${finalTenantId}`);
 
@@ -153,7 +190,7 @@ module.exports = async (req, res) => {
         ExpressionAttributeValues: {
           ':status': 'active',
           ':health': 'healthy',
-          ':now': Math.floor(Date.now() / 1000)
+          ':now': new Date().toISOString()
         }
       }));
 

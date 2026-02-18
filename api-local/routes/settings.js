@@ -10,6 +10,7 @@
  */
 const router = require('express').Router();
 const path = require('path');
+const { requireAuth } = require(path.join(__dirname, '..', 'auth', 'middleware.js'));
 
 const wrapHandler = (handlerPath) => async (req, res) => {
   try {
@@ -22,6 +23,12 @@ const wrapHandler = (handlerPath) => async (req, res) => {
 };
 
 const base = path.join(__dirname, '..', 'settings');
+
+router.use(async (req, res, next) => {
+  const email = await requireAuth(req, res);
+  if (!email) return;
+  next();
+});
 
 router.all('/api-keys', wrapHandler(path.join(base, 'api-keys.js')));
 router.all('/team', wrapHandler(path.join(base, 'team.js')));

@@ -4,6 +4,7 @@ const { QueryCommand, GetCommand, PutCommand } = require('@aws-sdk/lib-dynamodb'
 const { docClient: db, TABLES } = require('../util/dynamodb.js');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+const isLocal = process.env.NODE_ENV !== 'production';
 
 module.exports = async (req, res) => {
   try {

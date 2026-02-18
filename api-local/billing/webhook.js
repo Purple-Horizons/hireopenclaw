@@ -10,30 +10,38 @@
  * - invoice.payment_failed → Alert
  */
 
+const { QueryCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { docClient: db, TABLES } = require('../util/dynamodb.js');
 
 module.exports = async (req, res) => {
   try {
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
+    const rawBody = Buffer.isBuffer(req.body)
+      ? req.body
+      : Buffer.from(JSON.stringify(req.body || {}));
     let event;
 
     if (stripeKey && webhookSecret) {
       // Production: verify webhook signature
       const stripe = require('stripe')(stripeKey);
-const { QueryCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
-const { docClient: db, TABLES } = require('../util/dynamodb.js');
       const sig = req.headers['stripe-signature'];
       
       try {
-        event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+        event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
       } catch (err) {
         console.error('Webhook signature verification failed:', err.message);
         return res.status(400).json({ error: 'Invalid signature' });
       }
     } else {
       // Dev mode: accept raw event
-      event = req.body;
+      event = Buffer.isBuffer(req.body)
+        ? JSON.parse(req.body.toString('utf8') || '{}')
+        : (req.body || {});
+    }
+
+    if (!event || !event.type) {
+      return res.status(400).json({ error: 'Invalid webhook payload' });
     }
 
     console.log(`[Stripe Webhook] ${event.type}`, event.data?.object?.id);
@@ -48,7 +56,7 @@ const { docClient: db, TABLES } = require('../util/dynamodb.js');
 
         // Update user with Stripe IDs
         const users = await db.send(new QueryCommand({
-          TableName: 'clawops-tenants',
+          TableName: TABLES.TENANTS,
           IndexName: 'email-index',
           KeyConditionExpression: 'email = :email',
           ExpressionAttributeValues: { ':email': email }
@@ -56,7 +64,7 @@ const { docClient: db, TABLES } = require('../util/dynamodb.js');
 
         for (const user of (users.Items || [])) {
           await db.send(new UpdateCommand({
-            TableName: 'clawops-tenants',
+            TableName: TABLES.TENANTS,
             Key: { tenantId: user.tenantId },
             UpdateExpression: 'SET #plan = :plan, stripeCustomerId = :cid, stripeSubscriptionId = :sid, billingStatus = :active',
             ExpressionAttributeNames: { '#plan': 'plan' },

@@ -6,28 +6,17 @@
  */
 
 const crypto = require('crypto');
-const { execSync } = require('child_process');
+const { QueryCommand, PutCommand, DeleteCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
+const { docClient, TABLES } = require('../util/dynamodb.js');
+const { getEmailFromSession } = require('../auth/middleware.js');
 
 const ROLES = ['owner', 'admin', 'member', 'viewer'];
-const DYNAMO_ENV = {
-    AWS_ACCESS_KEY_ID: 'test',
-    AWS_SECRET_ACCESS_KEY: 'test',
-    AWS_DEFAULT_REGION: 'us-east-1'
-};
-
-function dynamoExec(cmd) {
-    return execSync(`AWS_ENDPOINT_URL=http://localhost:4566 ${cmd}`, {
-        encoding: 'utf8',
-        env: { ...process.env, ...DYNAMO_ENV }
-    });
-}
+const INVITES_TABLE = 'clawops-team-invites';
+const MEMBERS_TABLE = TABLES.TEAM_MEMBERS;
 
 module.exports = async (req, res) => {
-    const email = req.query.email || (req.body && req.body.email);
-
-    if (!email) {
-        return res.status(400).json({ error: 'email is required' });
-    }
+    const email = await getEmailFromSession(req);
+    if (!email) return res.status(401).json({ error: 'Unauthorized' });
 
     // ── POST: Invite team member ──
     if (req.method === 'POST') {
@@ -44,19 +33,20 @@ module.exports = async (req, res) => {
         const inviteId = crypto.randomBytes(16).toString('hex');
 
         try {
-            dynamoExec(`aws dynamodb put-item \
-                --table-name clawops-team-invites \
-                --item '{
-                    "inviteId": {"S": "${inviteId}"},
-                    "orgEmail": {"S": "${email}"},
-                    "inviteEmail": {"S": "${inviteEmail}"},
-                    "role": {"S": "${role}"},
-                    "inviteToken": {"S": "${inviteToken}"},
-                    "message": {"S": "${(message || '').replace(/'/g, '')}"},
-                    "createdAt": {"S": "${new Date().toISOString()}"},
-                    "expiresAt": {"S": "${new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()}"},
-                    "accepted": {"BOOL": false}
-                }'`);
+            await docClient.send(new PutCommand({
+                TableName: INVITES_TABLE,
+                Item: {
+                    inviteId,
+                    orgEmail: email,
+                    inviteEmail,
+                    role,
+                    inviteToken,
+                    message: typeof message === 'string' ? message : '',
+                    createdAt: new Date().toISOString(),
+                    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                    accepted: false
+                }
+            }));
 
             const inviteLink = `http://localhost:3000/invite?token=${inviteToken}`;
             console.log(`\n📧 Team Invite for ${inviteEmail}:`);
@@ -94,24 +84,25 @@ module.exports = async (req, res) => {
 
         // Accepted members
         try {
-            const result = dynamoExec(`aws dynamodb query \
-                --table-name clawops-team-members \
-                --index-name orgEmail-index \
-                --key-condition-expression "orgEmail = :email" \
-                --expression-attribute-values '{":email":{"S":"${email}"}}' \
-                --output json`);
+            const result = await docClient.send(new QueryCommand({
+                TableName: MEMBERS_TABLE,
+                IndexName: 'orgEmail-index',
+                KeyConditionExpression: 'orgEmail = :email',
+                ExpressionAttributeValues: {
+                    ':email': email
+                }
+            }));
 
-            const data = JSON.parse(result);
-            for (const item of (data.Items || [])) {
-                const memberEmail = item.memberEmail?.S || item.email?.S;
+            for (const item of (result.Items || [])) {
+                const memberEmail = item.memberEmail || item.email;
                 if (!memberEmail || memberEmail === email) continue;
                 members.push({
-                    memberId: item.memberId?.S || item.membershipId?.S,
+                    memberId: item.memberId || item.membershipId,
                     email: memberEmail,
-                    role: item.role?.S,
+                    role: item.role,
                     status: 'active',
-                    joinedAt: item.joinedAt?.S,
-                    lastActive: item.lastActive?.S || null
+                    joinedAt: item.joinedAt,
+                    lastActive: item.lastActive || null
                 });
             }
         } catch (err) {
@@ -120,26 +111,26 @@ module.exports = async (req, res) => {
 
         // Pending invites
         try {
-            const result = dynamoExec(`aws dynamodb query \
-                --table-name clawops-team-invites \
-                --index-name orgEmail-index \
-                --key-condition-expression "orgEmail = :email" \
-                --expression-attribute-values '{":email":{"S":"${email}"}}' \
-                --output json`);
-
-            const data = JSON.parse(result);
+            const result = await docClient.send(new QueryCommand({
+                TableName: INVITES_TABLE,
+                IndexName: 'orgEmail-index',
+                KeyConditionExpression: 'orgEmail = :email',
+                ExpressionAttributeValues: {
+                    ':email': email
+                }
+            }));
             const now = new Date();
-            for (const item of (data.Items || [])) {
-                if (item.accepted?.BOOL) continue; // skip accepted
-                const expiresAt = item.expiresAt?.S ? new Date(item.expiresAt.S) : null;
+            for (const item of (result.Items || [])) {
+                if (item.accepted) continue; // skip accepted
+                const expiresAt = item.expiresAt ? new Date(item.expiresAt) : null;
                 const expired = expiresAt && expiresAt < now;
                 members.push({
-                    memberId: `invite:${item.inviteId?.S}`,
-                    email: item.inviteEmail?.S,
-                    role: item.role?.S,
+                    memberId: `invite:${item.inviteId}`,
+                    email: item.inviteEmail,
+                    role: item.role,
                     status: expired ? 'expired' : 'pending',
-                    createdAt: item.createdAt?.S,
-                    expiresAt: item.expiresAt?.S
+                    createdAt: item.createdAt,
+                    expiresAt: item.expiresAt
                 });
             }
         } catch (err) {
@@ -164,15 +155,31 @@ module.exports = async (req, res) => {
             if (memberId.startsWith('invite:')) {
                 // Revoke invite
                 const inviteId = memberId.replace('invite:', '');
-                dynamoExec(`aws dynamodb delete-item \
-                    --table-name clawops-team-invites \
-                    --key '{"inviteId":{"S":"${inviteId}"}}'`);
+                const invite = await docClient.send(new GetCommand({
+                    TableName: INVITES_TABLE,
+                    Key: { inviteId }
+                }));
+                if (!invite.Item || invite.Item.orgEmail !== email) {
+                    return res.status(404).json({ error: 'Invite not found' });
+                }
+                await docClient.send(new DeleteCommand({
+                    TableName: INVITES_TABLE,
+                    Key: { inviteId }
+                }));
                 return res.status(200).json({ ok: true, message: 'Invite revoked' });
             } else {
                 // Remove accepted member
-                dynamoExec(`aws dynamodb delete-item \
-                    --table-name clawops-team-members \
-                    --key '{"membershipId":{"S":"${memberId}"}}'`);
+                const member = await docClient.send(new GetCommand({
+                    TableName: MEMBERS_TABLE,
+                    Key: { membershipId: memberId }
+                }));
+                if (!member.Item || member.Item.orgEmail !== email) {
+                    return res.status(404).json({ error: 'Team member not found' });
+                }
+                await docClient.send(new DeleteCommand({
+                    TableName: MEMBERS_TABLE,
+                    Key: { membershipId: memberId }
+                }));
                 return res.status(200).json({ ok: true, message: 'Team member removed' });
             }
         } catch (err) {

@@ -16,6 +16,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
+app.use('/api/billing/webhook', express.raw({ type: 'application/json' }));
+app.use('/api/v1/billing/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -66,13 +68,13 @@ app.use((req, res, next) => {
 app.use(validateCsrf);
 
 // CSRF token endpoint
-app.get('/api/auth/csrf', (req, res) => {
+app.get('/api/auth/csrf', async (req, res) => {
   const cookies = req.headers.cookie || '';
   const match = cookies.match(/session=([^;]+)/);
   const sessionToken = match ? match[1] : null;
   if (!sessionToken) return res.status(401).json({ error: 'No session' });
   const tokenStore = require(path.join(__dirname, 'api-local', 'auth', 'token-store.js'));
-  const session = tokenStore.get(sessionToken);
+  const session = await tokenStore.get(sessionToken);
   if (!session) return res.status(401).json({ error: 'Invalid session' });
   const csrfToken = generateCsrfToken(sessionToken);
   res.json({ csrfToken });
@@ -147,7 +149,7 @@ remainingRoutes.forEach(route => {
       try {
         // Enforce auth for non-public routes
         if (needsAuth) {
-          const email = requireAuthMiddleware(req, res);
+          const email = await requireAuthMiddleware(req, res);
           if (!email) return; // response already sent
         }
         await handler(req, res);
