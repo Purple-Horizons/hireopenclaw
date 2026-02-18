@@ -3,13 +3,7 @@
   "installCommand": "",
   "outputDirectory": ".",
   "framework": null,
-  "functions": {
-    "api/waitlist.js": {
-      "runtime": "@vercel/node@3"
-    }
-  },
   "rewrites": [
-    { "source": "/api/waitlist", "destination": "/api/waitlist.js" },
     { "source": "/security", "destination": "/security.html" },
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/terms", "destination": "/terms.html" },
