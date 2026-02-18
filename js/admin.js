@@ -341,5 +341,3 @@ function inlineConfirm(el, msg) {
 // Init
 loadClients();
 loadSecrets('platform', 'platformSecrets');
-</script>
-</body>
