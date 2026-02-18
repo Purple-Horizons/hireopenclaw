@@ -1,4 +1,7 @@
 {
+  "buildCommand": "",
+  "installCommand": "",
+  "framework": null,
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api/:path*" },
     { "source": "/dashboard", "destination": "/dashboard.html" },
