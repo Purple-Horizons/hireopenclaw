@@ -840,7 +840,7 @@
         <div class="container">
             <div class="header-inner">
                 <a href="/" class="logo">Hire<span>OpenClaw</span></a>
-                <a href="#pricing" class="nav-cta">Get Started</a>
+                <a href="#pricing" class="nav-cta">View Plans</a>
             </div>
         </div>
     </header>
@@ -852,16 +852,7 @@
             <h1>Stop Configuring.<br><span>Start Delegating.</span></h1>
             <p class="subtitle">Get a pre-trained AI employee ready to work in 48 hours. No setup. Fixed pricing.</p>
             
-            <form id="signup-form" style="max-width:420px;margin:0 auto 20px;display:flex;flex-direction:column;gap:12px;">
-                <input type="text" name="name" required placeholder="Your name" aria-label="Full name" class="form-input" />
-                <input type="email" name="email" required placeholder="Email address" aria-label="Email address" class="form-input" />
-                <input type="tel" name="phone" required placeholder="Phone number" aria-label="Phone number" class="form-input" />
-                <button type="submit" class="cta-button" aria-label="Get started" style="border:none;cursor:pointer;font-family:inherit;width:100%;text-align:center;">
-                    <span class="btn-text">Get Started →</span>
-                    <span class="btn-loading" style="display:none;">Sending...</span>
-                </button>
-            </form>
-            <p class="hero-note">Starting at $299/mo. Fixed price. No surprise bills. Cancel anytime.</p>
+            <p class="hero-note" style="margin-top:24px;">Currently in private beta.</p>
             
             <!-- Login removed for production -->
         </div>
@@ -885,7 +876,7 @@
                     <h3>$50K Bill Terror</h3>
                     <p class="quote">"Hope not get a $50k bill at the end of the month 😅"</p>
                     <p>Usage-based pricing is terrifying. "Burning $5/day just on heartbeats." No idea what it will cost.</p>
-                    <div class="solution">✓ Fixed monthly price. $299, $799, or custom. That's it.</div>
+                    <div class="solution">✓ Fixed monthly price. Fixed monthly pricing. No surprises.</div>
                 </div>
                 
                 <div class="pain-card">
@@ -996,7 +987,7 @@
                 <div class="comparison-row">
                     <div class="comparison-cell">Monthly cost</div>
                     <div class="comparison-cell bad">$50? $500? $5000?</div>
-                    <div class="comparison-cell good">$299-$799 fixed</div>
+                    <div class="comparison-cell good">Fixed monthly</div>
                 </div>
                 <div class="comparison-row">
                     <div class="comparison-cell">Technical skill</div>
@@ -1064,7 +1055,7 @@
                         <li>Telegram or WhatsApp</li>
                         <li>Email support</li>
                     </ul>
-                    <a href="#signup-form" onclick="document.querySelector('#signup-form input[name=name]').focus();return false;" class="cta-button">Get Started</a>
+                    
                 </div>
 
                 <div class="pricing-card featured" data-plan="pro">
@@ -1079,12 +1070,12 @@
                         <li>Custom personalities</li>
                         <li>Priority support</li>
                     </ul>
-                    <a href="#signup-form" onclick="document.querySelector('#signup-form input[name=name]').focus();return false;" class="cta-button">Get Started</a>
+                    
                 </div>
 
                 <div class="pricing-card" data-plan="business">
                     <h3>Business</h3>
-                    <div class="price" data-price="299">$299<span>/mo</span></div>
+                    <div class="price">Contact Us</div>
                     <p class="description">Scale your AI workforce</p>
                     <ul>
                         <li>Up to 10 AI employees</li>
@@ -1094,7 +1085,7 @@
                         <li>Dedicated support</li>
                         <li>Team management</li>
                     </ul>
-                    <a href="#signup-form" onclick="document.querySelector('#signup-form input[name=name]').focus();return false;" class="cta-button">Get Started</a>
+                    
                 </div>
 
                 <div class="pricing-card" data-plan="enterprise">
@@ -1109,7 +1100,7 @@
                         <li>Customer-managed encryption</li>
                         <li>White-glove onboarding</li>
                     </ul>
-                    <a href="/signup?plan=enterprise" class="cta-button">Contact Us</a>
+                    
                 </div>
             </div>
         </div>
@@ -1134,7 +1125,7 @@
                 </div>
                 <div class="faq-item">
                     <h3>"I could figure this out myself..."</h3>
-                    <p>You probably could! The question is: do you want to spend 3 days doing that, or $299/month to skip it?</p>
+                    <p>You probably could! The question is: do you want to spend 3 days doing that, or pay a fixed monthly fee to skip it?</p>
                 </div>
             </div>
         </div>
@@ -1145,7 +1136,7 @@
         <div class="container" style="text-align:center;">
             <h2>Ready to get started?</h2>
             <p class="subtitle">Choose your plan and get started in minutes.</p>
-            <a href="/signup" class="cta-button">Get Your AI Employee →</a>
+            
         </div>
     </section>
     
@@ -1159,8 +1150,8 @@
     </footer>
 
     <script>
-        // Magic link login
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
+        // Form handlers disabled for production
+        if (document.getElementById('login-form')) document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const form = e.target;
             const btn = form.querySelector('button');
@@ -1207,8 +1198,8 @@
             }
         });
 
-        // Signup form
-        document.getElementById('signup-form').addEventListener('submit', async (e) => {
+        // Signup form (disabled)
+        if (document.getElementById('signup-form')) document.getElementById('signup-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const form = e.target;
             const btn = form.querySelector('button');
