@@ -111,7 +111,7 @@ module.exports = async (req, res) => {
 
     try {
       const { stdout, stderr } = await execFileAsync(
-        'bin/clawops',
+        '/opt/homebrew/bin/clawops',
         [
           'provision',
           '--tenant-id', finalTenantId,
@@ -122,8 +122,7 @@ module.exports = async (req, res) => {
           '--mode', 'managed'
         ],
         {
-          cwd: clawopsPath,
-          timeout: 30000,
+          timeout: 120000,
           env: {
             ...process.env,
             AWS_ENDPOINT_URL: 'http://localhost:4566',
