@@ -5,6 +5,12 @@
 
 let currentTab = 'employees';
 
+// Auth helper — adds Bearer token from localStorage to fetch options
+function authHeaders(extra = {}) {
+    const token = localStorage.getItem('sessionToken');
+    return token ? { 'Authorization': `Bearer ${token}`, ...extra } : { ...extra };
+}
+
 function initTabs() {
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -534,7 +540,9 @@ async function loadSettingsTab() {
 
 async function loadPreferences() {
     try {
-        const res = await fetch('/api/settings/preferences');
+        const res = await fetch('/api/settings/preferences', {
+            headers: authHeaders()
+        });
         const data = await res.json();
         if (data.ok && data.preferences) {
             const p = data.preferences;
@@ -559,7 +567,7 @@ async function savePreferences() {
     try {
         const res = await fetch('/api/settings/preferences', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify(prefs)
         });
         const data = await res.json();
@@ -795,7 +803,9 @@ async function loadClientSecrets() {
     const el = document.getElementById('clientSecrets');
     if (!el) return;
     try {
-        const res = await fetch('/api/settings/secrets');
+        const res = await fetch('/api/settings/secrets', {
+            headers: authHeaders()
+        });
         const data = await res.json();
         if (!data.ok || !data.secrets?.length) {
             el.innerHTML = '<p style="color:var(--gray);font-size:13px;">No secrets configured yet.</p>';
@@ -837,7 +847,7 @@ async function saveNewSecret() {
     try {
         const res = await fetch('/api/settings/secrets', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ key, value, label: key })
         });
         const data = await res.json();
@@ -860,7 +870,7 @@ async function deleteClientSecret(key) {
     try {
         const res = await fetch('/api/settings/secrets', {
             method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ key })
         });
         const data = await res.json();
