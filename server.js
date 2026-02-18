@@ -254,7 +254,7 @@ app.get('/auth/verify', async (req, res) => {
           maxAge: 30 * 24 * 60 * 60 * 1000,
           path: '/',
         });
-        return res.redirect(`/dashboard#session=${data.sessionToken}&email=${encodeURIComponent(data.email)}`);
+        return res.redirect('/dashboard');
       } else {
         const errorMsg = data.error || 'Invalid or expired link.';
         const isExpired = errorMsg.includes('expired') || errorMsg.includes('already used') || errorMsg.includes('Invalid token');

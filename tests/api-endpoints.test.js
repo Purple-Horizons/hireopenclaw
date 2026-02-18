@@ -234,6 +234,25 @@ jest.mock('util', () => {
 
 // Mock docker-sdk
 jest.mock('../api-local/util/docker-sdk.js', () => ({
+  getContainer: jest.fn(() => ({
+    stats: jest.fn().mockResolvedValue({
+      cpu_stats: { cpu_usage: { total_usage: 200 }, system_cpu_usage: 1000, online_cpus: 2 },
+      precpu_stats: { cpu_usage: { total_usage: 100 }, system_cpu_usage: 800 },
+      memory_stats: { usage: 16 * 1024 * 1024, limit: 512 * 1024 * 1024 },
+      networks: { eth0: { rx_bytes: 1024, tx_bytes: 2048 } },
+      blkio_stats: { io_service_bytes_recursive: [{ op: 'Read', value: 4096 }, { op: 'Write', value: 8192 }] },
+      pids_stats: { current: 7 },
+    }),
+    inspect: jest.fn().mockResolvedValue({
+      State: {
+        Status: 'running',
+        Health: { Status: 'healthy' },
+        StartedAt: new Date(Date.now() - 60_000).toISOString(),
+        Pid: 1234,
+      },
+      RestartCount: 1,
+    }),
+  })),
   restartContainer: jest.fn().mockResolvedValue({}),
   pauseContainer: jest.fn().mockResolvedValue({}),
   unpauseContainer: jest.fn().mockResolvedValue({}),
@@ -480,10 +499,69 @@ describe('POST /api/auth/session', () => {
       .send({});
     expect(res.status).toBe(400);
   });
+
+  test('validates session from cookie when body token is absent', async () => {
+    const sessionToken = await createSession('cookie-user@example.com');
+    const res = await request(app)
+      .post('/api/auth/session')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body.valid).toBe(true);
+    expect(res.body.email).toBe('cookie-user@example.com');
+  });
+
+  test('does not accept session token from query params', async () => {
+    const sessionToken = await createSession('query-user@example.com');
+    const res = await request(app)
+      .post(`/api/auth/session?sessionToken=${sessionToken}`)
+      .send({});
+
+    expect(res.status).toBe(400);
+  });
 });
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 4. GET /api/dashboard/bots
+// 4. DELETE /api/auth/session
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+describe('DELETE /api/auth/session', () => {
+  test('invalidates session from cookie', async () => {
+    const sessionToken = await createSession('logout-cookie@example.com');
+
+    const logoutRes = await request(app)
+      .delete('/api/auth/session')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({});
+    expect(logoutRes.status).toBe(200);
+    expect(logoutRes.body.ok).toBe(true);
+
+    const validateRes = await request(app)
+      .post('/api/auth/session')
+      .send({ sessionToken });
+    expect(validateRes.status).toBe(401);
+    expect(validateRes.body.valid).toBe(false);
+  });
+
+  test('ignores query-param sessionToken on logout', async () => {
+    const sessionToken = await createSession('logout-query@example.com');
+
+    const logoutRes = await request(app)
+      .delete(`/api/auth/session?sessionToken=${sessionToken}`)
+      .send({});
+    expect(logoutRes.status).toBe(200);
+    expect(logoutRes.body.ok).toBe(true);
+
+    const validateRes = await request(app)
+      .post('/api/auth/session')
+      .send({ sessionToken });
+    expect(validateRes.status).toBe(200);
+    expect(validateRes.body.valid).toBe(true);
+  });
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 5. GET /api/dashboard/bots
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 describe('GET /api/dashboard/bots', () => {
   test('returns bots for authenticated user', async () => {
@@ -513,7 +591,38 @@ describe('GET /api/dashboard/bots', () => {
 });
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 5. POST /api/dashboard/create-bot
+// 5. GET /api/dashboard/container-stats
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+describe('GET /api/dashboard/container-stats', () => {
+  test('rejects invalid tenantId format', async () => {
+    const sessionToken = await createSession('client@example.com');
+
+    const res = await request(app)
+      .get('/api/dashboard/container-stats?tenantId=tenant-1;rm -rf /')
+      .set('Cookie', `session=${sessionToken}`);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/tenantId/i);
+  });
+
+  test('returns stats for owned tenant', async () => {
+    seedTenant('tenant-stats-001', 'client@example.com');
+    const sessionToken = await createSession('client@example.com');
+
+    const res = await request(app)
+      .get('/api/dashboard/container-stats?tenantId=tenant-stats-001')
+      .set('Cookie', `session=${sessionToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.tenantId).toBe('tenant-stats-001');
+    expect(res.body.stats.cpuPercent).toMatch(/%/);
+    expect(res.body.stats.memoryUsage).toContain('/');
+  });
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 6. POST /api/dashboard/create-bot
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 describe('POST /api/dashboard/create-bot', () => {
   test('creates a bot for authenticated user', async () => {
