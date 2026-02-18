@@ -843,6 +843,28 @@ describe('/api/settings/* auth + ownership', () => {
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
   });
+
+  test('rejects invalid team invite email', async () => {
+    const sessionToken = await createSession('owner@example.com');
+    const res = await request(app)
+      .post('/api/settings/team')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({ inviteEmail: 'not-an-email', role: 'member' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/inviteEmail/i);
+  });
+
+  test('rejects inviting self', async () => {
+    const sessionToken = await createSession('owner@example.com');
+    const res = await request(app)
+      .post('/api/settings/team')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({ inviteEmail: 'owner@example.com', role: 'member' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/own email/i);
+  });
 });
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -9,6 +9,7 @@ const crypto = require('crypto');
 const { QueryCommand, PutCommand, DeleteCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
 const { docClient, TABLES } = require('../util/dynamodb.js');
 const { getEmailFromSession } = require('../auth/middleware.js');
+const { validateEmail } = require('../util/validate.js');
 
 const ROLES = ['owner', 'admin', 'member', 'viewer'];
 const INVITES_TABLE = 'clawops-team-invites';
@@ -21,9 +22,17 @@ module.exports = async (req, res) => {
     // ── POST: Invite team member ──
     if (req.method === 'POST') {
         const { inviteEmail, role, message } = req.body || {};
+        const normalizedInviteEmail = String(inviteEmail || '').trim().toLowerCase();
+        const portalBaseUrl = (process.env.PORTAL_URL || process.env.SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
 
-        if (!inviteEmail) {
+        if (!normalizedInviteEmail) {
             return res.status(400).json({ error: 'inviteEmail is required' });
+        }
+        if (!validateEmail(normalizedInviteEmail)) {
+            return res.status(400).json({ error: 'Valid inviteEmail is required' });
+        }
+        if (normalizedInviteEmail === email.toLowerCase()) {
+            return res.status(400).json({ error: 'Cannot invite your own email' });
         }
         if (!ROLES.includes(role)) {
             return res.status(400).json({ error: `role must be one of: ${ROLES.join(', ')}` });
@@ -38,18 +47,18 @@ module.exports = async (req, res) => {
                 Item: {
                     inviteId,
                     orgEmail: email,
-                    inviteEmail,
+                    inviteEmail: normalizedInviteEmail,
                     role,
                     inviteToken,
-                    message: typeof message === 'string' ? message : '',
+                    message: typeof message === 'string' ? message.slice(0, 2000) : '',
                     createdAt: new Date().toISOString(),
                     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
                     accepted: false
                 }
             }));
 
-            const inviteLink = `http://localhost:3000/invite?token=${inviteToken}`;
-            console.log(`\n📧 Team Invite for ${inviteEmail}:`);
+            const inviteLink = `${portalBaseUrl}/invite?token=${inviteToken}`;
+            console.log(`\n📧 Team Invite for ${normalizedInviteEmail}:`);
             console.log(`   ${inviteLink}`);
             console.log(`   Role: ${role}`);
             console.log(`   Expires in 7 days\n`);
@@ -57,7 +66,7 @@ module.exports = async (req, res) => {
             return res.status(201).json({
                 ok: true,
                 inviteId,
-                inviteEmail,
+                inviteEmail: normalizedInviteEmail,
                 role,
                 inviteLink: process.env.NODE_ENV === 'development' ? inviteLink : undefined,
                 expiresIn: '7 days'
