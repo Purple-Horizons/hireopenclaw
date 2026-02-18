@@ -8,7 +8,14 @@
     <style>
         :root { --bg: #0a0a0a; --card: #111; --border: #222; --gray: #888; --white: #fff; --orange: #ff6b35; --green: #00c853; --yellow: #ffc107; --red: #ff5252; --purple: #9c27b0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--white); }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background:
+                radial-gradient(1100px 520px at 8% -10%, rgba(255,107,53,0.14), transparent 62%),
+                radial-gradient(900px 460px at 100% -12%, rgba(59,130,246,0.10), transparent 65%),
+                var(--bg);
+            color: var(--white);
+        }
         
         /* Impersonate banner */
         .impersonate-banner { display: none; background: var(--purple); padding: 8px 20px; text-align: center; font-size: 13px; font-weight: 600; }
@@ -16,7 +23,7 @@
         .impersonate-banner button { background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
         
         /* Header */
-        .header { padding: 16px 24px; background: var(--card); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 16px; }
+        .header { position: sticky; top: 0; z-index: 20; padding: 16px 24px; background: rgba(17,17,17,0.88); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 16px; }
         .header h1 { font-size: 18px; flex: 1; }
         .header .badge { background: var(--purple); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
         .header a { color: var(--gray); text-decoration: none; font-size: 13px; }
@@ -24,25 +31,30 @@
         
         /* Stats bar */
         .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; padding: 20px 24px; }
-        .stat { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+        .stat { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; transition: transform 0.15s ease, border-color 0.15s ease; }
+        .stat:hover { transform: translateY(-1px); border-color: #2f2f2f; }
         .stat .label { font-size: 11px; color: var(--gray); text-transform: uppercase; margin-bottom: 4px; }
         .stat .value { font-size: 24px; font-weight: 700; }
         .stat .sub { font-size: 12px; color: var(--gray); margin-top: 4px; }
         
         /* Search */
-        .search-bar { padding: 0 24px 16px; display: flex; gap: 12px; }
+        .search-bar { padding: 0 24px 16px; display: flex; gap: 12px; position: sticky; top: 64px; z-index: 12; background: linear-gradient(to bottom, rgba(10,10,10,0.95), rgba(10,10,10,0.7)); backdrop-filter: blur(4px); }
         .search-bar input { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; color: var(--white); font-size: 14px; outline: none; }
         .search-bar input:focus { border-color: var(--orange); }
         .search-bar select { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--white); font-size: 13px; }
         
         /* Client list */
         .clients { padding: 0 24px 24px; }
-        .client-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
+        .client-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+        .client-card:hover { border-color: #2f2f2f; box-shadow: 0 8px 26px rgba(0,0,0,0.25); }
         .client-header { padding: 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
         .client-header:hover { background: rgba(255,255,255,0.02); }
+        .client-header.open { border-bottom: 1px solid rgba(255,255,255,0.06); }
         .client-email { font-weight: 600; font-size: 14px; flex: 1; }
         .client-meta { display: flex; gap: 16px; font-size: 12px; color: var(--gray); }
         .client-meta .active { color: var(--green); }
+        .expand-icon { color: var(--gray); font-size: 12px; transition: transform 0.15s ease; }
+        .client-header.open .expand-icon { transform: rotate(90deg); color: var(--white); }
         .pill, .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
         .pill.active, .badge-success { background: rgba(0,200,83,0.15); color: var(--green); }
         .pill.terminated, .badge-error { background: rgba(255,82,82,0.15); color: var(--red); }
@@ -122,6 +134,7 @@
         <option value="none">No Active Bots</option>
     </select>
 </div>
+<div id="resultsInfo" style="padding:0 24px 14px;color:var(--gray);font-size:12px;">Loading clients…</div>
 
 <!-- Platform Secrets -->
 <div style="padding:0 24px 20px;">

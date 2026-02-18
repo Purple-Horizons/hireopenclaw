@@ -45,6 +45,11 @@ async function loadClients() {
 
 function renderClients(clients) {
     const el = document.getElementById('clientList');
+    const summaryEl = document.getElementById('resultsInfo');
+    if (summaryEl) {
+        const total = allClients.length;
+        summaryEl.textContent = `Showing ${clients.length} of ${total} client${total === 1 ? '' : 's'}`;
+    }
     if (clients.length === 0) {
         el.innerHTML = '<p style="color:var(--gray);text-align:center;padding:40px;">No clients found.</p>';
         return;
@@ -57,12 +62,14 @@ function renderClients(clients) {
                 <div class="client-meta">
                     <span class="active">${c.activeBots} active</span>
                     <span>${c.totalBots} total</span>
-                    <span>${c.firstSeen ? new Date(c.firstSeen).toLocaleDateString() : '—'}</span>
+                    <span>First: ${c.firstSeen ? new Date(c.firstSeen).toLocaleDateString() : '—'}</span>
+                    <span>Last: ${c.lastActive ? new Date(c.lastActive).toLocaleDateString() : '—'}</span>
                 </div>
                 <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();impersonate('${c.email}')">👁 View as</button>
+                <span class="expand-icon">▶</span>
             </div>
             <div class="client-bots" id="bots-${btoa(c.email)}">
-                ${c.bots.map(b => `
+                ${c.bots.length ? c.bots.map(b => `
                     <div class="bot-row">
                         <span class="pill ${b.status}">${b.status}</span>
                         <span class="bot-name">${b.name || b.tenantId}</span>
@@ -79,7 +86,7 @@ function renderClients(clients) {
                             ` : ''}
                         </div>
                     </div>
-                `).join('')}
+                `).join('') : '<div style="padding:12px 0;color:var(--gray);font-size:12px;">No bot records available.</div>'}
             </div>
         </div>
     `).join('');
@@ -91,7 +98,11 @@ function toggleBots(id) {
         el.classList.toggle('open');
         // TASK-408: Update aria-expanded
         const header = el.previousElementSibling;
-        if (header) header.setAttribute('aria-expanded', el.classList.contains('open'));
+        if (header) {
+            const isOpen = el.classList.contains('open');
+            header.setAttribute('aria-expanded', isOpen);
+            header.classList.toggle('open', isOpen);
+        }
     }
 }
 

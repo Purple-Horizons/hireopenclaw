@@ -5,6 +5,11 @@ let currentEmail = null;
 let currentBots = [];
 let currentMaxBots = 3; // Updated from API
 
+function authHeaders(extra = {}) {
+    const token = localStorage.getItem('clawops_session_token');
+    return token ? { 'Authorization': `Bearer ${token}`, ...extra } : { ...extra };
+}
+
 // ── Global Error Boundary ────────────────────────────────────────────────────
 // Catch unhandled errors and show user-friendly toast instead of breaking the page
 
@@ -125,9 +130,8 @@ async function loadDashboard(email) {
     localStorage.setItem('clawops_email', email);
     
     try {
-        const st = localStorage.getItem('clawops_session_token');
-        const res = await fetch(`/api/dashboard/bots`, {
-            headers: st ? { 'Authorization': `Bearer ${st}` } : {}
+        const res = await fetch('/api/dashboard/bots', {
+            headers: authHeaders()
         });
         const data = await res.json();
         
@@ -167,13 +171,15 @@ async function loadDashboard(email) {
 // Update stats cards
 function updateStats(data) {
     const activeBots = data.bots.filter(b => b.status === 'active').length;
+    const totalMessages = data.bots.reduce((sum, b) => sum + Number(b.messagesToday || 0), 0);
+    const unhealthyBots = data.bots.filter(b => b.health === 'unhealthy').length;
     
     // Active bots stat (REAL DATA)
     document.querySelector('.stat-card:nth-child(1) .label').textContent = 'Active Employees';
     document.querySelector('.stat-card:nth-child(1) .value').textContent = activeBots;
     document.querySelector('.stat-card:nth-child(1) .sub').textContent = `of ${data.maxBots} available`;
     
-    // Token usage stat (MOCK DATA for now)
+    // Token usage stat
     const tokenK = data.totalTokensUsed >= 1000 ? Math.round(data.totalTokensUsed / 1000) : data.totalTokensUsed;
     const limitM = (data.totalTokensLimit / 1000000).toFixed(1);
     const tokenPct = data.totalTokensLimit > 0 
@@ -188,11 +194,23 @@ function updateStats(data) {
     const bar = document.querySelector('.usage-bar');
     bar.style.width = `${tokenPct}%`;
     bar.className = `usage-bar ${tokenPct > 90 ? 'red' : tokenPct > 70 ? 'yellow' : 'green'}`;
-    
-    // Hide mock stats (messages, uptime)
+
     const statCards = document.querySelectorAll('.stat-card');
-    if (statCards[2]) statCards[2].style.opacity = '0.5';
-    if (statCards[3]) statCards[3].style.opacity = '0.5';
+    if (statCards[2]) {
+        statCards[2].querySelector('.label').textContent = 'Messages (Month)';
+        statCards[2].querySelector('.value').textContent = totalMessages.toLocaleString();
+        statCards[2].querySelector('.sub').textContent = `Across ${data.bots.length} employee${data.bots.length === 1 ? '' : 's'}`;
+        statCards[2].style.opacity = '1';
+    }
+    if (statCards[3]) {
+        statCards[3].querySelector('.label').textContent = 'Health Alerts';
+        statCards[3].querySelector('.value').textContent = unhealthyBots;
+        statCards[3].querySelector('.value').style.color = unhealthyBots > 0 ? 'var(--red)' : 'var(--green)';
+        statCards[3].querySelector('.sub').textContent = unhealthyBots > 0
+            ? `${unhealthyBots} bot${unhealthyBots === 1 ? '' : 's'} need attention`
+            : 'All bots healthy';
+        statCards[3].style.opacity = '1';
+    }
 }
 
 // Show onboarding banner for first-time users
@@ -475,7 +493,9 @@ function createBotCard(bot) {
 // Fetch and update container stats
 async function fetchContainerStats(botId) {
     try {
-        const res = await fetch(`/api/dashboard/container-stats?tenantId=${encodeURIComponent(botId)}`);
+        const res = await fetch(`/api/dashboard/container-stats?tenantId=${encodeURIComponent(botId)}`, {
+            headers: authHeaders()
+        });
         if (!res.ok) return;
         
         const data = await res.json();
@@ -589,7 +609,7 @@ async function botAction(tenantId, action) {
     try {
         const res = await fetch('/api/dashboard/bot-action', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ tenantId, action, sessionToken: localStorage.getItem('clawops_session_token') })
         });
         
@@ -735,7 +755,9 @@ function renameBot(botId, currentName) {
 // Load usage chart
 async function loadUsageChart(email) {
     try {
-        const res = await fetch(`/api/dashboard/usage?email=${encodeURIComponent(email)}&days=7`);
+        const res = await fetch(`/api/dashboard/usage?email=${encodeURIComponent(email)}&days=7`, {
+            headers: authHeaders()
+        });
         const data = await res.json();
         renderUsageChart(data.dailyUsage || []);
     } catch (err) {
@@ -796,7 +818,9 @@ async function updateBotCosts() {
 // Fetch and update cost data for a single bot
 async function updateBotCost(botId) {
     try {
-        const res = await fetch(`/api/dashboard/usage/${botId}`);
+        const res = await fetch(`/api/dashboard/usage/${botId}`, {
+            headers: authHeaders()
+        });
         const data = await res.json();
         
         if (data.error) {
@@ -813,14 +837,14 @@ async function updateBotCost(botId) {
         
         if (!costValue) return; // Bot card not rendered yet
         
-        const totalCost = data.usage.totalCost || 0;
-        const todayCost = data.usage.todayCost || 0;
-        const utilization = data.budget.utilization || 0;
+        const totalCost = Number(data.usage?.totalCost || 0);
+        const todayCost = Number(data.usage?.todayCost || 0);
+        const utilization = Number(data.budget?.utilization || 0);
         const alertLevel = data.budget.alertLevel || 'ok';
         
-        costValue.textContent = `$${totalCost.toFixed(2)}`;
-        costToday.textContent = `$${todayCost.toFixed(2)}`;
-        costMonth.textContent = `$${totalCost.toFixed(2)}`;
+        costValue.textContent = formatUsdAmount(totalCost);
+        costToday.textContent = formatUsdAmount(todayCost);
+        costMonth.textContent = formatUsdAmount(totalCost);
         
         // Update budget bar
         budgetBar.style.width = `${Math.min(100, utilization)}%`;
@@ -836,7 +860,12 @@ async function updateBotCost(botId) {
             budgetBar.style.background = 'var(--green)';
         }
         
-        budgetText.textContent = `${utilization.toFixed(1)}% of $${data.budget.limit.toFixed(2)} budget used`;
+        const budgetLimit = Number(data.budget?.limit);
+        if (Number.isFinite(budgetLimit) && budgetLimit > 0) {
+            budgetText.textContent = `${utilization.toFixed(1)}% of $${budgetLimit.toFixed(2)} budget used`;
+        } else {
+            budgetText.textContent = 'No monthly budget cap configured';
+        }
         
         // Add alert indicator if needed
         if (alertLevel === 'warning' || alertLevel === 'danger' || alertLevel === 'critical') {
@@ -856,6 +885,12 @@ async function updateBotCost(botId) {
     } catch (err) {
         console.error(`Error updating cost for ${botId}:`, err);
     }
+}
+
+function formatUsdAmount(value) {
+    const amount = Number(value || 0);
+    if (amount > 0 && amount < 0.01) return '<$0.01';
+    return `$${amount.toFixed(2)}`;
 }
 
 // Login prompt
@@ -1035,7 +1070,9 @@ async function loadChannelStatus(botId) {
     // Fetch instance secrets to see which tokens are configured
     let secrets = [];
     try {
-        const res = await fetch(`/api/dashboard/bots/${encodeURIComponent(botId)}/secrets`);
+        const res = await fetch(`/api/dashboard/bots/${encodeURIComponent(botId)}/secrets`, {
+            headers: authHeaders()
+        });
         if (res.ok) {
             const data = await res.json();
             secrets = data.secrets || [];
@@ -1128,7 +1165,7 @@ async function saveChannelToken(botId, tokenKey, channelName) {
     try {
         const res = await fetch(`/api/dashboard/bots/${encodeURIComponent(botId)}/secrets`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ key: tokenKey, value: token, label: `${channelName} Bot Token` })
         });
         const data = await res.json();
@@ -1140,7 +1177,11 @@ async function saveChannelToken(botId, tokenKey, channelName) {
             }
             // Restart bot to pick up new channel config
             try {
-                await fetch('/api/dashboard/bot-action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tenantId: botId, action: 'restart', sessionToken: localStorage.getItem('clawops_session_token') }) });
+                await fetch('/api/dashboard/bot-action', {
+                    method: 'POST',
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ tenantId: botId, action: 'restart', sessionToken: localStorage.getItem('clawops_session_token') })
+                });
                 setTimeout(() => {
                     if (status) status.textContent = `✅ ${channelName} connected and bot restarted!`;
                     setTimeout(() => loadChannelStatus(botId), 2000);
@@ -1199,11 +1240,15 @@ async function confirmDisconnect(botId, tokenKey) {
     try {
         await fetch(`/api/dashboard/bots/${encodeURIComponent(botId)}/secrets`, {
             method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ key: tokenKey })
         });
         // Restart to remove channel
-        await fetch('/api/dashboard/bot-action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tenantId: botId, action: 'restart', sessionToken: localStorage.getItem('clawops_session_token') }) });
+        await fetch('/api/dashboard/bot-action', {
+            method: 'POST',
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ tenantId: botId, action: 'restart', sessionToken: localStorage.getItem('clawops_session_token') })
+        });
         showTemporaryMessage('Channel disconnected. Bot restarting...', 'info', 3000);
         setTimeout(() => loadChannelStatus(botId), 3000);
     } catch (err) {

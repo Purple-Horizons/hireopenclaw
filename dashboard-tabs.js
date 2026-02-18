@@ -91,8 +91,8 @@ async function loadUsageTab() {
     try {
         // Fetch both usage API and analytics overview
         const [usageRes, analyticsRes] = await Promise.all([
-            fetch(`/api/dashboard/usage?email=${encodeURIComponent(currentEmail)}&days=30`),
-            fetch(`/api/analytics/overview?userId=${encodeURIComponent(currentEmail)}&period=30d`).catch(() => null)
+            fetch(`/api/dashboard/usage?email=${encodeURIComponent(currentEmail)}&days=30`, { headers: authHeaders() }),
+            fetch(`/api/analytics/overview?userId=${encodeURIComponent(currentEmail)}&period=30d`, { headers: authHeaders() }).catch(() => null)
         ]);
         
         const usageData = await usageRes.json();
@@ -104,9 +104,12 @@ async function loadUsageTab() {
             const totalOut = usageData.dailyUsage.reduce((s, d) => s + (d.outputTokens || 0), 0);
             const totalMsgs = usageData.dailyUsage.reduce((s, d) => s + (d.messageCount || 0), 0);
             const totalTokens = totalIn + totalOut;
+            const totalCost = (totalIn / 1_000_000) * 3 + (totalOut / 1_000_000) * 15;
+            const daysInSample = Math.max(1, usageData.dailyUsage.length);
             if (el('usageTotalTokens')) el('usageTotalTokens').textContent = totalTokens >= 1000 ? Math.round(totalTokens / 1000) + 'K' : totalTokens;
             if (el('usageTotalMessages')) el('usageTotalMessages').textContent = totalMsgs.toLocaleString();
-            if (el('usageAvgTokens')) el('usageAvgTokens').textContent = Math.round(totalTokens / 30 / 1000) + 'K';
+            if (el('usageAvgTokens')) el('usageAvgTokens').textContent = Math.round(totalTokens / daysInSample / 1000) + 'K';
+            if (el('usageTotalCost')) el('usageTotalCost').textContent = `$${totalCost.toFixed(2)}`;
         }
         
         renderUsageDetails(usageData);
@@ -354,8 +357,8 @@ async function loadBillingTab() {
     
     try {
         const [billingRes, marginRes] = await Promise.all([
-            fetch(`/api/dashboard/billing?email=${encodeURIComponent(currentEmail)}`),
-            fetch(`/api/dashboard/margin?email=${encodeURIComponent(currentEmail)}`)
+            fetch('/api/dashboard/billing', { headers: authHeaders() }),
+            fetch('/api/dashboard/margin', { headers: authHeaders() })
         ]);
         
         const billingData = await billingRes.json();
@@ -370,33 +373,54 @@ async function loadBillingTab() {
 function renderBillingDetails(billing, margin) {
     const container = document.getElementById('billing-details');
     if (!container) return;
+    if (!billing || billing.error) {
+        container.innerHTML = `<p class="empty-state">Unable to load billing details${billing?.error ? `: ${billing.error}` : '.'}</p>`;
+        return;
+    }
     
-    const tokensUsed = billing.usage?.tokensUsed || 0;
-    const tokensLimit = billing.usage?.tokensLimit || 500000;
-    const pctUsed = tokensLimit > 0 ? ((tokensUsed / tokensLimit) * 100).toFixed(1) : 0;
-    const pctColor = pctUsed >= 90 ? 'var(--red)' : pctUsed >= 70 ? 'var(--yellow)' : 'var(--green)';
+    const tokensUsed = Number(billing.usage?.tokensUsed || 0);
+    const tokensLimit = Number.isFinite(billing.usage?.tokensLimit) ? billing.usage.tokensLimit : null;
+    const pctUsed = Number.isFinite(billing.usage?.percentUsed)
+        ? billing.usage.percentUsed
+        : (tokensLimit ? (tokensUsed / tokensLimit) * 100 : null);
+    const pctColor = pctUsed === null
+        ? 'var(--gray)'
+        : pctUsed >= 90 ? 'var(--red)' : pctUsed >= 70 ? 'var(--yellow)' : 'var(--green)';
+    const pctLabel = pctUsed === null ? '—' : `${pctUsed.toFixed(1)}%`;
+    const planPriceLabel = billing.customPlan || billing.planPrice === null ? 'Custom' : `$${billing.planPrice}/month`;
+    const invoiceAmountLabel = billing.customPlan || billing.planPrice === null ? 'Custom' : `$${billing.planPrice}`;
+    const tokenUsageLabel = tokensLimit
+        ? `${tokensUsed.toLocaleString()} / ${tokensLimit.toLocaleString()}`
+        : `${tokensUsed.toLocaleString()} used`;
+    const tokenAllowanceLabel = tokensLimit ? `${tokensLimit.toLocaleString()} / month` : 'Unlimited (contract)';
+    const nextInvoiceDateLabel = billing.nextBillingDate
+        ? new Date(billing.nextBillingDate).toLocaleDateString()
+        : (billing.customPlan ? 'Contract terms' : 'TBD');
+    const botCount = billing.bots?.count ?? margin.bots?.count ?? 0;
+    const uptimeHours = margin.bots?.uptimeHours || 0;
+    const estimatedUsageCost = Number(billing.usage?.estimatedCost || 0);
     
     container.innerHTML = `
         <div class="billing-summary">
             <div class="billing-stat-card">
                 <div class="label">Current Plan</div>
                 <div class="value">${billing.plan?.toUpperCase() || 'STARTER'}</div>
-                <div class="sub">$${billing.planPrice || 29}/month</div>
+                <div class="sub">${planPriceLabel}</div>
             </div>
             <div class="billing-stat-card">
                 <div class="label">Token Usage</div>
-                <div class="value" style="color:${pctColor};">${pctUsed}%</div>
-                <div class="sub">${tokensUsed.toLocaleString()} / ${tokensLimit.toLocaleString()}</div>
+                <div class="value" style="color:${pctColor};">${pctLabel}</div>
+                <div class="sub">${tokenUsageLabel}</div>
             </div>
             <div class="billing-stat-card">
                 <div class="label">AI Employees</div>
-                <div class="value">${margin.bots?.count || 1}</div>
-                <div class="sub">${margin.bots?.uptimeHours || 0}h uptime this month</div>
+                <div class="value">${botCount}</div>
+                <div class="sub">${uptimeHours}h uptime this month</div>
             </div>
             <div class="billing-stat-card">
                 <div class="label">Next Invoice</div>
-                <div class="value">$${billing.planPrice || 29}</div>
-                <div class="sub">${billing.nextBillingDate ? new Date(billing.nextBillingDate).toLocaleDateString() : 'TBD'}</div>
+                <div class="value">${invoiceAmountLabel}</div>
+                <div class="sub">${nextInvoiceDateLabel}</div>
             </div>
         </div>
         
@@ -412,7 +436,11 @@ function renderBillingDetails(billing, margin) {
             <div style="display:grid;gap:12px;">
                 <div style="background:rgba(255,255,255,0.03);padding:16px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
                     <span>Token Allowance</span>
-                    <strong>${tokensLimit.toLocaleString()} / month</strong>
+                    <strong>${tokenAllowanceLabel}</strong>
+                </div>
+                <div style="background:rgba(255,255,255,0.03);padding:16px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+                    <span>Estimated Usage Cost</span>
+                    <strong>$${estimatedUsageCost.toFixed(2)} this month</strong>
                 </div>
                 <div style="background:rgba(255,255,255,0.03);padding:16px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
                     <span>Status</span>
@@ -444,8 +472,8 @@ async function loadSettingsTab() {
     
     try {
         const [keysRes, teamRes] = await Promise.all([
-            fetch(`/api/settings/api-keys?email=${encodeURIComponent(currentEmail)}`),
-            fetch(`/api/settings/team?email=${encodeURIComponent(currentEmail)}`)
+            fetch(`/api/settings/api-keys?email=${encodeURIComponent(currentEmail)}`, { headers: authHeaders() }),
+            fetch(`/api/settings/team?email=${encodeURIComponent(currentEmail)}`, { headers: authHeaders() })
         ]);
         
         const keysData = await keysRes.json();
@@ -593,7 +621,7 @@ async function showInviteTeamModal() {
     try {
         const res = await fetch('/api/settings/team', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({
                 email: currentEmail,
                 inviteEmail: result,
@@ -625,7 +653,7 @@ async function removeTeamMember(memberId) {
     try {
         const res = await fetch('/api/settings/team', {
             method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ email: currentEmail, memberId })
         });
         
@@ -651,7 +679,7 @@ async function showGenerateApiKeyModal() {
         // Try new dedicated endpoint first, fall back to settings endpoint
         let res = await fetch('/api/keys/create', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({
                 name: name,
                 scopes: ['bots:read', 'bots:create', 'usage:read']
@@ -707,7 +735,7 @@ async function revokeApiKey(keyId) {
     try {
         const res = await fetch('/api/settings/api-keys', {
             method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ email: currentEmail, keyId })
         });
         

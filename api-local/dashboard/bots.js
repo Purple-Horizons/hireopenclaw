@@ -88,26 +88,54 @@ module.exports = async (req, res) => {
 // Fetch current month's usage from clawops-usage table for multiple tenants
 async function getMonthlyUsage(tenantIds) {
   const now = new Date();
-  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+  const monthStartMs = Date.UTC(now.getFullYear(), now.getMonth(), 1);
   const usageMap = {};
 
   await Promise.all(tenantIds.map(async (tenantId) => {
     try {
       const result = await dynamoClient.send(new RawQueryCommand({
         TableName: 'clawops-usage',
-        KeyConditionExpression: 'tenantId = :tid AND #d >= :start',
-        ExpressionAttributeNames: { '#d': 'date' },
+        KeyConditionExpression: 'tenantId = :tid',
         ExpressionAttributeValues: {
           ':tid': { S: tenantId },
-          ':start': { S: monthStart }
         }
       }));
 
       let tokens = 0, messages = 0;
       for (const raw of (result.Items || [])) {
         const item = unmarshall(raw);
-        tokens += (item.inputTokens || 0) + (item.outputTokens || 0);
-        messages += (item.messageCount || 0);
+        const ts = toRecordTimestampMs(item);
+        if (ts !== null && ts < monthStartMs) continue;
+        const input = toNumber(
+          item.inputTokens,
+          item.tokensIn,
+          item.tokenIn,
+          item.promptTokens,
+          item.prompt_tokens,
+          item.inputTokenCount,
+          item.totalInputTokens,
+          item.tokens_input
+        ) || 0;
+        const output = toNumber(
+          item.outputTokens,
+          item.tokensOut,
+          item.tokenOut,
+          item.completionTokens,
+          item.completion_tokens,
+          item.outputTokenCount,
+          item.totalOutputTokens,
+          item.tokens_output
+        ) || 0;
+        const messageCount = toNumber(
+          item.messageCount,
+          item.messages,
+          item.requestCount,
+          item.requests,
+          item.totalRequests,
+          item.message_count
+        ) || 0;
+        tokens += input + output;
+        messages += messageCount;
       }
       usageMap[tenantId] = { tokens, messages };
     } catch (err) {
@@ -125,6 +153,27 @@ function toTimestampMs(value) {
   if (typeof value === 'string') {
     const parsed = Date.parse(value);
     return Number.isNaN(parsed) ? null : parsed;
+  }
+  return null;
+}
+
+function toRecordTimestampMs(record) {
+  const numericTs = toNumber(record.timestamp);
+  if (numericTs !== null) return numericTs > 1_000_000_000_000 ? numericTs : numericTs * 1000;
+  for (const field of [record.date, record.lastUpdated, record.updatedAt, record.createdAt]) {
+    const numericField = toNumber(field);
+    if (numericField !== null) return numericField > 1_000_000_000_000 ? numericField : numericField * 1000;
+    const parsed = Date.parse(field || '');
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return null;
+}
+
+function toNumber(...values) {
+  for (const value of values) {
+    if (value === null || value === undefined || value === '') continue;
+    const parsed = Number(value);
+    if (!Number.isNaN(parsed)) return parsed;
   }
   return null;
 }

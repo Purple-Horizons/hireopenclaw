@@ -34,15 +34,13 @@ module.exports = async (req, res) => {
     
     // Get current month's usage
     const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const monthStartMs = Date.UTC(now.getFullYear(), now.getMonth(), 1);
     
     const command = new QueryCommand({
       TableName: TABLES.USAGE,
-      KeyConditionExpression: 'tenantId = :tid AND #d >= :monthStart',
-      ExpressionAttributeNames: { '#d': 'date' },
+      KeyConditionExpression: 'tenantId = :tid',
       ExpressionAttributeValues: {
         ':tid': { S: tenantId },
-        ':monthStart': { S: monthStart }
       }
     });
     
@@ -59,16 +57,21 @@ module.exports = async (req, res) => {
     if (response.Items) {
       for (const item of response.Items) {
         const record = unmarshall(item);
-        const cost = parseFloat(record.cost || 0);
+        const recordMs = getRecordTimeMs(record);
+        if (recordMs !== null && recordMs < monthStartMs) continue;
+
+        const { inputTokens, outputTokens } = extractTokenCounts(record);
+        const cost = extractCost(record, inputTokens, outputTokens);
         totalCost += cost;
         requestCount += 1;
-        tokensIn += parseInt(record.inputTokens || record.tokensIn || 0);
-        tokensOut += parseInt(record.outputTokens || record.tokensOut || 0);
+        tokensIn += inputTokens;
+        tokensOut += outputTokens;
         
         const provider = record.provider || 'unknown';
         breakdown[provider] = (breakdown[provider] || 0) + cost;
         
-        const day = (record.timestamp || record.date || record.lastUpdated || '').substring(0, 10);
+        const day = getDayKey(record, recordMs);
+        if (!day) continue;
         dailyCosts[day] = (dailyCosts[day] || 0) + cost;
       }
     }
@@ -115,8 +118,8 @@ async function handleEmailUsage(req, res, email) {
   
   const tenants = (scan.Items || []).map(i => unmarshall(i));
   const now = new Date();
-  const days = parseInt(req.query.days) || 30;
-  const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
+  const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 1), 180);
+  const startMs = now.getTime() - days * 24 * 60 * 60 * 1000;
   
   const dailyMap = {};
   
@@ -124,21 +127,24 @@ async function handleEmailUsage(req, res, email) {
     try {
       const result = await dynamodb.send(new QueryCommand({
         TableName: TABLES.USAGE,
-        KeyConditionExpression: 'tenantId = :tid AND #d >= :start',
-        ExpressionAttributeNames: { '#d': 'date' },
+        KeyConditionExpression: 'tenantId = :tid',
         ExpressionAttributeValues: {
           ':tid': { S: tenant.tenantId },
-          ':start': { S: startDate }
         }
       }));
       
       for (const item of (result.Items || [])) {
         const record = unmarshall(item);
-        const day = record.date;
+        const recordMs = getRecordTimeMs(record);
+        if (recordMs !== null && recordMs < startMs) continue;
+        const day = getDayKey(record, recordMs);
+        if (!day) continue;
+        const { inputTokens, outputTokens } = extractTokenCounts(record);
+        const messages = extractMessageCount(record);
         if (!dailyMap[day]) dailyMap[day] = { date: day, inputTokens: 0, outputTokens: 0, messageCount: 0 };
-        dailyMap[day].inputTokens += parseInt(record.inputTokens || 0);
-        dailyMap[day].outputTokens += parseInt(record.outputTokens || 0);
-        dailyMap[day].messageCount += parseInt(record.messageCount || 0);
+        dailyMap[day].inputTokens += inputTokens;
+        dailyMap[day].outputTokens += outputTokens;
+        dailyMap[day].messageCount += messages;
       }
     } catch (err) { console.error('[Usage] DynamoDB query failed:', err.message); }
   }
@@ -162,4 +168,107 @@ async function getTenant(tenantId) {
     console.error('Error getting tenant:', err);
     return null;
   }
+}
+
+function parseNumber(...values) {
+  for (const value of values) {
+    if (value === null || value === undefined || value === '') continue;
+    const n = Number(value);
+    if (!Number.isNaN(n)) return n;
+  }
+  return null;
+}
+
+function extractTokenCounts(record) {
+  const inputTokens = parseNumber(
+    record.inputTokens,
+    record.tokensIn,
+    record.tokenIn,
+    record.promptTokens,
+    record.prompt_tokens,
+    record.inputTokenCount,
+    record.totalInputTokens,
+    record.tokens_input
+  ) || 0;
+  const outputTokens = parseNumber(
+    record.outputTokens,
+    record.tokensOut,
+    record.tokenOut,
+    record.completionTokens,
+    record.completion_tokens,
+    record.outputTokenCount,
+    record.totalOutputTokens,
+    record.tokens_output
+  ) || 0;
+  return { inputTokens, outputTokens };
+}
+
+function extractMessageCount(record) {
+  return parseNumber(
+    record.messageCount,
+    record.messages,
+    record.requestCount,
+    record.requests,
+    record.totalRequests,
+    record.message_count
+  ) || 0;
+}
+
+function extractCost(record, inputTokens, outputTokens) {
+  const explicitCost = parseNumber(
+    record.cost,
+    record.totalCost,
+    record.costUsd,
+    record.costUSD,
+    record.estimatedCost
+  );
+  return explicitCost ?? estimateTokenCost(inputTokens, outputTokens);
+}
+
+function estimateTokenCost(inputTokens, outputTokens) {
+  // Conservative default estimate (Sonnet-like pricing): $3/M input, $15/M output.
+  return ((inputTokens / 1_000_000) * 3) + ((outputTokens / 1_000_000) * 15);
+}
+
+function getRecordTimeMs(record) {
+  const timestamp = parseNumber(record.timestamp);
+  if (timestamp !== null) return timestamp > 1_000_000_000_000 ? timestamp : timestamp * 1000;
+
+  for (const field of [record.date, record.lastUpdated, record.updatedAt, record.createdAt]) {
+    if (!field) continue;
+    const numericField = parseNumber(field);
+    if (numericField !== null) return numericField > 1_000_000_000_000 ? numericField : numericField * 1000;
+    const parsed = Date.parse(field);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return null;
+}
+
+function getDayKey(record, recordMs) {
+  if (typeof record.date === 'string') {
+    const date = record.date.trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(date)) return date.substring(0, 10);
+    const numericDate = parseNumber(date);
+    if (numericDate !== null) {
+      const ms = numericDate > 1_000_000_000_000 ? numericDate : numericDate * 1000;
+      return new Date(ms).toISOString().substring(0, 10);
+    }
+    const parsedDate = Date.parse(date);
+    if (!Number.isNaN(parsedDate)) return new Date(parsedDate).toISOString().substring(0, 10);
+  }
+  if (typeof record.timestamp === 'string' && record.timestamp.length >= 10) {
+    const numericTs = parseNumber(record.timestamp);
+    if (numericTs !== null) {
+      const ms = numericTs > 1_000_000_000_000 ? numericTs : numericTs * 1000;
+      return new Date(ms).toISOString().substring(0, 10);
+    }
+    const parsed = Date.parse(record.timestamp);
+    if (!Number.isNaN(parsed)) return new Date(parsed).toISOString().substring(0, 10);
+  }
+  if (typeof record.lastUpdated === 'string' && record.lastUpdated.length >= 10) {
+    const parsed = Date.parse(record.lastUpdated);
+    if (!Number.isNaN(parsed)) return new Date(parsed).toISOString().substring(0, 10);
+  }
+  if (recordMs !== null) return new Date(recordMs).toISOString().substring(0, 10);
+  return null;
 }
