@@ -152,6 +152,26 @@
     </div>
 </div>
 
+<script>
+// Parse session from hash fragment (same as dashboard) and check auth
+(function() {
+    const hash = window.location.hash;
+    if (hash.includes('session=')) {
+        const params = new URLSearchParams(hash.substring(1));
+        const token = params.get('session');
+        if (token) {
+            localStorage.setItem('clawops_session_token', token);
+            const email = params.get('email');
+            if (email) localStorage.setItem('clawops_email', email);
+        }
+        history.replaceState(null, '', window.location.pathname);
+    }
+    // Check we have a token, otherwise redirect to login
+    if (!localStorage.getItem('clawops_session_token')) {
+        window.location.href = '/?login=true';
+    }
+})();
+</script>
 <script src="/js/admin.js"></script>
 </body>
 </html>

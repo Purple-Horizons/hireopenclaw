@@ -307,13 +307,8 @@ app.get('/dashboard', (req, res, next) => {
   next();
 });
 
-// Admin dashboard — auth checked client-side (same pattern as /dashboard)
+// Admin dashboard — auth checked client-side via localStorage token
 app.get('/admin', (req, res) => {
-  const cookies = req.headers.cookie || '';
-  const hasSession = cookies.includes('session=');
-  if (!hasSession) {
-    return res.redirect('/?login=true');
-  }
   res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
