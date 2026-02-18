@@ -266,10 +266,12 @@ function createApp() {
   const authRouter = require('../api-local/routes/auth.js');
   const dashboardRouter = require('../api-local/routes/dashboard.js');
   const adminRouter = require('../api-local/routes/admin.js');
+  const settingsRouter = require('../api-local/routes/settings.js');
 
   a.use('/api/auth', authRouter);
   a.use('/api/dashboard', dashboardRouter);
   a.use('/api/admin', adminRouter);
+  a.use('/api/settings', settingsRouter);
 
   const magicLinkHandler = require('../api-local/auth/magic-link.js');
   a.get('/auth/verify', (req, res) => {
@@ -568,6 +570,24 @@ describe('POST /api/dashboard/create-bot', () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/template/i);
   });
+
+  test('rejects tenant takeover when tenant belongs to another user', async () => {
+    seedTenant('tenant-foreign-1', 'other@example.com', { name: 'Other Bot' });
+    const sessionToken = await createSession('client@example.com');
+
+    const res = await request(app)
+      .post('/api/dashboard/create-bot')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({
+        tenantId: 'tenant-foreign-1',
+        botName: 'TakeoverAttempt',
+        template: 'blank',
+        plan: 'starter',
+      });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/access denied/i);
+  });
 });
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -658,7 +678,54 @@ describe('GET /api/admin/clients', () => {
 });
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 8. POST /api/admin/impersonate
+// 8. /api/settings/*
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+describe('/api/settings/* auth + ownership', () => {
+  test('requires session for API key list', async () => {
+    const res = await request(app).get('/api/settings/api-keys');
+    expect(res.status).toBe(401);
+  });
+
+  test('rejects revoking API key owned by another user', async () => {
+    mockDB.set('clawops-api-keys:key-foreign', mockDynamoItem({
+      keyId: 'key-foreign',
+      email: 'owner@example.com',
+      name: 'Owner Key',
+      active: true,
+      createdAt: new Date().toISOString(),
+    }));
+    const sessionToken = await createSession('attacker@example.com');
+
+    const res = await request(app)
+      .delete('/api/settings/api-keys')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({ keyId: 'key-foreign' });
+
+    expect(res.status).toBe(404);
+  });
+
+  test('allows revoking own API key', async () => {
+    mockDB.set('clawops-api-keys:key-own', mockDynamoItem({
+      keyId: 'key-own',
+      email: 'owner@example.com',
+      name: 'Owner Key',
+      active: true,
+      createdAt: new Date().toISOString(),
+    }));
+    const sessionToken = await createSession('owner@example.com');
+
+    const res = await request(app)
+      .delete('/api/settings/api-keys')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({ keyId: 'key-own' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+  });
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 9. POST /api/admin/impersonate
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 describe('POST /api/admin/impersonate', () => {
   test('admin can impersonate a client', async () => {

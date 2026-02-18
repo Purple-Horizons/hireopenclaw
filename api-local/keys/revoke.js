@@ -37,7 +37,7 @@ module.exports = async (req, res) => {
       ExpressionAttributeNames: { '#s': 'status' },
       ExpressionAttributeValues: {
         ':revoked': 'revoked',
-        ':now': Date.now()
+        ':now': new Date().toISOString()
       }
     }));
 

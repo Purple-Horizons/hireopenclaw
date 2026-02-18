@@ -10,7 +10,7 @@
  * - invoice.payment_failed → Alert
  */
 
-const { QueryCommand, UpdateCommand, GetCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
+const { QueryCommand, ScanCommand, UpdateCommand, GetCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
 const { docClient: db, TABLES } = require('../util/dynamodb.js');
 
 module.exports = async (req, res) => {
@@ -92,6 +92,13 @@ module.exports = async (req, res) => {
         const subscription = event.data.object;
         const customerId = subscription.customer;
         const status = subscription.status; // active, past_due, canceled, etc.
+        const subscriptionId = subscription.id;
+
+        await updateTenantsByCustomerId(customerId, {
+          stripeSubscriptionId: subscriptionId,
+          billingStatus: status,
+          updatedAt: new Date().toISOString(),
+        });
 
         console.log(`🔄 Subscription updated for ${customerId}: ${status}`);
         break;
@@ -100,10 +107,15 @@ module.exports = async (req, res) => {
       case 'customer.subscription.deleted': {
         const subscription = event.data.object;
         const customerId = subscription.customer;
+        const subscriptionId = subscription.id;
 
         console.log(`❌ Subscription cancelled for ${customerId}`);
-        
-        // TODO: Downgrade bots to free tier or pause them
+
+        await updateTenantsByCustomerId(customerId, {
+          stripeSubscriptionId: subscriptionId,
+          billingStatus: 'canceled',
+          updatedAt: new Date().toISOString(),
+        });
         break;
       }
 
@@ -115,9 +127,13 @@ module.exports = async (req, res) => {
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object;
-        console.log(`⚠️ Payment failed for ${invoice.customer}`);
-        
-        // TODO: Send alert to admin, notify customer
+        const customerId = invoice.customer;
+        console.log(`⚠️ Payment failed for ${customerId}`);
+
+        await updateTenantsByCustomerId(customerId, {
+          billingStatus: 'past_due',
+          updatedAt: new Date().toISOString(),
+        });
         break;
       }
 
@@ -170,5 +186,44 @@ async function markEventProcessed(eventId, eventType) {
       return;
     }
     throw err;
+  }
+}
+
+async function updateTenantsByCustomerId(customerId, fields) {
+  if (!customerId) return;
+  const result = await db.send(new ScanCommand({
+    TableName: TABLES.TENANTS,
+    FilterExpression: 'stripeCustomerId = :cid',
+    ExpressionAttributeValues: { ':cid': customerId },
+  }));
+
+  const items = result.Items || [];
+  for (const item of items) {
+    const updates = [];
+    const values = {};
+    const names = {};
+
+    if (fields.stripeSubscriptionId !== undefined) {
+      updates.push('stripeSubscriptionId = :sid');
+      values[':sid'] = fields.stripeSubscriptionId;
+    }
+    if (fields.billingStatus !== undefined) {
+      updates.push('billingStatus = :status');
+      values[':status'] = fields.billingStatus;
+    }
+    if (fields.updatedAt !== undefined) {
+      updates.push('#updatedAt = :updatedAt');
+      names['#updatedAt'] = 'updatedAt';
+      values[':updatedAt'] = fields.updatedAt;
+    }
+    if (!updates.length) continue;
+
+    await db.send(new UpdateCommand({
+      TableName: TABLES.TENANTS,
+      Key: { tenantId: item.tenantId },
+      UpdateExpression: `SET ${updates.join(', ')}`,
+      ...(Object.keys(names).length ? { ExpressionAttributeNames: names } : {}),
+      ExpressionAttributeValues: values,
+    }));
   }
 }

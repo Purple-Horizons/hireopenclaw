@@ -54,20 +54,36 @@ function createMagicLink(email) {
 }
 
 async function sendMagicLinkEmail(email, magicLink) {
-  // TODO: Integrate with Resend or SES
-  // For now, just log it
-  console.log(`\n🔗 Magic Link for ${email}:`);
-  console.log(`   ${magicLink}`);
-  console.log(`   Expires in 15 minutes\n`);
-  
-  // In production, send actual email:
-  // await resend.emails.send({
-  //   from: 'ClawOps <noreply@hireopenclaw.com>',
-  //   to: email,
-  //   subject: 'Your ClawOps login link',
-  //   html: `<p>Click here to log in: <a href="${magicLink}">${magicLink}</a></p>`
-  // });
-  
+  const resendApiKey = process.env.RESEND_API_KEY;
+
+  // Always log in non-production for local debugging/CLI workflows.
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`\n🔗 Magic Link for ${email}:`);
+    console.log(`   ${magicLink}`);
+    console.log(`   Expires in 15 minutes\n`);
+  }
+
+  if (resendApiKey) {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${resendApiKey}`,
+      },
+      body: JSON.stringify({
+        from: 'ClawOps <noreply@hireopenclaw.com>',
+        to: email,
+        subject: 'Your ClawOps login link',
+        html: `<p>Click here to sign in: <a href="${magicLink}">${magicLink}</a></p><p>This link expires in 15 minutes.</p>`,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Resend request failed: ${response.status} ${errText}`);
+    }
+  }
+
   return true;
 }
 

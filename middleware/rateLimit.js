@@ -68,7 +68,8 @@ async function rateLimitMiddleware(req, res, next) {
       });
     }
 
-    if (apiKey.expiresAt && apiKey.expiresAt < Date.now()) {
+    const expiresAtMs = toEpochMs(apiKey.expiresAt);
+    if (expiresAtMs && expiresAtMs < Date.now()) {
       return res.status(401).json({ 
         error: 'Unauthorized',
         message: 'API key expired'
@@ -158,11 +159,18 @@ async function updateLastUsed(keyId) {
       TableName: 'clawops-api-keys',
       Key: { keyId },
       UpdateExpression: 'SET lastUsedAt = :now',
-      ExpressionAttributeValues: { ':now': Date.now() }
+      ExpressionAttributeValues: { ':now': new Date().toISOString() }
     }));
   } catch (error) {
     console.error('Update lastUsedAt error:', error);
   }
+}
+
+function toEpochMs(value) {
+  if (!value) return 0;
+  if (typeof value === 'number') return value;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 module.exports = rateLimitMiddleware;

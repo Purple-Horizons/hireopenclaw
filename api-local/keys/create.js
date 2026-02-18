@@ -53,6 +53,10 @@ module.exports = async (req, res) => {
     const env = process.env.NODE_ENV === 'production' ? 'live' : 'test';
     const { publicKey, secretKey } = generateKeyPair(env);
     const keyId = `key-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+    const nowIso = new Date().toISOString();
+    const expiresAtIso = expiresIn
+      ? new Date(Date.now() + (expiresIn * 1000)).toISOString()
+      : null;
 
     // Create API key record
     const apiKey = {
@@ -68,9 +72,9 @@ module.exports = async (req, res) => {
         window: 3600 // 1 hour
       },
       status: 'active',
-      createdAt: Date.now(),
+      createdAt: nowIso,
       lastUsedAt: null,
-      expiresAt: expiresIn ? Date.now() + (expiresIn * 1000) : null
+      expiresAt: expiresAtIso
     };
 
     await db.send(new PutCommand({

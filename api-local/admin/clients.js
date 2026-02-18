@@ -44,16 +44,16 @@ module.exports = async (req, res) => {
           bots: [],
           totalBots: 0,
           activeBots: 0,
-          firstSeen: createdAt,
-          lastActive: createdAt
+          firstSeen: createdAt || null,
+          lastActive: createdAt || null
         };
       }
 
       const client = clientMap[email];
       client.totalBots++;
       if (status === 'active') client.activeBots++;
-      if (createdAt && (!client.firstSeen || createdAt < client.firstSeen)) client.firstSeen = createdAt;
-      if (createdAt && (!client.lastActive || createdAt > client.lastActive)) client.lastActive = createdAt;
+      if (createdAt && (!client.firstSeen || toEpochMs(createdAt) < toEpochMs(client.firstSeen))) client.firstSeen = createdAt;
+      if (createdAt && (!client.lastActive || toEpochMs(createdAt) > toEpochMs(client.lastActive))) client.lastActive = createdAt;
 
       client.bots.push({
         tenantId,
@@ -99,3 +99,10 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: 'Failed to load clients' });
   }
 };
+
+function toEpochMs(value) {
+  if (!value) return 0;
+  if (typeof value === 'number') return value;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}

@@ -87,6 +87,7 @@ module.exports = async (req, res) => {
     const membershipId = `mem-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
     const token = crypto.randomBytes(32).toString('hex');
     const expires = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7 days
+    const nowIso = new Date().toISOString();
 
     const membership = {
       membershipId,
@@ -102,7 +103,7 @@ module.exports = async (req, res) => {
         manageTeam: role === 'admin',
         manageBots: permissions.manageBots || []
       },
-      invitedAt: Date.now(),
+      invitedAt: nowIso,
       invitedBy: userId
     };
 

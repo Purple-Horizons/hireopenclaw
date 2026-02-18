@@ -22,6 +22,7 @@ const FARGATE_COST_PER_HOUR = 0.04048; // 0.25 vCPU + 0.5 GB memory
 
 // Plan pricing — from single source of truth (TASK-149)
 const { PLAN_PRICING } = require('../data/plans.js');
+const { getUserPlan } = require('../auth/team-plan.js');
 
 function calculateCost(inputTokens, outputTokens, model = 'gpt-4o', uptimeHours = 0) {
   const modelCost = MODEL_COSTS[model] || MODEL_COSTS.default;
@@ -142,9 +143,8 @@ module.exports = async (req, res) => {
     );
     
     // Get plan and revenue
-    // TODO: Fetch real plan from user/billing record
-    const plan = 'starter';
-    const revenue = PLAN_PRICING[plan].price;
+    const plan = await getUserPlan(email);
+    const revenue = (PLAN_PRICING[plan] || PLAN_PRICING.starter).price;
     
     // Calculate margin
     const margin = revenue - costs.totalCost;

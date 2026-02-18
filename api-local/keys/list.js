@@ -36,7 +36,7 @@ module.exports = async (req, res) => {
         lastUsedAt: k.lastUsedAt,
         expiresAt: k.expiresAt
       }))
-      .sort((a, b) => b.createdAt - a.createdAt);
+      .sort((a, b) => toEpochMs(b.createdAt) - toEpochMs(a.createdAt));
 
     const nextCursor = result.LastEvaluatedKey
       ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
@@ -49,3 +49,10 @@ module.exports = async (req, res) => {
     res.status(500).json({ error: 'Failed to list API keys' });
   }
 };
+
+function toEpochMs(value) {
+  if (!value) return 0;
+  if (typeof value === 'number') return value;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
