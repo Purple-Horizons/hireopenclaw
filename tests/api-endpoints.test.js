@@ -391,7 +391,7 @@ describe('POST /api/auth/magic-link', () => {
 describe('GET /auth/verify', () => {
   test('returns session for valid token', async () => {
     tokenStore = require('../api-local/auth/token-store.js');
-    const token = 'valid-magic-token-abc123';
+    const token = 'a'.repeat(64);
     tokenStore.set(token, {
       email: 'g@purplehorizons.io',
       expiresAt: Date.now() + 15 * 60 * 1000,
@@ -413,26 +413,28 @@ describe('GET /auth/verify', () => {
 
   test('rejects expired token', async () => {
     tokenStore = require('../api-local/auth/token-store.js');
-    tokenStore.set('expired-magic-token', {
+    const token = 'b'.repeat(64);
+    tokenStore.set(token, {
       email: 'g@purplehorizons.io',
       expiresAt: Date.now() - 1000,
       used: false,
     });
 
-    const res = await request(app).get('/auth/verify?token=expired-magic-token');
+    const res = await request(app).get(`/auth/verify?token=${token}`);
     expect(res.status).toBe(401);
     expect(res.body.error).toMatch(/expired/i);
   });
 
   test('rejects already-used token', async () => {
     tokenStore = require('../api-local/auth/token-store.js');
-    tokenStore.set('used-magic-token', {
+    const token = 'c'.repeat(64);
+    tokenStore.set(token, {
       email: 'g@purplehorizons.io',
       expiresAt: Date.now() + 15 * 60 * 1000,
       used: true,
     });
 
-    const res = await request(app).get('/auth/verify?token=used-magic-token');
+    const res = await request(app).get(`/auth/verify?token=${token}`);
     expect(res.status).toBe(401);
     expect(res.body.error).toMatch(/used/i);
   });
