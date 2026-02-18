@@ -17,7 +17,7 @@ function hashKey(key) {
 }
 
 module.exports = async (req, res) => {
-    const { email } = req.query;
+    const email = req.query.email || (req.body && req.body.email);
     
     if (!email) {
         return res.status(400).json({ error: 'email is required' });
@@ -55,6 +55,7 @@ module.exports = async (req, res) => {
                 env: { 
                     ...process.env,
                     AWS_ACCESS_KEY_ID: 'test',
+                    AWS_DEFAULT_REGION: 'us-east-1',
                     AWS_SECRET_ACCESS_KEY: 'test'
                 }
             });
@@ -90,6 +91,7 @@ module.exports = async (req, res) => {
                 env: {
                     ...process.env,
                     AWS_ACCESS_KEY_ID: 'test',
+                    AWS_DEFAULT_REGION: 'us-east-1',
                     AWS_SECRET_ACCESS_KEY: 'test'
                 }
             });
@@ -141,6 +143,7 @@ module.exports = async (req, res) => {
                 env: {
                     ...process.env,
                     AWS_ACCESS_KEY_ID: 'test',
+                    AWS_DEFAULT_REGION: 'us-east-1',
                     AWS_SECRET_ACCESS_KEY: 'test'
                 }
             });
