@@ -7,7 +7,7 @@ let currentTab = 'employees';
 
 // Auth helper — adds Bearer token from localStorage to fetch options
 function authHeaders(extra = {}) {
-    const token = localStorage.getItem('sessionToken');
+    const token = localStorage.getItem('clawops_session_token');
     return token ? { 'Authorization': `Bearer ${token}`, ...extra } : { ...extra };
 }
 

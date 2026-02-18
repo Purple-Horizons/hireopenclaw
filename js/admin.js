@@ -3,7 +3,7 @@ let impersonating = null;
 
 // Auth helper — adds Bearer token from localStorage
 function authHeaders(extra = {}) {
-    const token = localStorage.getItem('sessionToken');
+    const token = localStorage.getItem('clawops_session_token');
     return token ? { 'Authorization': `Bearer ${token}`, ...extra } : { ...extra };
 }
 function authFetch(url, opts = {}) {
