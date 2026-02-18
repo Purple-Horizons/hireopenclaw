@@ -201,8 +201,8 @@ describe('Chat Proxy Auth', () => {
   test('Bearer token auth works', async () => {
     tokenStore.set('bearer123', { type: 'session', email: 'api@test.com', expiresAt: Date.now() + 60000 });
     // getEmailFromSession only checks cookies, not Bearer — that's in chat proxy
-    // This verifies cookie-only path
+    // Bearer token auth now supported as fallback
     const req = { headers: { cookie: '', authorization: 'Bearer bearer123' } };
-    expect(await getEmailFromSession(req)).toBe(null); // Cookie path only
+    expect(await getEmailFromSession(req)).toBe('api@test.com'); // Bearer fallback
   });
 });

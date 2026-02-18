@@ -18,9 +18,17 @@ const IMPERSONATION_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
  * Returns email string or null
  */
 async function getEmailFromSession(req) {
+  // Check cookie first, then Authorization header, then body
   const cookies = req.headers.cookie || '';
   const match = cookies.match(/session=([^;]+)/);
-  const sessionToken = match ? match[1] : null;
+  let sessionToken = match ? match[1] : null;
+  if (!sessionToken) {
+    const auth = req.headers.authorization || '';
+    if (auth.startsWith('Bearer ')) sessionToken = auth.slice(7);
+  }
+  if (!sessionToken && req.body?.sessionToken) {
+    sessionToken = req.body.sessionToken;
+  }
   if (!sessionToken) return null;
   const session = await tokenStore.get(sessionToken);
   if (!session || session.type !== 'session' || session.expiresAt < Date.now()) return null;

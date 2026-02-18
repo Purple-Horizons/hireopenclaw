@@ -586,7 +586,7 @@ async function botAction(tenantId, action) {
         const res = await fetch('/api/dashboard/bot-action', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tenantId, action })
+            body: JSON.stringify({ tenantId, action, sessionToken: localStorage.getItem('clawops_session_token') })
         });
         
         const data = await res.json();
@@ -1135,7 +1135,7 @@ async function saveChannelToken(botId, tokenKey, channelName) {
             }
             // Restart bot to pick up new channel config
             try {
-                await fetch(`/api/dashboard/bot-action?tenantId=${encodeURIComponent(botId)}&action=restart`, { method: 'POST' });
+                await fetch('/api/dashboard/bot-action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tenantId: botId, action: 'restart', sessionToken: localStorage.getItem('clawops_session_token') }) });
                 setTimeout(() => {
                     if (status) status.textContent = `✅ ${channelName} connected and bot restarted!`;
                     setTimeout(() => loadChannelStatus(botId), 2000);
@@ -1198,7 +1198,7 @@ async function confirmDisconnect(botId, tokenKey) {
             body: JSON.stringify({ key: tokenKey })
         });
         // Restart to remove channel
-        await fetch(`/api/dashboard/bot-action?tenantId=${encodeURIComponent(botId)}&action=restart`, { method: 'POST' });
+        await fetch('/api/dashboard/bot-action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tenantId: botId, action: 'restart', sessionToken: localStorage.getItem('clawops_session_token') }) });
         showTemporaryMessage('Channel disconnected. Bot restarting...', 'info', 3000);
         setTimeout(() => loadChannelStatus(botId), 3000);
     } catch (err) {
