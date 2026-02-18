@@ -472,17 +472,29 @@ async function loadSettingsTab() {
             <p style="color:#aaa;margin-bottom:16px;">Invite team members to manage your AI employees.</p>
             
             <div style="margin-bottom:16px;">
-                ${teamMembers.map(member => `
+                ${teamMembers.map(member => {
+                    const isPending = member.status === 'pending';
+                    const isExpired = member.status === 'expired';
+                    const isOwner = member.memberId === 'owner';
+                    const statusBadge = isPending
+                        ? '<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(255,193,7,0.15);color:#ffc107;">Pending</span>'
+                        : isExpired
+                        ? '<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(255,82,82,0.15);color:#ff5252;">Expired</span>'
+                        : '';
+                    const actionBtn = isOwner
+                        ? '<span style="color:var(--green);font-size:12px;">● You</span>'
+                        : (isPending || isExpired)
+                        ? `<button class="btn btn-danger" style="padding:6px 12px;font-size:12px;" onclick="removeTeamMember('${member.memberId}')">Revoke</button>`
+                        : `<button class="btn btn-danger" style="padding:6px 12px;font-size:12px;" onclick="removeTeamMember('${member.memberId}')">Remove</button>`;
+                    return `
                     <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;margin-bottom:8px;">
                         <div>
-                            <div style="font-weight:600;">${member.email}</div>
+                            <div style="font-weight:600;">${member.email} ${statusBadge}</div>
                             <div style="font-size:12px;color:var(--gray);text-transform:uppercase;">${member.role}</div>
                         </div>
-                        ${member.memberId !== 'owner' ? `
-                            <button class="btn btn-danger" style="padding:6px 12px;font-size:12px;" onclick="removeTeamMember('${member.memberId}')">Remove</button>
-                        ` : '<span style="color:var(--green);font-size:12px;">●  You</span>'}
-                    </div>
-                `).join('')}
+                        ${actionBtn}
+                    </div>`;
+                }).join('')}
             </div>
             
             <button class="btn btn-primary" onclick="showInviteTeamModal()">+ Invite Team Member</button>
@@ -595,7 +607,11 @@ async function showInviteTeamModal() {
 }
 
 async function removeTeamMember(memberId) {
-    const confirmed = await showConfirmDialog('Remove this team member?', 'Remove Team Member', 'Remove', 'Cancel');
+    const isInvite = memberId.startsWith('invite:');
+    const title = isInvite ? 'Revoke Invite' : 'Remove Team Member';
+    const prompt = isInvite ? 'Revoke this pending invitation?' : 'Remove this team member?';
+    const confirmBtn = isInvite ? 'Revoke' : 'Remove';
+    const confirmed = await showConfirmDialog(prompt, title, confirmBtn, 'Cancel');
     if (!confirmed) return;
     
     try {
@@ -608,13 +624,13 @@ async function removeTeamMember(memberId) {
         const data = await res.json();
         
         if (data.ok) {
-            showToast('Team member removed', 'success');
+            showToast(isInvite ? 'Invite revoked' : 'Team member removed', 'success');
             loadSettingsTab();
         } else {
-            showToast(`Failed to remove: ${data.error}`, 'error');
+            showToast(`Failed: ${data.error}`, 'error');
         }
     } catch (err) {
-        showToast('Failed to remove team member', 'error');
+        showToast(isInvite ? 'Failed to revoke invite' : 'Failed to remove team member', 'error');
     }
 }
 
