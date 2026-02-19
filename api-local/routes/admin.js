@@ -3,6 +3,9 @@
  * Auth matrix: ALL routes require requireAdmin (admin-only access)
  *   GET  /clients           — requireAdmin (in handler)
  *   GET  /clients/:email    — requireAdmin (in handler)
+ *   PATCH /clients/:email   — requireAdmin (in handler)
+ *   PATCH /clients/:email/tenants/:tenantId — requireAdmin (in handler)
+ *   DELETE /clients/:email/tenants/:tenantId — requireAdmin (in handler)
  *   ALL  /bots/:tenantId    — requireAdmin (in handler)
  *   POST /bots/:tenantId/backup  — requireAdmin (in handler)
  *   GET  /bots/:tenantId/backups — requireAdmin (in handler)
@@ -27,6 +30,9 @@ const wrap = (fn) => async (req, res) => {
 
 router.get('/clients', wrap(adminClients));
 router.get('/clients/:email', wrap(adminClients));
+router.patch('/clients/:email', wrap(adminClients));
+router.patch('/clients/:email/tenants/:tenantId', wrap(adminClients));
+router.delete('/clients/:email/tenants/:tenantId', wrap(adminClients));
 router.all('/bots/:tenantId', wrap(adminBots));
 router.post('/bots/:tenantId/backup', wrap(handleAdminBackup));
 router.get('/bots/:tenantId/backups', wrap(handleAdminBackup));

@@ -55,10 +55,10 @@ async function inspectContainer(containerName) {
   };
 }
 
-async function getContainerConfig(containerName, filePath) {
+async function execInContainer(containerName, cmd, { allowNonZero = false } = {}) {
   const container = docker.getContainer(containerName);
   const exec = await container.exec({
-    Cmd: ['cat', filePath],
+    Cmd: cmd,
     AttachStdout: true,
     AttachStderr: true,
   });
@@ -77,10 +77,10 @@ async function getContainerConfig(containerName, filePath) {
     stream.on('end', async () => {
       try {
         const meta = await exec.inspect();
-        if (meta.ExitCode !== 0) {
-          return reject(new Error(stderr.trim() || `cat failed for ${filePath}`));
+        if (!allowNonZero && meta.ExitCode !== 0) {
+          return reject(new Error(stderr.trim() || `${cmd.join(' ')} failed`));
         }
-        resolve(stdout);
+        resolve({ stdout, stderr, exitCode: meta.ExitCode });
       } catch (err) {
         reject(err);
       }
@@ -89,4 +89,33 @@ async function getContainerConfig(containerName, filePath) {
   });
 }
 
-module.exports = { docker, getContainer, restartContainer, pauseContainer, unpauseContainer, stopContainer, getContainerLogs, inspectContainer, getContainerConfig };
+async function getContainerConfig(containerName, filePath) {
+  const result = await execInContainer(containerName, ['cat', filePath]);
+  return result.stdout;
+}
+
+async function discoverConfigPaths(containerName) {
+  const probe = await execInContainer(
+    containerName,
+    ['sh', '-lc', 'for d in /app /root /home; do if [ -d "$d" ]; then find "$d" -maxdepth 6 -name "openclaw.json" 2>/dev/null; fi; done | head -n 20'],
+    { allowNonZero: true }
+  );
+  return probe.stdout
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+module.exports = {
+  docker,
+  getContainer,
+  restartContainer,
+  pauseContainer,
+  unpauseContainer,
+  stopContainer,
+  getContainerLogs,
+  inspectContainer,
+  execInContainer,
+  getContainerConfig,
+  discoverConfigPaths
+};

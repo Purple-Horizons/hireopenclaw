@@ -22,15 +22,25 @@ const { PutItemCommand, QueryCommand, GetItemCommand, DeleteItemCommand } = requ
 const { marshall, unmarshall } = require('@aws-sdk/util-dynamodb');
 const { client: dynamodb, TABLES } = require('../util/dynamodb.js');
 
-const S3_BUCKET = 'clawops-backups';
-const BACKUP_TABLE = 'clawops-backups';
-const EP = process.env.AWS_ENDPOINT_URL || 'http://localhost:4566';
+const S3_BUCKET = process.env.BACKUP_S3_BUCKET || 'clawops-backups';
+const BACKUP_TABLE = TABLES.BACKUPS || 'clawops-backups';
+const EP = process.env.AWS_ENDPOINT_URL || '';
+const AWS_REGION = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'us-east-1';
+const USE_LOCAL_ENDPOINT = Boolean(EP);
+const SHOULD_AUTO_INIT_BACKUP_STORAGE = USE_LOCAL_ENDPOINT || process.env.BACKUP_AUTO_INIT === 'true';
 
-const ENV = {
-  ...process.env,
-  AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID || 'test',
-  AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY || 'test'
-};
+const ENV = { ...process.env };
+if (USE_LOCAL_ENDPOINT) {
+  ENV.AWS_ACCESS_KEY_ID = ENV.AWS_ACCESS_KEY_ID || 'test';
+  ENV.AWS_SECRET_ACCESS_KEY = ENV.AWS_SECRET_ACCESS_KEY || 'test';
+}
+
+function awsCliArgs(args) {
+  const out = [...args];
+  if (USE_LOCAL_ENDPOINT) out.push('--endpoint-url', EP);
+  if (!out.includes('--region')) out.push('--region', AWS_REGION);
+  return out;
+}
 
 // Files/dirs to backup from bot workspace
 const BACKUP_PATHS = [
@@ -48,29 +58,30 @@ const BACKUP_PATHS = [
 
 function ensureBucket() {
   try {
-    execFileSync('aws', ['s3', 'mb', `s3://${S3_BUCKET}`, '--endpoint-url', EP], { encoding: 'utf8', env: ENV, stdio: 'pipe' });
+    execFileSync('aws', awsCliArgs(['s3', 'mb', `s3://${S3_BUCKET}`]), { encoding: 'utf8', env: ENV, stdio: 'pipe' });
   } catch (err) { /* Bucket may already exist */ }
 }
 
 function ensureTable() {
   try {
-    execFileSync('aws', ['dynamodb', 'describe-table', '--table-name', BACKUP_TABLE, '--endpoint-url', EP, '--region', 'us-east-1'], { encoding: 'utf8', env: ENV, stdio: 'pipe' });
+    execFileSync('aws', awsCliArgs(['dynamodb', 'describe-table', '--table-name', BACKUP_TABLE]), { encoding: 'utf8', env: ENV, stdio: 'pipe' });
   } catch {
     try {
-      execFileSync('aws', [
+      execFileSync('aws', awsCliArgs([
         'dynamodb', 'create-table', '--table-name', BACKUP_TABLE,
         '--attribute-definitions', 'AttributeName=tenantId,AttributeType=S', 'AttributeName=backupId,AttributeType=S',
         '--key-schema', 'AttributeName=tenantId,KeyType=HASH', 'AttributeName=backupId,KeyType=RANGE',
-        '--provisioned-throughput', 'ReadCapacityUnits=5,WriteCapacityUnits=5',
-        '--endpoint-url', EP, '--region', 'us-east-1'
-      ], { encoding: 'utf8', env: ENV, stdio: 'pipe' });
+        '--provisioned-throughput', 'ReadCapacityUnits=5,WriteCapacityUnits=5'
+      ]), { encoding: 'utf8', env: ENV, stdio: 'pipe' });
     } catch (err) { console.error('[Backup] Failed to create backup table:', err.message); }
   }
 }
 
-// Initialize
-ensureBucket();
-ensureTable();
+// Initialize only for explicit local/dev endpoint or when forced.
+if (SHOULD_AUTO_INIT_BACKUP_STORAGE) {
+  ensureBucket();
+  ensureTable();
+}
 
 async function createBackup(tenantId, triggeredBy, reason) {
   if (!validateTenantId(tenantId)) throw new Error('Invalid tenantId format');
@@ -105,7 +116,7 @@ async function createBackup(tenantId, triggeredBy, reason) {
   const sizeBytes = stats.size;
 
   // Upload to S3
-  execFileSync('aws', ['s3', 'cp', tmpPath, `s3://${S3_BUCKET}/${s3Key}`, '--endpoint-url', EP, '--region', 'us-east-1'], { encoding: 'utf8', env: ENV });
+  execFileSync('aws', awsCliArgs(['s3', 'cp', tmpPath, `s3://${S3_BUCKET}/${s3Key}`]), { encoding: 'utf8', env: ENV });
 
   // Clean up tmp
   try { require('fs').unlinkSync(tmpPath); } catch (err) { /* cleanup failed */ }
@@ -168,7 +179,7 @@ async function restoreBackup(tenantId, backupId, triggeredBy) {
   const tmpPath = `/tmp/${backupId}-restore.tar.gz`;
 
   // Download from S3
-  execFileSync('aws', ['s3', 'cp', `s3://${S3_BUCKET}/${s3Key}`, tmpPath, '--endpoint-url', EP, '--region', 'us-east-1'], { encoding: 'utf8', env: ENV });
+  execFileSync('aws', awsCliArgs(['s3', 'cp', `s3://${S3_BUCKET}/${s3Key}`, tmpPath]), { encoding: 'utf8', env: ENV });
 
   // Copy into container
   execFileSync('docker', ['cp', tmpPath, `${containerName}:/tmp/restore.tar.gz`], { encoding: 'utf8', env: ENV });
@@ -200,11 +211,7 @@ async function deleteBackup(tenantId, backupId, triggeredBy) {
   const item = unmarshall(existing.Item);
   const s3Key = item.s3Key || `${tenantId}/${backupId}.tar.gz`;
 
-  execFileSync('aws', [
-    's3', 'rm', `s3://${S3_BUCKET}/${s3Key}`,
-    '--endpoint-url', EP,
-    '--region', 'us-east-1'
-  ], { encoding: 'utf8', env: ENV });
+  execFileSync('aws', awsCliArgs(['s3', 'rm', `s3://${S3_BUCKET}/${s3Key}`]), { encoding: 'utf8', env: ENV });
 
   await dynamodb.send(new DeleteItemCommand({
     TableName: BACKUP_TABLE,

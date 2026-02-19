@@ -257,6 +257,8 @@ jest.mock('../api-local/util/docker-sdk.js', () => ({
   pauseContainer: jest.fn().mockResolvedValue({}),
   unpauseContainer: jest.fn().mockResolvedValue({}),
   stopContainer: jest.fn().mockResolvedValue({}),
+  getContainerConfig: jest.fn().mockResolvedValue('{"ok":true}'),
+  discoverConfigPaths: jest.fn().mockResolvedValue([]),
 }));
 
 // Mock logger
@@ -315,6 +317,20 @@ function seedTenant(tenantId, email, opts = {}) {
     createdAt: opts.createdAt || Math.floor(Date.now() / 1000),
   });
   mockDB.set(`clawops-tenants:${tenantId}`, item);
+}
+
+function seedTeam(ownerId, opts = {}) {
+  const teamId = opts.teamId || `team-${ownerId.replace(/[^a-z0-9]/gi, '-').toLowerCase()}`;
+  const item = mockDynamoItem({
+    teamId,
+    ownerId,
+    name: opts.name || 'Client Team',
+    plan: opts.plan || 'starter',
+    seats: opts.seats || 1,
+    createdAt: opts.createdAt || new Date().toISOString(),
+    updatedAt: opts.updatedAt || new Date().toISOString(),
+  });
+  mockDB.set(`clawops-teams:${teamId}`, item);
 }
 
 async function createSession(email) {
@@ -795,6 +811,65 @@ describe('GET /api/admin/clients', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/cursor/i);
+  });
+});
+
+describe('/api/admin/clients CRUD controls', () => {
+  test('admin updates team details for a client', async () => {
+    const sessionToken = await createSession('g@purplehorizons.io');
+    seedTenant('tenant-crud-1', 'client@example.com');
+    seedTeam('client@example.com', { plan: 'starter', seats: 2 });
+
+    const res = await request(app)
+      .patch('/api/admin/clients/client@example.com')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({
+        team: { name: 'Client Team Updated', plan: 'pro', seats: 5 },
+        adminNotes: 'Reviewed by admin',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.team).toBeDefined();
+  });
+
+  test('admin updates tenant metadata for a client', async () => {
+    const sessionToken = await createSession('g@purplehorizons.io');
+    seedTenant('tenant-crud-2', 'client@example.com', { name: 'Old Name', status: 'active', health: 'healthy' });
+
+    const res = await request(app)
+      .patch('/api/admin/clients/client@example.com/tenants/tenant-crud-2')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({ name: 'New Name', status: 'paused', healthStatus: 'unhealthy' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+  });
+
+  test('admin archives a tenant for a client', async () => {
+    const sessionToken = await createSession('g@purplehorizons.io');
+    seedTenant('tenant-crud-3', 'client@example.com');
+
+    const res = await request(app)
+      .delete('/api/admin/clients/client@example.com/tenants/tenant-crud-3')
+      .set('Cookie', `session=${sessionToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.archived).toBe(true);
+  });
+
+  test('rejects invalid tenant status update', async () => {
+    const sessionToken = await createSession('g@purplehorizons.io');
+    seedTenant('tenant-crud-4', 'client@example.com');
+
+    const res = await request(app)
+      .patch('/api/admin/clients/client@example.com/tenants/tenant-crud-4')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({ status: 'invalid-status' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/status/i);
   });
 });
 

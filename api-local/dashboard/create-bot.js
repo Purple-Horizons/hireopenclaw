@@ -1,5 +1,5 @@
 /**
- * Create Bot API - LocalStack Version  
+ * Create Bot API
  * POST /api/dashboard/create-bot
  * Provisions a new bot via MasterControl
  */
@@ -9,6 +9,8 @@ const { promisify } = require('util');
 
 const execFileAsync = promisify(execFile);
 
+const CLAWOPS_BIN = process.env.CLAWOPS_BIN || 'clawops';
+const CLAWOPS_PROVISION_TIMEOUT_MS = Number(process.env.CLAWOPS_PROVISION_TIMEOUT_MS || 120000);
 
 const { requireAuth } = require('../auth/middleware.js');
 const { canCreateBot, getUserPlan } = require('../auth/team-plan.js');
@@ -141,14 +143,24 @@ module.exports = async (req, res) => {
 
     console.log(`[Create Bot] Updated tenant record: ${finalTenantId}`);
 
-    // Call MasterControl to provision bot locally
-    const clawopsPath = '/Users/giannidalerta/.openclaw/workspace/repos/clawops';
-
     console.log(`[Create Bot] Provisioning ${finalTenantId}...`);
 
     try {
+      const provisionEnv = {
+        ...process.env,
+        DYNAMODB_TABLE: process.env.DYNAMODB_TABLE || TABLES.TENANTS || 'clawops-tenants',
+        S3_BUCKET: process.env.S3_BUCKET || 'clawops-artifacts'
+      };
+
+      // When explicitly targeting a local AWS endpoint, supply local credentials defaults.
+      if (provisionEnv.AWS_ENDPOINT_URL) {
+        provisionEnv.AWS_ACCESS_KEY_ID = provisionEnv.AWS_ACCESS_KEY_ID || 'test';
+        provisionEnv.AWS_SECRET_ACCESS_KEY = provisionEnv.AWS_SECRET_ACCESS_KEY || 'test';
+        provisionEnv.AWS_DEFAULT_REGION = provisionEnv.AWS_DEFAULT_REGION || 'us-east-1';
+      }
+
       const { stdout, stderr } = await execFileAsync(
-        '/opt/homebrew/bin/clawops',
+        CLAWOPS_BIN,
         [
           'provision',
           '--tenant-id', finalTenantId,
@@ -159,25 +171,17 @@ module.exports = async (req, res) => {
           '--mode', 'managed'
         ],
         {
-          timeout: 120000,
-          env: {
-            ...process.env,
-            AWS_ENDPOINT_URL: 'http://localhost:4566',
-            AWS_ACCESS_KEY_ID: 'test',
-            AWS_SECRET_ACCESS_KEY: 'test',
-            AWS_DEFAULT_REGION: 'us-east-1',
-            DYNAMODB_TABLE: 'clawops-tenants',
-            S3_BUCKET: 'clawops-artifacts'
-          }
+          timeout: CLAWOPS_PROVISION_TIMEOUT_MS,
+          env: provisionEnv
         }
       );
 
       console.log('[Create Bot] Provision output:', stdout);
       if (stderr) console.error('[Create Bot] Provision errors:', stderr);
 
-      // Parse endpoint from provision output (format: "  ✓ Endpoint registered: http://localhost:XXXXX")
-      const endpointMatch = stdout.match(/Endpoint registered:\s+(http:\/\/localhost:\d+)/);
-      const endpoint = endpointMatch ? endpointMatch[1] : `http://localhost:18791`;
+      // Parse endpoint from provision output if present.
+      const endpointMatch = stdout.match(/Endpoint registered:\s+(\S+)/);
+      const endpoint = endpointMatch ? endpointMatch[1] : null;
 
       // Update status to active
       await docClient.send(new UpdateCommand({
@@ -201,7 +205,7 @@ module.exports = async (req, res) => {
         botName,
         status: 'active',
         message: 'Bot provisioned successfully',
-        endpoint
+        endpoint: endpoint || undefined
       });
 
     } catch (provisionError) {

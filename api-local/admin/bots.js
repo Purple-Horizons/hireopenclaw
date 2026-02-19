@@ -5,7 +5,7 @@
  * GET /api/admin/bots/:tenantId/config — Get bot's openclaw.json
  */
 
-const { restartContainer, getContainerLogs, inspectContainer, getContainerConfig } = require('../util/docker-sdk.js');
+const { restartContainer, getContainerLogs, inspectContainer, getContainerConfig, discoverConfigPaths } = require('../util/docker-sdk.js');
 const logger = require('../util/logger.js');
 const { requireAdmin } = require('../auth/middleware.js');
 const { validateTenantId, validateLines } = require('../util/validate.js');
@@ -36,11 +36,22 @@ module.exports = async (req, res) => {
       }
 
       case 'config': {
-        const candidatePaths = [
+        const basePaths = [
           '/app/.openclaw/openclaw.json',
           '/app/openclaw.json',
           '/app/.openclaw/config/openclaw.json',
         ];
+        let candidatePaths = [...basePaths];
+
+        // Probe for non-standard container layouts before failing.
+        try {
+          const discovered = await discoverConfigPaths(containerName);
+          for (const path of discovered) {
+            if (!candidatePaths.includes(path)) candidatePaths.push(path);
+          }
+        } catch (err) {
+          logger.warn('admin', 'Config discovery probe failed', { tenantId, error: err.message });
+        }
 
         let configRaw = null;
         let foundPath = null;

@@ -1,5 +1,9 @@
 let allClients = [];
 let impersonating = null;
+let activeClientEmail = null;
+const PLAN_OPTIONS = ['starter', 'pro', 'team', 'agency', 'enterprise'];
+const STATUS_OPTIONS = ['active', 'paused', 'terminated', 'provisioning', 'error'];
+const HEALTH_OPTIONS = ['healthy', 'unhealthy', 'pending', 'unknown'];
 
 // Auth helper — adds Bearer token from localStorage
 function authHeaders(extra = {}) {
@@ -23,6 +27,27 @@ function formatUsd(value) {
     const n = Number(value || 0);
     if (n > 0 && n < 0.01) return '<$0.01';
     return `$${n.toFixed(2)}`;
+}
+
+function escapeHtml(input) {
+    return String(input ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+function safeId(value) {
+    return String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function openModal(title, mode = 'text') {
+    document.getElementById('logTitle').textContent = title;
+    const body = document.getElementById('logBody');
+    body.classList.toggle('rich', mode === 'rich');
+    body.textContent = 'Loading...';
+    document.getElementById('logModal').classList.add('open');
 }
 
 async function loadClients() {
@@ -102,8 +127,8 @@ function renderClients(clients) {
                     <span>First: ${c.firstSeen ? new Date(c.firstSeen).toLocaleDateString() : '—'}</span>
                     <span>Last: ${c.lastActive ? new Date(c.lastActive).toLocaleDateString() : '—'}</span>
                 </div>
-                <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();viewClientDetails('${c.email.replace(/'/g, "\\'")}')">📄 Details</button>
-                <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();impersonate('${c.email}')">👁 View as</button>
+                <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();viewClientDetails(decodeURIComponent('${encodeURIComponent(c.email)}'))">🧩 Manage</button>
+                <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();impersonate(decodeURIComponent('${encodeURIComponent(c.email)}'))">👁 View as</button>
                 <span class="expand-icon">▶</span>
             </div>
             <div class="client-bots" id="bots-${btoa(c.email)}">
@@ -162,9 +187,7 @@ function filterClients() {
 // ─── Bot actions ───
 
 async function viewLogs(tenantId) {
-    document.getElementById('logTitle').textContent = `Logs — ${tenantId}`;
-    document.getElementById('logBody').textContent = 'Loading...';
-    document.getElementById('logModal').classList.add('open');
+    openModal(`Logs — ${tenantId}`, 'text');
 
     try {
         const res = await authFetch(`/api/admin/bots/${tenantId}?action=logs&lines=100`);
@@ -176,15 +199,14 @@ async function viewLogs(tenantId) {
 }
 
 async function viewConfig(tenantId) {
-    document.getElementById('logTitle').textContent = `Config — ${tenantId}`;
-    document.getElementById('logBody').textContent = 'Loading...';
-    document.getElementById('logModal').classList.add('open');
+    openModal(`Config — ${tenantId}`, 'text');
 
     try {
         const res = await authFetch(`/api/admin/bots/${tenantId}?action=config`);
         const data = await res.json();
         if (!data.ok) {
-            document.getElementById('logBody').textContent = `Error: ${data.error || 'Unable to load config'}`;
+            const detail = data.detail ? `\nDetail: ${data.detail}` : '';
+            document.getElementById('logBody').textContent = `Error: ${data.error || 'Unable to load config'}${detail}`;
             return;
         }
         const header = data.path ? `Path: ${data.path}\n\n` : '';
@@ -201,9 +223,8 @@ async function viewConfig(tenantId) {
 }
 
 async function viewClientDetails(email) {
-    document.getElementById('logTitle').textContent = `Client Details — ${email}`;
-    document.getElementById('logBody').textContent = 'Loading...';
-    document.getElementById('logModal').classList.add('open');
+    activeClientEmail = email;
+    openModal(`Client Manager — ${email}`, 'rich');
 
     try {
         const res = await authFetch(`/api/admin/clients/${encodeURIComponent(email)}`);
@@ -215,41 +236,175 @@ async function viewClientDetails(email) {
 
         const c = data.client;
         const team = data.team || {};
-        const detailHtml = `
-            <div style="display:grid;gap:10px;line-height:1.5;">
-                <div style="padding:10px;border:1px solid #333;border-radius:8px;">
-                    <div><strong>Email:</strong> ${c.email}</div>
-                    <div><strong>Total bots:</strong> ${c.totalBots}</div>
-                    <div><strong>Active bots:</strong> ${c.activeBots}</div>
-                    <div><strong>First seen:</strong> ${c.firstSeen ? new Date(c.firstSeen).toLocaleString() : '—'}</div>
-                    <div><strong>Last active:</strong> ${c.lastActive ? new Date(c.lastActive).toLocaleString() : '—'}</div>
-                    <div><strong>Monthly usage:</strong> ${formatCompactNumber(c.usageMonth?.tokens || 0)} tokens, ${formatCompactNumber(c.usageMonth?.messages || 0)} messages, ${formatUsd(c.usageMonth?.cost || 0)}</div>
-                </div>
-                <div style="padding:10px;border:1px solid #333;border-radius:8px;">
-                    <div><strong>Team ID:</strong> ${team.teamId || '—'}</div>
-                    <div><strong>Team Name:</strong> ${team.name || '—'}</div>
-                    <div><strong>Plan:</strong> ${team.plan || '—'}</div>
-                    <div><strong>Seats:</strong> ${team.seats ?? '—'}</div>
-                    <div><strong>Created:</strong> ${team.createdAt ? new Date(team.createdAt).toLocaleString() : '—'}</div>
-                    <div><strong>Last login:</strong> ${team.lastLoginAt ? new Date(team.lastLoginAt).toLocaleString() : 'Not available'}</div>
-                </div>
-                <div style="padding:10px;border:1px solid #333;border-radius:8px;">
-                    <div style="font-weight:700;margin-bottom:6px;">Tenant Instances</div>
-                    ${(c.bots || []).map(b => `
-                        <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr 1fr;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:12px;">
-                            <span>${b.name || b.tenantId}</span>
-                            <span>${b.status}</span>
-                            <span>${formatCompactNumber(b.usageMonth?.tokens || 0)} tok</span>
-                            <span>${formatCompactNumber(b.usageMonth?.messages || 0)} msg</span>
-                            <span>${formatUsd(b.usageMonth?.cost || 0)}</span>
+        const encodedEmail = encodeURIComponent(email);
+        const planValue = (team.plan || '').toLowerCase();
+        const planOptions = PLAN_OPTIONS.map(p => `<option value="${p}" ${p === planValue ? 'selected' : ''}>${p.toUpperCase()}</option>`).join('');
+        const tenantRows = (c.bots || []).map((bot) => {
+            const rowId = safeId(bot.tenantId);
+            const encodedTenant = encodeURIComponent(bot.tenantId);
+            const statusOptions = STATUS_OPTIONS.map(s => `<option value="${s}" ${bot.status === s ? 'selected' : ''}>${s}</option>`).join('');
+            const healthValue = bot.health || 'unknown';
+            const healthOptions = HEALTH_OPTIONS.map(s => `<option value="${s}" ${healthValue === s ? 'selected' : ''}>${s}</option>`).join('');
+            return `
+                <tr>
+                    <td>
+                        <div style="font-weight:600;">${escapeHtml(bot.tenantId)}</div>
+                        <div class="detail-meta">${escapeHtml(bot.endpoint || 'no endpoint')}</div>
+                    </td>
+                    <td><input class="crud-input" id="tenant-name-${rowId}" value="${escapeHtml(bot.name || bot.tenantId)}"></td>
+                    <td><select class="crud-select" id="tenant-status-${rowId}">${statusOptions}</select></td>
+                    <td><select class="crud-select" id="tenant-health-${rowId}">${healthOptions}</select></td>
+                    <td>${formatCompactNumber(bot.usageMonth?.tokens || 0)} tok</td>
+                    <td>${formatCompactNumber(bot.usageMonth?.messages || 0)} msg</td>
+                    <td>${formatUsd(bot.usageMonth?.cost || 0)}</td>
+                    <td>
+                        <div class="row-actions">
+                            <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;" onclick="saveTenantChanges('${encodedEmail}','${encodedTenant}','${rowId}')">Save</button>
+                            <button class="btn btn-danger" style="padding:4px 8px;font-size:11px;" onclick="archiveTenant('${encodedEmail}','${encodedTenant}',this)">Archive</button>
                         </div>
-                    `).join('') || '<div style="color:#888;font-size:12px;">No tenant instances found.</div>'}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        const detailHtml = `
+            <div class="detail-grid">
+                <div class="detail-card">
+                    <div class="detail-title">Customer Snapshot</div>
+                    <div class="detail-meta"><strong>Email:</strong> ${escapeHtml(c.email)}</div>
+                    <div class="detail-meta"><strong>Total bots:</strong> ${c.totalBots}</div>
+                    <div class="detail-meta"><strong>Active bots:</strong> ${c.activeBots}</div>
+                    <div class="detail-meta"><strong>First seen:</strong> ${c.firstSeen ? new Date(c.firstSeen).toLocaleString() : '—'}</div>
+                    <div class="detail-meta"><strong>Last active:</strong> ${c.lastActive ? new Date(c.lastActive).toLocaleString() : '—'}</div>
+                    <div class="detail-meta"><strong>Usage this month:</strong> ${formatCompactNumber(c.usageMonth?.tokens || 0)} tokens, ${formatCompactNumber(c.usageMonth?.messages || 0)} messages, ${formatUsd(c.usageMonth?.cost || 0)}</div>
+                    <div class="detail-actions">
+                        <button class="btn btn-secondary" style="padding:6px 10px;font-size:12px;" onclick="impersonate(decodeURIComponent('${encodedEmail}'))">Impersonate</button>
+                    </div>
                 </div>
+                <div class="detail-card">
+                    <div class="detail-title">Team Settings (CRUD)</div>
+                    <div class="crud-field">
+                        <label class="crud-label" for="client-team-name">Team Name</label>
+                        <input id="client-team-name" class="crud-input" value="${escapeHtml(team.name || '')}" maxlength="120">
+                    </div>
+                    <div class="crud-field">
+                        <label class="crud-label" for="client-team-plan">Plan</label>
+                        <select id="client-team-plan" class="crud-select">${planOptions}</select>
+                    </div>
+                    <div class="crud-field">
+                        <label class="crud-label" for="client-team-seats">Seats</label>
+                        <input id="client-team-seats" class="crud-input" type="number" min="1" max="1000" value="${Number.isFinite(team.seats) ? team.seats : 1}">
+                    </div>
+                    <div class="crud-field">
+                        <label class="crud-label" for="client-admin-notes">Admin Notes</label>
+                        <textarea id="client-admin-notes" class="crud-textarea" maxlength="2000">${escapeHtml(team.adminNotes || '')}</textarea>
+                    </div>
+                    <div class="detail-meta"><strong>Team ID:</strong> ${escapeHtml(team.teamId || '—')}</div>
+                    <div class="detail-meta"><strong>Last login:</strong> ${team.lastLoginAt ? new Date(team.lastLoginAt).toLocaleString() : 'Not available'}</div>
+                    <div class="detail-meta"><strong>Updated:</strong> ${team.updatedAt ? new Date(team.updatedAt).toLocaleString() : '—'} ${team.updatedBy ? `by ${escapeHtml(team.updatedBy)}` : ''}</div>
+                    <div class="detail-actions">
+                        <button class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="saveClientProfile('${encodedEmail}')">Save Team</button>
+                    </div>
+                </div>
+            </div>
+            <div class="detail-card">
+                <div class="detail-title">Tenant Instances</div>
+                <table class="crud-table">
+                    <thead>
+                        <tr>
+                            <th>Tenant</th>
+                            <th>Name</th>
+                            <th>Status</th>
+                            <th>Health</th>
+                            <th>Tokens</th>
+                            <th>Msgs</th>
+                            <th>Cost</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tenantRows || '<tr><td colspan="8" style="color:#888;">No tenant instances found.</td></tr>'}
+                    </tbody>
+                </table>
             </div>
         `;
         document.getElementById('logBody').innerHTML = detailHtml;
     } catch (err) {
         document.getElementById('logBody').textContent = `Failed: ${err.message}`;
+    }
+}
+
+async function saveClientProfile(encodedEmail) {
+    const email = decodeURIComponent(encodedEmail);
+    const teamName = document.getElementById('client-team-name')?.value?.trim();
+    const teamPlan = document.getElementById('client-team-plan')?.value;
+    const teamSeats = Number(document.getElementById('client-team-seats')?.value || 1);
+    const adminNotes = document.getElementById('client-admin-notes')?.value || '';
+
+    try {
+        const res = await authFetch(`/api/admin/clients/${encodeURIComponent(email)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                team: { name: teamName, plan: teamPlan, seats: teamSeats },
+                adminNotes
+            })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+            throw new Error(data.error || 'Failed to update client');
+        }
+        showToast('Client team updated', 'success');
+        await loadClients();
+        await viewClientDetails(email);
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+async function saveTenantChanges(encodedEmail, encodedTenantId, rowId) {
+    const email = decodeURIComponent(encodedEmail);
+    const tenantId = decodeURIComponent(encodedTenantId);
+    const name = document.getElementById(`tenant-name-${rowId}`)?.value?.trim();
+    const status = document.getElementById(`tenant-status-${rowId}`)?.value;
+    const healthStatus = document.getElementById(`tenant-health-${rowId}`)?.value;
+
+    try {
+        const res = await authFetch(`/api/admin/clients/${encodeURIComponent(email)}/tenants/${encodeURIComponent(tenantId)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, status, healthStatus })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+            throw new Error(data.error || 'Failed to update tenant');
+        }
+        showToast(`Updated ${tenantId}`, 'success');
+        await loadClients();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+async function archiveTenant(encodedEmail, encodedTenantId, btnEl) {
+    const email = decodeURIComponent(encodedEmail);
+    const tenantId = decodeURIComponent(encodedTenantId);
+    const confirmed = await inlineConfirm(btnEl.parentElement, `Archive ${tenantId}?`);
+    if (!confirmed) return;
+
+    try {
+        const res = await authFetch(`/api/admin/clients/${encodeURIComponent(email)}/tenants/${encodeURIComponent(tenantId)}`, {
+            method: 'DELETE'
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+            throw new Error(data.error || 'Failed to archive tenant');
+        }
+        showToast(`Archived ${tenantId}`, 'success');
+        await loadClients();
+        if (activeClientEmail === email) await viewClientDetails(email);
+    } catch (err) {
+        showToast(err.message, 'error');
     }
 }
 
@@ -271,6 +426,7 @@ function openChat(tenantId, name) {
 
 function closeLogModal() {
     document.getElementById('logModal').classList.remove('open');
+    activeClientEmail = null;
 }
 
 // ─── Impersonate ───
@@ -322,9 +478,7 @@ async function backupBot(tenantId) {
 }
 
 async function showBackups(tenantId) {
-    document.getElementById('logTitle').textContent = `Backups — ${tenantId}`;
-    document.getElementById('logBody').textContent = 'Loading...';
-    document.getElementById('logModal').classList.add('open');
+    openModal(`Backups — ${tenantId}`, 'rich');
 
     try {
         const res = await authFetch(`/api/admin/bots/${tenantId}/backups`);
