@@ -243,11 +243,31 @@
     <main class="content">
         <div class="container">
             <h1>Security</h1>
-            <p class="subtitle">How we keep your AI employees—and your business—protected.</p>
+            <p class="subtitle">How we secure and operate your AI employees—and your business.</p>
 
             <div class="highlight-box green">
                 <p><strong>🔒 Private-First Architecture</strong></p>
                 <p style="margin-bottom: 0;">Your AI employee talks only to you. It doesn't browse the public web, respond to strangers, or expose any attack surface. When it needs to act externally, it uses isolated accounts we create specifically for your business.</p>
+            </div>
+
+            <h2>Operating Models</h2>
+
+            <div class="highlight-box">
+                <p><strong>Managed Service (Now)</strong></p>
+                <ul style="margin-bottom: 0;">
+                    <li>We run and maintain infrastructure, orchestration, updates, and reliability.</li>
+                    <li>Operator support access is available when troubleshooting is required.</li>
+                    <li>Best for speed, simplicity, and one accountable operator.</li>
+                </ul>
+            </div>
+
+            <div class="highlight-box">
+                <p><strong>Enterprise Deployment (Contact Us)</strong></p>
+                <ul style="margin-bottom: 0;">
+                    <li>We can deploy our infrastructure management system in your environment (on-prem or private cloud).</li>
+                    <li>Supports tighter isolation boundaries and customer-defined support access paths.</li>
+                    <li>Best for control, compliance, and environment ownership requirements.</li>
+                </ul>
             </div>
 
             <h2>Our Security Principles</h2>
@@ -261,7 +281,7 @@
                 <div class="principle-card">
                     <div class="icon">🔐</div>
                     <h4>Zero-Trust Keys</h4>
-                    <p>Your AI never holds real API keys. Credentials are stored in an isolated vault and injected at the network edge. Even if compromised, nothing leaks.</p>
+                    <p>Your AI never holds real API keys. API keys and secrets are encrypted at rest, then injected at the network edge for runtime use only.</p>
                 </div>
                 <div class="principle-card">
                     <div class="icon">📦</div>
@@ -398,7 +418,7 @@
 
             <ul>
                 <li><strong>Data residency:</strong> US-based infrastructure (Cloudflare, Vercel)</li>
-                <li><strong>Encryption:</strong> TLS in transit, AES-256 at rest</li>
+                <li><strong>Encryption:</strong> TLS in transit, plus API keys and secrets encrypted at rest</li>
                 <li><strong>Data deletion:</strong> Full deletion within 30 days of cancellation (or immediately on request)</li>
                 <li><strong>No training:</strong> Your data is never used to train AI models</li>
             </ul>
