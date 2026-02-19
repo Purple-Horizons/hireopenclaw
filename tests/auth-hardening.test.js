@@ -125,7 +125,9 @@ describe('TASK-213: Stripe webhook signature verification', () => {
 
     const req = {
       headers: {},
-      body: { type: 'invoice.paid', data: { object: { id: 'inv_test', amount_paid: 1000, customer: 'cus_test' } } },
+      // Use an unhandled event type so this test validates secret handling
+      // without touching DynamoDB update paths.
+      body: { type: 'test.event', data: { object: { id: 'evt_test' } } },
     };
     const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
     const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
