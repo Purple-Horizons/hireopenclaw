@@ -2,18 +2,28 @@
  * Admin API — Client Management
  * GET /api/admin/clients — List all clients with stats
  * GET /api/admin/clients/:email — Single client detail
- * PATCH /api/admin/clients/:email — Update client team fields
+ * PATCH /api/admin/clients/:email — Update client profile/team fields
+ * GET /api/admin/clients/:email/team-members — List team members + invites
+ * POST /api/admin/clients/:email/team-members — Invite team member
+ * PATCH /api/admin/clients/:email/team-members/:memberId — Update role
+ * DELETE /api/admin/clients/:email/team-members/:memberId — Remove member/revoke invite
  * PATCH /api/admin/clients/:email/tenants/:tenantId — Update tenant metadata
  * DELETE /api/admin/clients/:email/tenants/:tenantId — Archive tenant instance
  */
 
+const crypto = require('crypto');
 const { requireAdmin } = require('../auth/middleware.js');
-const { ScanCommand, QueryCommand, UpdateCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
+const { ScanCommand, QueryCommand, UpdateCommand, GetCommand, PutCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
 const { docClient, TABLES } = require('../util/dynamodb.js');
 const { validateEmail, validateTenantId, validateBotName, validatePlan } = require('../util/validate.js');
+const { ensureTeam } = require('../auth/team-plan.js');
+
+const TEAM_INVITES_TABLE = process.env.TEAM_INVITES_TABLE || 'clawops-team-invites';
 
 const VALID_BOT_STATUSES = new Set(['active', 'paused', 'terminated', 'provisioning', 'error']);
 const VALID_HEALTH_STATUSES = new Set(['healthy', 'unhealthy', 'pending', 'unknown']);
+const VALID_MEMBER_ROLES = new Set(['admin', 'member', 'viewer']);
+const SAFE_PHONE = /^[0-9+().\-\s]{5,32}$/;
 
 module.exports = async (req, res) => {
   const admin = await requireAdmin(req, res);
@@ -22,6 +32,34 @@ module.exports = async (req, res) => {
   try {
     const targetEmail = req.params?.email;
     const targetTenantId = req.params?.tenantId;
+    const targetMemberId = req.params?.memberId;
+    const isTeamMembersRoute = req.path.includes('/team-members');
+
+    if (targetEmail && !validateEmail(targetEmail)) {
+      return res.status(400).json({ error: 'Invalid client email format' });
+    }
+
+    if (isTeamMembersRoute) {
+      if (!targetEmail) return res.status(400).json({ error: 'Client email required' });
+
+      if (targetMemberId) {
+        if (req.method === 'PATCH') {
+          return handleTeamMemberRoleUpdate(res, targetEmail, targetMemberId, req.body || {}, admin);
+        }
+        if (req.method === 'DELETE') {
+          return handleTeamMemberDelete(res, targetEmail, targetMemberId);
+        }
+        return res.status(405).json({ error: 'Method not allowed' });
+      }
+
+      if (req.method === 'GET') {
+        return handleTeamMembersList(res, targetEmail);
+      }
+      if (req.method === 'POST') {
+        return handleTeamMemberInvite(res, targetEmail, req.body || {}, admin);
+      }
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
 
     if (targetTenantId) {
       if (req.method === 'PATCH') {
@@ -33,12 +71,7 @@ module.exports = async (req, res) => {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    // If requesting a specific client
     if (targetEmail) {
-      if (!validateEmail(targetEmail)) {
-        return res.status(400).json({ error: 'Invalid client email format' });
-      }
-
       if (req.method === 'PATCH') {
         return handleClientUpdate(res, targetEmail, req.body || {}, admin);
       }
@@ -47,19 +80,10 @@ module.exports = async (req, res) => {
         return res.status(405).json({ error: 'Method not allowed' });
       }
 
-      const byEmail = await docClient.send(new QueryCommand({
-        TableName: TABLES.TENANTS,
-        IndexName: 'email-index',
-        KeyConditionExpression: 'email = :email',
-        ExpressionAttributeValues: { ':email': targetEmail },
-      }));
-      const items = byEmail.Items || [];
-      if (!items.length) return res.status(404).json({ error: 'Client not found' });
-
-      const usageMap = await getMonthlyUsageByTenant(items.map(i => i.tenantId));
-      const clients = buildClients(items, usageMap);
+      const snapshot = await getClientSnapshot(targetEmail);
+      if (!snapshot) return res.status(404).json({ error: 'Client not found' });
       const team = await getTeamForOwner(targetEmail);
-      return res.json({ ok: true, client: clients[0], team });
+      return res.json({ ok: true, client: snapshot, team });
     }
 
     if (req.method !== 'GET') {
@@ -80,17 +104,17 @@ module.exports = async (req, res) => {
     }));
     const items = data.Items || [];
 
-    const usageMap = await getMonthlyUsageByTenant(items.map(i => i.tenantId));
+    const usageMap = await getMonthlyUsageByTenant(items.map((i) => i.tenantId));
     const clients = buildClients(items, usageMap);
 
     // Summary stats
     const summary = {
       totalClients: clients.length,
-      activeClients: clients.filter(c => c.activeBots > 0).length,
+      activeClients: clients.filter((c) => c.activeBots > 0).length,
       totalBots: items.length,
-      activeBots: items.filter(i => i.status === 'active').length,
-      terminatedBots: items.filter(i => i.status === 'terminated').length,
-      unhealthyBots: items.filter(i => (i.healthStatus || 'unknown') === 'unhealthy').length,
+      activeBots: items.filter((i) => i.status === 'active').length,
+      terminatedBots: items.filter((i) => i.status === 'terminated').length,
+      unhealthyBots: items.filter((i) => (i.healthStatus || 'unknown') === 'unhealthy').length,
       monthlyTokens: clients.reduce((sum, c) => sum + (c.usageMonth?.tokens || 0), 0),
       monthlyMessages: clients.reduce((sum, c) => sum + (c.usageMonth?.messages || 0), 0),
       monthlyCost: round2(clients.reduce((sum, c) => sum + (c.usageMonth?.cost || 0), 0)),
@@ -108,23 +132,51 @@ module.exports = async (req, res) => {
 };
 
 async function handleClientUpdate(res, email, payload, adminEmail) {
-  const team = await getTeamForOwner(email);
-  if (!team?.teamId) return res.status(404).json({ error: 'Team not found for client' });
+  const tenants = await getTenantsByEmail(email);
+  if (!tenants.length) return res.status(404).json({ error: 'Client not found' });
 
-  const updates = {};
+  const profilePatch = payload.profile || {};
   const teamPatch = payload.team || {};
+  const profileUpdates = {};
+  const teamUpdates = {};
+
+  if (profilePatch.name !== undefined) {
+    const contactName = String(profilePatch.name || '').trim();
+    if (contactName.length > 120) {
+      return res.status(400).json({ error: 'Invalid profile.name (max 120 chars)' });
+    }
+    profileUpdates.contactName = contactName;
+  }
+
+  if (profilePatch.phone !== undefined) {
+    const contactPhone = String(profilePatch.phone || '').trim();
+    if (contactPhone && !SAFE_PHONE.test(contactPhone)) {
+      return res.status(400).json({ error: 'Invalid profile.phone format' });
+    }
+    profileUpdates.contactPhone = contactPhone;
+    // Keep legacy field in sync for old dashboards that still read `phone`.
+    profileUpdates.phone = contactPhone;
+  }
+
+  if (profilePatch.company !== undefined) {
+    const company = String(profilePatch.company || '').trim();
+    if (company.length > 120) {
+      return res.status(400).json({ error: 'Invalid profile.company (max 120 chars)' });
+    }
+    profileUpdates.company = company;
+  }
 
   if (teamPatch.name !== undefined) {
     const nextName = String(teamPatch.name || '').trim();
     if (!nextName || nextName.length > 120) {
       return res.status(400).json({ error: 'Invalid team.name (1-120 chars required)' });
     }
-    updates.name = nextName;
+    teamUpdates.name = nextName;
   }
 
   if (teamPatch.plan !== undefined) {
     if (!validatePlan(teamPatch.plan)) return res.status(400).json({ error: 'Invalid team.plan' });
-    updates.plan = teamPatch.plan;
+    teamUpdates.plan = teamPatch.plan;
   }
 
   if (teamPatch.seats !== undefined) {
@@ -132,43 +184,233 @@ async function handleClientUpdate(res, email, payload, adminEmail) {
     if (!Number.isFinite(seats) || seats < 1 || seats > 1000) {
       return res.status(400).json({ error: 'Invalid team.seats (must be 1-1000)' });
     }
-    updates.seats = Math.floor(seats);
+    teamUpdates.seats = Math.floor(seats);
   }
 
   if (payload.adminNotes !== undefined) {
     const notes = String(payload.adminNotes || '').trim();
     if (notes.length > 2000) return res.status(400).json({ error: 'adminNotes too long (max 2000 chars)' });
-    updates.adminNotes = notes;
+    teamUpdates.adminNotes = notes;
   }
 
-  if (!Object.keys(updates).length) {
+  const hasProfileUpdates = Object.keys(profileUpdates).length > 0;
+  const hasTeamUpdates = Object.keys(teamUpdates).length > 0;
+
+  if (!hasProfileUpdates && !hasTeamUpdates) {
     return res.status(400).json({ error: 'No valid fields provided for update' });
   }
 
-  const now = new Date().toISOString();
-  const names = {};
-  const values = { ':now': now, ':admin': adminEmail };
-  const clauses = ['updatedAt = :now', 'updatedBy = :admin'];
-  let idx = 0;
-  for (const [key, value] of Object.entries(updates)) {
-    idx += 1;
-    const nameKey = `#f${idx}`;
-    const valueKey = `:v${idx}`;
-    names[nameKey] = key;
-    values[valueKey] = value;
-    clauses.push(`${nameKey} = ${valueKey}`);
+  if (hasProfileUpdates) {
+    await Promise.all(
+      tenants.map((tenant) => updateTenantFields(tenant.tenantId, profileUpdates, adminEmail))
+    );
+  }
+
+  if (hasTeamUpdates) {
+    let team = await getTeamForOwner(email);
+    if (!team?.teamId) {
+      const seedPlan = teamUpdates.plan && validatePlan(teamUpdates.plan) ? teamUpdates.plan : 'starter';
+      team = await ensureTeam(email, seedPlan);
+    }
+    await updateTeamFields(team.teamId, teamUpdates, adminEmail);
+  }
+
+  const snapshot = await getClientSnapshot(email);
+  const refreshedTeam = await getTeamForOwner(email);
+  return res.json({ ok: true, client: snapshot, team: refreshedTeam });
+}
+
+async function handleTeamMembersList(res, email) {
+  const team = await getTeamForOwner(email);
+  const members = [
+    {
+      memberId: 'owner',
+      email,
+      role: 'owner',
+      status: 'active',
+      source: 'owner',
+      joinedAt: team?.createdAt || null,
+    }
+  ];
+
+  const membershipRows = await queryByOrgEmail(TABLES.TEAM_MEMBERS, email);
+  for (const row of membershipRows) {
+    const memberEmail = row.memberEmail || row.email || row.userEmail;
+    if (!memberEmail) continue;
+    if (memberEmail.toLowerCase() === email.toLowerCase() && row.role === 'owner') continue;
+
+    members.push({
+      memberId: row.membershipId || row.memberId,
+      email: memberEmail,
+      role: row.role || 'member',
+      status: row.status || 'active',
+      source: 'member',
+      joinedAt: row.joinedAt || row.createdAt || null,
+      invitedAt: row.invitedAt || null,
+      invitedBy: row.invitedBy || null,
+    });
+  }
+
+  const invites = await queryByOrgEmail(TEAM_INVITES_TABLE, email);
+  for (const invite of invites) {
+    if (invite.accepted) continue;
+    members.push({
+      memberId: `invite:${invite.inviteId}`,
+      email: invite.inviteEmail,
+      role: invite.role || 'member',
+      status: invite.expiresAt && Date.parse(invite.expiresAt) < Date.now() ? 'expired' : 'pending',
+      source: 'invite',
+      invitedAt: invite.createdAt || null,
+      expiresAt: invite.expiresAt || null,
+      invitedBy: invite.createdBy || invite.orgEmail,
+    });
+  }
+
+  return res.json({ ok: true, team, members });
+}
+
+async function handleTeamMemberInvite(res, email, payload, adminEmail) {
+  const inviteEmail = String(payload.inviteEmail || '').trim().toLowerCase();
+  const role = String(payload.role || 'member').trim().toLowerCase();
+
+  if (!inviteEmail) return res.status(400).json({ error: 'inviteEmail is required' });
+  if (!validateEmail(inviteEmail)) return res.status(400).json({ error: 'Valid inviteEmail is required' });
+  if (inviteEmail === email.toLowerCase()) return res.status(400).json({ error: 'Cannot invite owner email' });
+  if (!VALID_MEMBER_ROLES.has(role)) {
+    return res.status(400).json({ error: `role must be one of: ${[...VALID_MEMBER_ROLES].join(', ')}` });
+  }
+
+  const members = await queryByOrgEmail(TABLES.TEAM_MEMBERS, email);
+  if (members.some((m) => (m.memberEmail || m.email || '').toLowerCase() === inviteEmail && m.status !== 'removed')) {
+    return res.status(400).json({ error: 'User already exists as a team member' });
+  }
+
+  const invites = await queryByOrgEmail(TEAM_INVITES_TABLE, email);
+  if (invites.some((i) => (i.inviteEmail || '').toLowerCase() === inviteEmail && !i.accepted)) {
+    return res.status(400).json({ error: 'User already has a pending invite' });
+  }
+
+  const now = new Date();
+  const inviteId = crypto.randomBytes(16).toString('hex');
+  const inviteToken = crypto.randomBytes(32).toString('hex');
+
+  await docClient.send(new PutCommand({
+    TableName: TEAM_INVITES_TABLE,
+    Item: {
+      inviteId,
+      orgEmail: email,
+      inviteEmail,
+      role,
+      inviteToken,
+      createdAt: now.toISOString(),
+      createdBy: adminEmail,
+      expiresAt: new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000)).toISOString(),
+      accepted: false,
+      source: 'admin',
+    },
+  }));
+
+  return res.status(201).json({ ok: true, inviteId, inviteEmail, role });
+}
+
+async function handleTeamMemberRoleUpdate(res, email, memberId, payload, adminEmail) {
+  const role = String(payload.role || '').trim().toLowerCase();
+  if (!VALID_MEMBER_ROLES.has(role)) {
+    return res.status(400).json({ error: `role must be one of: ${[...VALID_MEMBER_ROLES].join(', ')}` });
+  }
+
+  if (memberId.startsWith('invite:')) {
+    const inviteId = memberId.replace('invite:', '');
+    const invite = await docClient.send(new GetCommand({
+      TableName: TEAM_INVITES_TABLE,
+      Key: { inviteId },
+    }));
+
+    if (!invite.Item || invite.Item.orgEmail !== email) {
+      return res.status(404).json({ error: 'Invite not found' });
+    }
+
+    await docClient.send(new UpdateCommand({
+      TableName: TEAM_INVITES_TABLE,
+      Key: { inviteId },
+      UpdateExpression: 'SET #role = :role, updatedAt = :now, updatedBy = :admin',
+      ExpressionAttributeNames: { '#role': 'role' },
+      ExpressionAttributeValues: {
+        ':role': role,
+        ':now': new Date().toISOString(),
+        ':admin': adminEmail,
+      },
+    }));
+
+    return res.json({ ok: true, updated: true, memberId });
+  }
+
+  const member = await docClient.send(new GetCommand({
+    TableName: TABLES.TEAM_MEMBERS,
+    Key: { membershipId: memberId },
+  }));
+
+  if (!member.Item || member.Item.orgEmail !== email) {
+    return res.status(404).json({ error: 'Team member not found' });
+  }
+  if (member.Item.role === 'owner') {
+    return res.status(400).json({ error: 'Cannot change owner role' });
   }
 
   await docClient.send(new UpdateCommand({
-    TableName: TABLES.TEAMS || 'clawops-teams',
-    Key: { teamId: team.teamId },
-    UpdateExpression: `SET ${clauses.join(', ')}`,
-    ExpressionAttributeNames: names,
-    ExpressionAttributeValues: values,
+    TableName: TABLES.TEAM_MEMBERS,
+    Key: { membershipId: memberId },
+    UpdateExpression: 'SET #role = :role, updatedAt = :now, updatedBy = :admin',
+    ExpressionAttributeNames: { '#role': 'role' },
+    ExpressionAttributeValues: {
+      ':role': role,
+      ':now': new Date().toISOString(),
+      ':admin': adminEmail,
+    },
   }));
 
-  const refreshed = await getTeamForOwner(email);
-  return res.json({ ok: true, team: refreshed });
+  return res.json({ ok: true, updated: true, memberId });
+}
+
+async function handleTeamMemberDelete(res, email, memberId) {
+  if (memberId === 'owner') {
+    return res.status(400).json({ error: 'Cannot remove owner' });
+  }
+
+  if (memberId.startsWith('invite:')) {
+    const inviteId = memberId.replace('invite:', '');
+    const invite = await docClient.send(new GetCommand({
+      TableName: TEAM_INVITES_TABLE,
+      Key: { inviteId },
+    }));
+
+    if (!invite.Item || invite.Item.orgEmail !== email) {
+      return res.status(404).json({ error: 'Invite not found' });
+    }
+
+    await docClient.send(new DeleteCommand({
+      TableName: TEAM_INVITES_TABLE,
+      Key: { inviteId },
+    }));
+
+    return res.json({ ok: true, removed: true, memberId });
+  }
+
+  const member = await docClient.send(new GetCommand({
+    TableName: TABLES.TEAM_MEMBERS,
+    Key: { membershipId: memberId },
+  }));
+
+  if (!member.Item || member.Item.orgEmail !== email) {
+    return res.status(404).json({ error: 'Team member not found' });
+  }
+
+  await docClient.send(new DeleteCommand({
+    TableName: TABLES.TEAM_MEMBERS,
+    Key: { membershipId: memberId },
+  }));
+
+  return res.json({ ok: true, removed: true, memberId });
 }
 
 async function handleTenantUpdate(res, email, tenantId, payload, adminEmail) {
@@ -214,28 +456,7 @@ async function handleTenantUpdate(res, email, tenantId, payload, adminEmail) {
     return res.status(400).json({ error: 'No valid tenant fields provided for update' });
   }
 
-  const now = new Date().toISOString();
-  const names = {};
-  const values = { ':now': now, ':admin': adminEmail };
-  const clauses = ['updatedAt = :now', 'updatedBy = :admin'];
-  let idx = 0;
-  for (const [key, value] of Object.entries(updates)) {
-    idx += 1;
-    const nameKey = `#f${idx}`;
-    const valueKey = `:v${idx}`;
-    names[nameKey] = key;
-    values[valueKey] = value;
-    clauses.push(`${nameKey} = ${valueKey}`);
-  }
-
-  await docClient.send(new UpdateCommand({
-    TableName: TABLES.TENANTS,
-    Key: { tenantId },
-    UpdateExpression: `SET ${clauses.join(', ')}`,
-    ExpressionAttributeNames: names,
-    ExpressionAttributeValues: values,
-  }));
-
+  await updateTenantFields(tenantId, updates, adminEmail);
   const refreshed = await getTenantOwnedBy(email, tenantId);
   return res.json({ ok: true, tenant: toTenantView(refreshed) });
 }
@@ -263,6 +484,24 @@ async function handleTenantArchive(res, email, tenantId, adminEmail) {
   return res.json({ ok: true, archived: true, tenantId });
 }
 
+async function getClientSnapshot(email) {
+  const items = await getTenantsByEmail(email);
+  if (!items.length) return null;
+  const usageMap = await getMonthlyUsageByTenant(items.map((i) => i.tenantId));
+  const clients = buildClients(items, usageMap);
+  return clients[0] || null;
+}
+
+async function getTenantsByEmail(email) {
+  const byEmail = await docClient.send(new QueryCommand({
+    TableName: TABLES.TENANTS,
+    IndexName: 'email-index',
+    KeyConditionExpression: 'email = :email',
+    ExpressionAttributeValues: { ':email': email },
+  }));
+  return byEmail.Items || [];
+}
+
 async function getTenantOwnedBy(email, tenantId) {
   const result = await docClient.send(new GetCommand({
     TableName: TABLES.TENANTS,
@@ -271,6 +510,79 @@ async function getTenantOwnedBy(email, tenantId) {
   if (!result.Item) return null;
   if (result.Item.email !== email) return null;
   return result.Item;
+}
+
+async function updateTenantFields(tenantId, updates, adminEmail) {
+  const now = new Date().toISOString();
+  const names = {};
+  const values = { ':now': now, ':admin': adminEmail };
+  const clauses = ['updatedAt = :now', 'updatedBy = :admin'];
+
+  let idx = 0;
+  for (const [key, value] of Object.entries(updates)) {
+    idx += 1;
+    const nameKey = `#f${idx}`;
+    const valueKey = `:v${idx}`;
+    names[nameKey] = key;
+    values[valueKey] = value;
+    clauses.push(`${nameKey} = ${valueKey}`);
+  }
+
+  await docClient.send(new UpdateCommand({
+    TableName: TABLES.TENANTS,
+    Key: { tenantId },
+    UpdateExpression: `SET ${clauses.join(', ')}`,
+    ExpressionAttributeNames: names,
+    ExpressionAttributeValues: values,
+  }));
+}
+
+async function updateTeamFields(teamId, updates, adminEmail) {
+  const now = new Date().toISOString();
+  const names = {};
+  const values = { ':now': now, ':admin': adminEmail };
+  const clauses = ['updatedAt = :now', 'updatedBy = :admin'];
+
+  let idx = 0;
+  for (const [key, value] of Object.entries(updates)) {
+    idx += 1;
+    const nameKey = `#f${idx}`;
+    const valueKey = `:v${idx}`;
+    names[nameKey] = key;
+    values[valueKey] = value;
+    clauses.push(`${nameKey} = ${valueKey}`);
+  }
+
+  await docClient.send(new UpdateCommand({
+    TableName: TABLES.TEAMS || 'clawops-teams',
+    Key: { teamId },
+    UpdateExpression: `SET ${clauses.join(', ')}`,
+    ExpressionAttributeNames: names,
+    ExpressionAttributeValues: values,
+  }));
+}
+
+async function queryByOrgEmail(tableName, orgEmail) {
+  try {
+    const byIndex = await docClient.send(new QueryCommand({
+      TableName: tableName,
+      IndexName: 'orgEmail-index',
+      KeyConditionExpression: 'orgEmail = :email',
+      ExpressionAttributeValues: { ':email': orgEmail },
+    }));
+    return byIndex.Items || [];
+  } catch (err) {
+    try {
+      const scanned = await docClient.send(new ScanCommand({
+        TableName: tableName,
+        FilterExpression: 'orgEmail = :email',
+        ExpressionAttributeValues: { ':email': orgEmail },
+      }));
+      return scanned.Items || [];
+    } catch {
+      return [];
+    }
+  }
 }
 
 function toTenantView(item) {
@@ -300,6 +612,7 @@ async function getTeamForOwner(email) {
     const team = result.Items[0];
     return {
       teamId: team.teamId,
+      ownerId: team.ownerId || email,
       name: team.name || null,
       plan: team.plan || null,
       seats: Number.isFinite(team.seats) ? team.seats : null,
@@ -333,6 +646,11 @@ function buildClients(items, usageMap) {
     if (!clientMap[email]) {
       clientMap[email] = {
         email,
+        profile: {
+          name: null,
+          phone: null,
+          company: null,
+        },
         bots: [],
         totalBots: 0,
         activeBots: 0,
@@ -346,6 +664,16 @@ function buildClients(items, usageMap) {
     client.totalBots++;
     if (status === 'active') client.activeBots++;
     if (createdAt && (!client.firstSeen || toEpochMs(createdAt) < toEpochMs(client.firstSeen))) client.firstSeen = createdAt;
+
+    if (!client.profile.name) {
+      client.profile.name = pickFirstNonEmpty(item.contactName, item.customerName, item.ownerName, item.fullName, null);
+    }
+    if (!client.profile.phone) {
+      client.profile.phone = pickFirstNonEmpty(item.contactPhone, item.phone, item.phoneNumber, item.mobile, null);
+    }
+    if (!client.profile.company) {
+      client.profile.company = pickFirstNonEmpty(item.company, item.companyName, item.organization, null);
+    }
 
     const botLastActive = usage.lastRequestAt || createdAt || null;
     if (botLastActive && (!client.lastActive || toEpochMs(botLastActive) > toEpochMs(client.lastActive))) {
@@ -439,6 +767,15 @@ async function getMonthlyUsageByTenant(tenantIds) {
   }));
 
   return map;
+}
+
+function pickFirstNonEmpty(...values) {
+  for (const value of values) {
+    if (value === null || value === undefined) continue;
+    const text = String(value).trim();
+    if (text) return text;
+  }
+  return null;
 }
 
 function toNum(...values) {

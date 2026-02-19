@@ -144,16 +144,25 @@ jest.mock('@aws-sdk/lib-dynamodb', () => {
       const merged = { ...existing };
       const vals = this.params.ExpressionAttributeValues || {};
       const names = this.params.ExpressionAttributeNames || {};
-      for (const [alias, value] of Object.entries(vals)) {
-        const cleanAlias = alias.replace(':', '');
-        let realName = cleanAlias;
-        for (const [nameAlias, actual] of Object.entries(names)) {
-          if (actual === cleanAlias || nameAlias.replace('#', '') === cleanAlias) {
-            realName = actual;
-          }
-        }
-        if (typeof value === 'string') merged[realName] = { S: value };
-        else if (typeof value === 'number') merged[realName] = { N: String(value) };
+      const expr = this.params.UpdateExpression || '';
+      const setExpr = expr.replace(/^SET\s+/i, '');
+      const assignments = setExpr.split(',').map((part) => part.trim()).filter(Boolean);
+      for (const assignment of assignments) {
+        const [lhsRaw, rhsRaw] = assignment.split('=').map((s) => (s || '').trim());
+        if (!lhsRaw || !rhsRaw) continue;
+        const fieldName = names[lhsRaw] || lhsRaw.replace(/^#/, '');
+        const valueKeyMatch = rhsRaw.match(/:\w+/);
+        if (!valueKeyMatch) continue;
+        const valueKey = valueKeyMatch[0];
+        const value = vals[valueKey];
+        if (value === undefined) continue;
+        const conditional = rhsRaw.includes('if_not_exists');
+        if (conditional && merged[fieldName] !== undefined) continue;
+
+        if (typeof value === 'string') merged[fieldName] = { S: value };
+        else if (typeof value === 'number') merged[fieldName] = { N: String(value) };
+        else if (typeof value === 'boolean') merged[fieldName] = { BOOL: value };
+        else merged[fieldName] = value;
       }
       db.set(`${this.params.TableName}:${pkStr}`, merged);
       return Promise.resolve({});
@@ -185,12 +194,34 @@ jest.mock('@aws-sdk/lib-dynamodb', () => {
       return Promise.resolve({ Item: item ? mockUnmarshallInner(item) : undefined });
     }
   }
+  class PutCommand {
+    constructor(params) { this.params = params; }
+    _execute() {
+      const db = global.__mockDB;
+      const pk = Object.values(this.params.Item || {})[0];
+      const pkStr = typeof pk === 'object' ? pk.S : pk;
+      db.set(`${this.params.TableName}:${pkStr}`, this.params.Item);
+      return Promise.resolve({});
+    }
+  }
+  class DeleteCommand {
+    constructor(params) { this.params = params; }
+    _execute() {
+      const db = global.__mockDB;
+      const pk = Object.values(this.params.Key || {})[0];
+      const pkStr = typeof pk === 'object' ? pk.S : pk;
+      db.delete(`${this.params.TableName}:${pkStr}`);
+      return Promise.resolve({});
+    }
+  }
   return {
     DynamoDBDocumentClient: { from: () => new MockDocClient() },
     QueryCommand,
     UpdateCommand,
     ScanCommand,
     GetCommand,
+    PutCommand,
+    DeleteCommand,
   };
 });
 
@@ -870,6 +901,61 @@ describe('/api/admin/clients CRUD controls', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/status/i);
+  });
+
+  test('admin updates customer profile even when team does not exist', async () => {
+    const sessionToken = await createSession('g@purplehorizons.io');
+    seedTenant('tenant-crud-5', 'client@example.com');
+
+    const res = await request(app)
+      .patch('/api/admin/clients/client@example.com')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({ profile: { name: 'Gianni D', phone: '+1 555 000 1111', company: 'Purple Horizons' } });
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.client?.profile?.phone).toBe('+1 555 000 1111');
+  });
+
+  test('admin can invite/list/update/remove client team members', async () => {
+    const sessionToken = await createSession('g@purplehorizons.io');
+    seedTenant('tenant-crud-6', 'client@example.com');
+    mockDB.set('clawops-team-members:mem-1', mockDynamoItem({
+      membershipId: 'mem-1',
+      orgEmail: 'client@example.com',
+      memberEmail: 'teammate@example.com',
+      role: 'member',
+      status: 'active',
+      joinedAt: new Date().toISOString(),
+    }));
+
+    const inviteRes = await request(app)
+      .post('/api/admin/clients/client@example.com/team-members')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({ inviteEmail: 'newmember@example.com', role: 'viewer' });
+    expect(inviteRes.status).toBe(201);
+    expect(inviteRes.body.ok).toBe(true);
+
+    const listRes = await request(app)
+      .get('/api/admin/clients/client@example.com/team-members')
+      .set('Cookie', `session=${sessionToken}`);
+    expect(listRes.status).toBe(200);
+    expect(listRes.body.ok).toBe(true);
+    expect(Array.isArray(listRes.body.members)).toBe(true);
+    expect(listRes.body.members.length).toBeGreaterThan(0);
+
+    const roleRes = await request(app)
+      .patch('/api/admin/clients/client@example.com/team-members/mem-1')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({ role: 'admin' });
+    expect(roleRes.status).toBe(200);
+    expect(roleRes.body.ok).toBe(true);
+
+    const deleteRes = await request(app)
+      .delete('/api/admin/clients/client@example.com/team-members/mem-1')
+      .set('Cookie', `session=${sessionToken}`);
+    expect(deleteRes.status).toBe(200);
+    expect(deleteRes.body.ok).toBe(true);
   });
 });
 

@@ -235,9 +235,11 @@ async function viewClientDetails(email) {
         }
 
         const c = data.client;
+        const profile = c.profile || {};
         const team = data.team || {};
+        const teamExists = Boolean(team.teamId);
         const encodedEmail = encodeURIComponent(email);
-        const planValue = (team.plan || '').toLowerCase();
+        const planValue = (team.plan || 'starter').toLowerCase();
         const planOptions = PLAN_OPTIONS.map(p => `<option value="${p}" ${p === planValue ? 'selected' : ''}>${p.toUpperCase()}</option>`).join('');
         const tenantRows = (c.bots || []).map((bot) => {
             const rowId = safeId(bot.tenantId);
@@ -270,22 +272,36 @@ async function viewClientDetails(email) {
         const detailHtml = `
             <div class="detail-grid">
                 <div class="detail-card">
-                    <div class="detail-title">Customer Snapshot</div>
+                    <div class="detail-title">Customer Profile (Person)</div>
                     <div class="detail-meta"><strong>Email:</strong> ${escapeHtml(c.email)}</div>
+                    <div class="crud-field">
+                        <label class="crud-label" for="client-profile-name">Full Name</label>
+                        <input id="client-profile-name" class="crud-input" value="${escapeHtml(profile.name || '')}" maxlength="120" placeholder="Client name">
+                    </div>
+                    <div class="crud-field">
+                        <label class="crud-label" for="client-profile-phone">Phone</label>
+                        <input id="client-profile-phone" class="crud-input" value="${escapeHtml(profile.phone || '')}" maxlength="32" placeholder="+1 555 123 4567">
+                    </div>
+                    <div class="crud-field">
+                        <label class="crud-label" for="client-profile-company">Company</label>
+                        <input id="client-profile-company" class="crud-input" value="${escapeHtml(profile.company || '')}" maxlength="120" placeholder="Optional">
+                    </div>
                     <div class="detail-meta"><strong>Total bots:</strong> ${c.totalBots}</div>
                     <div class="detail-meta"><strong>Active bots:</strong> ${c.activeBots}</div>
                     <div class="detail-meta"><strong>First seen:</strong> ${c.firstSeen ? new Date(c.firstSeen).toLocaleString() : '—'}</div>
                     <div class="detail-meta"><strong>Last active:</strong> ${c.lastActive ? new Date(c.lastActive).toLocaleString() : '—'}</div>
                     <div class="detail-meta"><strong>Usage this month:</strong> ${formatCompactNumber(c.usageMonth?.tokens || 0)} tokens, ${formatCompactNumber(c.usageMonth?.messages || 0)} messages, ${formatUsd(c.usageMonth?.cost || 0)}</div>
                     <div class="detail-actions">
+                        <button class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="saveCustomerProfile('${encodedEmail}')">Save Profile</button>
                         <button class="btn btn-secondary" style="padding:6px 10px;font-size:12px;" onclick="impersonate(decodeURIComponent('${encodedEmail}'))">Impersonate</button>
                     </div>
                 </div>
                 <div class="detail-card">
-                    <div class="detail-title">Team Settings (CRUD)</div>
+                    <div class="detail-title">Team Workspace (Optional)</div>
+                    <div class="detail-meta">${teamExists ? 'Customer has a team workspace.' : 'No team yet. Saving team settings will create one automatically.'}</div>
                     <div class="crud-field">
                         <label class="crud-label" for="client-team-name">Team Name</label>
-                        <input id="client-team-name" class="crud-input" value="${escapeHtml(team.name || '')}" maxlength="120">
+                        <input id="client-team-name" class="crud-input" value="${escapeHtml(team.name || '')}" maxlength="120" placeholder="${escapeHtml(email.split('@')[0])}">
                     </div>
                     <div class="crud-field">
                         <label class="crud-label" for="client-team-plan">Plan</label>
@@ -303,9 +319,30 @@ async function viewClientDetails(email) {
                     <div class="detail-meta"><strong>Last login:</strong> ${team.lastLoginAt ? new Date(team.lastLoginAt).toLocaleString() : 'Not available'}</div>
                     <div class="detail-meta"><strong>Updated:</strong> ${team.updatedAt ? new Date(team.updatedAt).toLocaleString() : '—'} ${team.updatedBy ? `by ${escapeHtml(team.updatedBy)}` : ''}</div>
                     <div class="detail-actions">
-                        <button class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="saveClientProfile('${encodedEmail}')">Save Team</button>
+                        <button class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="saveClientTeamSettings('${encodedEmail}')">Save Team Settings</button>
                     </div>
                 </div>
+            </div>
+            <div class="detail-card" style="margin-bottom:12px;">
+                <div class="detail-title">Team Members & Roles</div>
+                <div class="detail-grid" style="grid-template-columns:2fr 1fr auto;margin-bottom:10px;">
+                    <div class="crud-field">
+                        <label class="crud-label" for="team-invite-email">Invite Email</label>
+                        <input id="team-invite-email" class="crud-input" placeholder="member@company.com">
+                    </div>
+                    <div class="crud-field">
+                        <label class="crud-label" for="team-invite-role">Role</label>
+                        <select id="team-invite-role" class="crud-select">
+                            <option value="member">MEMBER</option>
+                            <option value="admin">ADMIN</option>
+                            <option value="viewer">VIEWER</option>
+                        </select>
+                    </div>
+                    <div class="detail-actions" style="align-items:flex-end;">
+                        <button class="btn btn-secondary" style="padding:8px 12px;font-size:12px;" onclick="inviteClientTeamMember('${encodedEmail}')">Send Invite</button>
+                    </div>
+                </div>
+                <div id="team-members-panel" class="detail-meta">Loading team members…</div>
             </div>
             <div class="detail-card">
                 <div class="detail-title">Tenant Instances</div>
@@ -329,12 +366,37 @@ async function viewClientDetails(email) {
             </div>
         `;
         document.getElementById('logBody').innerHTML = detailHtml;
+        await loadClientTeamMembers(email);
     } catch (err) {
         document.getElementById('logBody').textContent = `Failed: ${err.message}`;
     }
 }
 
-async function saveClientProfile(encodedEmail) {
+async function saveCustomerProfile(encodedEmail) {
+    const email = decodeURIComponent(encodedEmail);
+    const name = document.getElementById('client-profile-name')?.value?.trim() || '';
+    const phone = document.getElementById('client-profile-phone')?.value?.trim() || '';
+    const company = document.getElementById('client-profile-company')?.value?.trim() || '';
+
+    try {
+        const res = await authFetch(`/api/admin/clients/${encodeURIComponent(email)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profile: { name, phone, company } })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+            throw new Error(data.error || 'Failed to update customer profile');
+        }
+        showToast('Customer profile updated', 'success');
+        await loadClients();
+        await viewClientDetails(email);
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+async function saveClientTeamSettings(encodedEmail) {
     const email = decodeURIComponent(encodedEmail);
     const teamName = document.getElementById('client-team-name')?.value?.trim();
     const teamPlan = document.getElementById('client-team-plan')?.value;
@@ -354,9 +416,143 @@ async function saveClientProfile(encodedEmail) {
         if (!res.ok || !data.ok) {
             throw new Error(data.error || 'Failed to update client');
         }
-        showToast('Client team updated', 'success');
+        showToast('Team settings updated', 'success');
         await loadClients();
         await viewClientDetails(email);
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+async function loadClientTeamMembers(email) {
+    const panel = document.getElementById('team-members-panel');
+    if (!panel) return;
+
+    try {
+        const res = await authFetch(`/api/admin/clients/${encodeURIComponent(email)}/team-members`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+            throw new Error(data.error || 'Failed to load team members');
+        }
+
+        const members = data.members || [];
+        if (!members.length) {
+            panel.innerHTML = '<div style="color:#888;">No members found.</div>';
+            return;
+        }
+
+        const rows = members.map((m) => {
+            const encodedMemberId = encodeURIComponent(m.memberId);
+            const rowId = safeId(m.memberId);
+            const isOwner = m.memberId === 'owner';
+            const roleOptions = ['admin', 'member', 'viewer'].map((role) => {
+                const selected = (m.role || '').toLowerCase() === role ? 'selected' : '';
+                return `<option value="${role}" ${selected}>${role.toUpperCase()}</option>`;
+            }).join('');
+
+            return `
+                <tr>
+                    <td>${escapeHtml(m.email || '—')}</td>
+                    <td>${escapeHtml(m.status || 'active')}</td>
+                    <td>${isOwner ? 'OWNER' : `<select id="member-role-${rowId}" class="crud-select" style="max-width:140px;">${roleOptions}</select>`}</td>
+                    <td>${m.invitedAt ? new Date(m.invitedAt).toLocaleString() : (m.joinedAt ? new Date(m.joinedAt).toLocaleString() : '—')}</td>
+                    <td>
+                        ${isOwner ? '—' : `
+                            <div class="row-actions">
+                                <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;" onclick="updateClientTeamMemberRole('${encodeURIComponent(email)}','${encodedMemberId}','member-role-${rowId}')">Save Role</button>
+                                <button class="btn btn-danger" style="padding:4px 8px;font-size:11px;" onclick="removeClientTeamMember('${encodeURIComponent(email)}','${encodedMemberId}',this)">Remove</button>
+                            </div>
+                        `}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        panel.innerHTML = `
+            <table class="crud-table">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Role</th>
+                        <th>Joined/Invited</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        `;
+    } catch (err) {
+        panel.innerHTML = `<div style="color:#ff5252;">${escapeHtml(err.message)}</div>`;
+    }
+}
+
+async function inviteClientTeamMember(encodedEmail) {
+    const email = decodeURIComponent(encodedEmail);
+    const inviteEmail = document.getElementById('team-invite-email')?.value?.trim() || '';
+    const role = document.getElementById('team-invite-role')?.value || 'member';
+    if (!inviteEmail) {
+        showToast('Invite email is required', 'error');
+        return;
+    }
+
+    try {
+        const res = await authFetch(`/api/admin/clients/${encodeURIComponent(email)}/team-members`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ inviteEmail, role })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+            throw new Error(data.error || 'Failed to invite member');
+        }
+        showToast(`Invite sent to ${inviteEmail}`, 'success');
+        document.getElementById('team-invite-email').value = '';
+        await loadClientTeamMembers(email);
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+async function updateClientTeamMemberRole(encodedEmail, encodedMemberId, roleInputId) {
+    const email = decodeURIComponent(encodedEmail);
+    const memberId = decodeURIComponent(encodedMemberId);
+    const role = document.getElementById(roleInputId)?.value;
+    if (!role) return;
+
+    try {
+        const res = await authFetch(`/api/admin/clients/${encodeURIComponent(email)}/team-members/${encodeURIComponent(memberId)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+            throw new Error(data.error || 'Failed to update role');
+        }
+        showToast('Role updated', 'success');
+        await loadClientTeamMembers(email);
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+async function removeClientTeamMember(encodedEmail, encodedMemberId, btnEl) {
+    const email = decodeURIComponent(encodedEmail);
+    const memberId = decodeURIComponent(encodedMemberId);
+    const confirmed = await inlineConfirm(btnEl.parentElement, `Remove ${memberId}?`);
+    if (!confirmed) return;
+
+    try {
+        const res = await authFetch(`/api/admin/clients/${encodeURIComponent(email)}/team-members/${encodeURIComponent(memberId)}`, {
+            method: 'DELETE'
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+            throw new Error(data.error || 'Failed to remove member');
+        }
+        showToast('Member removed', 'success');
+        await loadClientTeamMembers(email);
     } catch (err) {
         showToast(err.message, 'error');
     }

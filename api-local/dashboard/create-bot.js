@@ -94,10 +94,16 @@ module.exports = async (req, res) => {
         return res.status(403).json({ error: 'Access denied for tenantId' });
       }
 
+      const contactNameSeed = existing.Item.contactName
+        || (existing.Item.status === 'pending_onboarding' ? existing.Item.name : '')
+        || '';
+      const contactPhoneSeed = existing.Item.contactPhone || existing.Item.phone || '';
+      const companySeed = existing.Item.company || '';
+
       await docClient.send(new UpdateCommand({
         TableName: tableName,
         Key: { tenantId: finalTenantId },
-        UpdateExpression: 'SET #name = :name, #role = :role, #template = :template, #status = :status, email = if_not_exists(email, :email), updatedAt = :now',
+        UpdateExpression: 'SET #name = :name, #role = :role, #template = :template, #status = :status, email = if_not_exists(email, :email), contactName = if_not_exists(contactName, :contactName), contactPhone = if_not_exists(contactPhone, :contactPhone), phone = if_not_exists(phone, :contactPhone), company = if_not_exists(company, :company), updatedAt = :now',
         ExpressionAttributeNames: {
           '#name': 'name',
           '#role': 'role',
@@ -110,6 +116,9 @@ module.exports = async (req, res) => {
           ':template': template || 'blank',
           ':status': 'provisioning',
           ':email': email,
+          ':contactName': contactNameSeed,
+          ':contactPhone': contactPhoneSeed,
+          ':company': companySeed,
           ':now': nowIso
         }
       }));
@@ -117,7 +126,7 @@ module.exports = async (req, res) => {
       await docClient.send(new UpdateCommand({
         TableName: tableName,
         Key: { tenantId: finalTenantId },
-        UpdateExpression: 'SET email = :email, #name = :name, #role = :role, #template = :template, #status = :status, #plan = :plan, createdAt = :createdAt, updatedAt = :updatedAt, healthStatus = :health, createdBy = :createdBy',
+        UpdateExpression: 'SET email = :email, #name = :name, #role = :role, #template = :template, #status = :status, #plan = :plan, contactName = :contactName, contactPhone = :contactPhone, phone = :contactPhone, company = :company, createdAt = :createdAt, updatedAt = :updatedAt, healthStatus = :health, createdBy = :createdBy',
         ExpressionAttributeNames: {
           '#name': 'name',
           '#role': 'role',
@@ -132,6 +141,9 @@ module.exports = async (req, res) => {
           ':template': template || 'blank',
           ':status': 'provisioning',
           ':plan': userPlan,
+          ':contactName': '',
+          ':contactPhone': '',
+          ':company': '',
           ':createdAt': nowIso,
           ':updatedAt': nowIso,
           ':health': 'pending',

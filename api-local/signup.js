@@ -40,7 +40,9 @@ module.exports = async (req, res) => {
         tenantId,
         email,
         name,
+        contactName: name,
         phone: phone || '',
+        contactPhone: phone || '',
         company: company || '',
         status: 'pending_onboarding',  // Not yet provisioned
         plan: 'starter',  // Default plan

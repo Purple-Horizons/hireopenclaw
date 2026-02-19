@@ -4,6 +4,10 @@
  *   GET  /clients           — requireAdmin (in handler)
  *   GET  /clients/:email    — requireAdmin (in handler)
  *   PATCH /clients/:email   — requireAdmin (in handler)
+ *   GET  /clients/:email/team-members — requireAdmin (in handler)
+ *   POST /clients/:email/team-members — requireAdmin (in handler)
+ *   PATCH /clients/:email/team-members/:memberId — requireAdmin (in handler)
+ *   DELETE /clients/:email/team-members/:memberId — requireAdmin (in handler)
  *   PATCH /clients/:email/tenants/:tenantId — requireAdmin (in handler)
  *   DELETE /clients/:email/tenants/:tenantId — requireAdmin (in handler)
  *   ALL  /bots/:tenantId    — requireAdmin (in handler)
@@ -31,6 +35,10 @@ const wrap = (fn) => async (req, res) => {
 router.get('/clients', wrap(adminClients));
 router.get('/clients/:email', wrap(adminClients));
 router.patch('/clients/:email', wrap(adminClients));
+router.get('/clients/:email/team-members', wrap(adminClients));
+router.post('/clients/:email/team-members', wrap(adminClients));
+router.patch('/clients/:email/team-members/:memberId', wrap(adminClients));
+router.delete('/clients/:email/team-members/:memberId', wrap(adminClients));
 router.patch('/clients/:email/tenants/:tenantId', wrap(adminClients));
 router.delete('/clients/:email/tenants/:tenantId', wrap(adminClients));
 router.all('/bots/:tenantId', wrap(adminBots));
