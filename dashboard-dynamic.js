@@ -996,7 +996,10 @@ async function handleLogout() {
 
 // Manage billing
 async function manageBilling() {
-    showToast('Billing portal coming soon! Contact support@hireopenclaw.com for billing inquiries.', 'info', 5000);
+    if (typeof switchTab === 'function') {
+        switchTab('billing');
+    }
+    showToast('Opened billing tab. Stripe billing portal is coming soon.', 'info', 3000);
 }
 
 // Upgrade plan
@@ -1292,4 +1295,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (loginEmail) loginEmail.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') handleLogin();
     });
+
 });

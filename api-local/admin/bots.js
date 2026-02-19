@@ -36,8 +36,45 @@ module.exports = async (req, res) => {
       }
 
       case 'config': {
-        const configRaw = await getContainerConfig(containerName, '/app/.openclaw/openclaw.json');
-        return res.json({ ok: true, config: JSON.parse(configRaw) });
+        const candidatePaths = [
+          '/app/.openclaw/openclaw.json',
+          '/app/openclaw.json',
+          '/app/.openclaw/config/openclaw.json',
+        ];
+
+        let configRaw = null;
+        let foundPath = null;
+        let lastErr = null;
+
+        for (const path of candidatePaths) {
+          try {
+            const text = await getContainerConfig(containerName, path);
+            if (typeof text === 'string' && text.trim().length > 0) {
+              configRaw = text;
+              foundPath = path;
+              break;
+            }
+          } catch (err) {
+            lastErr = err;
+          }
+        }
+
+        if (!configRaw) {
+          return res.status(404).json({
+            error: `Config file not found in container (${candidatePaths.join(', ')})`,
+            detail: lastErr?.message || null,
+          });
+        }
+
+        let parsed = null;
+        try {
+          parsed = JSON.parse(configRaw);
+        } catch {
+          // Non-JSON config (or malformed JSON) should still be inspectable by admin.
+          parsed = null;
+        }
+
+        return res.json({ ok: true, path: foundPath, config: parsed, raw: parsed ? undefined : configRaw });
       }
 
       case 'info': {

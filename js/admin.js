@@ -11,6 +11,20 @@ function authFetch(url, opts = {}) {
     return fetch(url, opts);
 }
 
+function formatCompactNumber(n) {
+    const value = Number(n || 0);
+    if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
+    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+    if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
+    return String(value);
+}
+
+function formatUsd(value) {
+    const n = Number(value || 0);
+    if (n > 0 && n < 0.01) return '<$0.01';
+    return `$${n.toFixed(2)}`;
+}
+
 async function loadClients() {
     try {
         console.log('[admin] loadClients called, token in localStorage:', localStorage.getItem('clawops_session_token') ? 'YES' : 'NO');
@@ -42,11 +56,17 @@ async function loadClients() {
         document.getElementById('statActiveBots').textContent = s.activeBots;
         document.getElementById('statTotalBots').textContent = `of ${s.totalBots} total`;
         document.getElementById('statTerminated').textContent = s.terminatedBots;
+        const tokensEl = document.getElementById('statMonthTokens');
+        const msgsEl = document.getElementById('statMonthMessages');
+        const costEl = document.getElementById('statMonthCost');
+        if (tokensEl) tokensEl.textContent = formatCompactNumber(s.monthlyTokens || 0);
+        if (msgsEl) msgsEl.textContent = formatCompactNumber(s.monthlyMessages || 0);
+        if (costEl) costEl.textContent = formatUsd(s.monthlyCost || 0);
 
         renderClients(allClients);
     } catch (err) {
         document.getElementById('clientList').innerHTML = `<p style="color:var(--red);text-align:center;padding:40px;">Error: ${err.message}</p>`;
-        ['statClients', 'statActiveClients', 'statActiveBots', 'statTerminated'].forEach(id => {
+        ['statClients', 'statActiveClients', 'statActiveBots', 'statTerminated', 'statMonthTokens', 'statMonthMessages', 'statMonthCost'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.textContent = '!';
         });
@@ -76,9 +96,13 @@ function renderClients(clients) {
                 <div class="client-meta">
                     <span class="active">${c.activeBots} active</span>
                     <span>${c.totalBots} total</span>
+                    <span>${formatCompactNumber(c.usageMonth?.tokens || 0)} tokens/mo</span>
+                    <span>${formatCompactNumber(c.usageMonth?.messages || 0)} msgs/mo</span>
+                    <span>${formatUsd(c.usageMonth?.cost || 0)}/mo</span>
                     <span>First: ${c.firstSeen ? new Date(c.firstSeen).toLocaleDateString() : '—'}</span>
                     <span>Last: ${c.lastActive ? new Date(c.lastActive).toLocaleDateString() : '—'}</span>
                 </div>
+                <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();viewClientDetails('${c.email.replace(/'/g, "\\'")}')">📄 Details</button>
                 <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();impersonate('${c.email}')">👁 View as</button>
                 <span class="expand-icon">▶</span>
             </div>
@@ -89,6 +113,9 @@ function renderClients(clients) {
                         <span class="bot-name">${b.name || b.tenantId}</span>
                         <span style="color:var(--gray);font-size:11px;">${b.tenantId}</span>
                         <span style="color:var(--gray);font-size:11px;">${b.health}</span>
+                        <span style="color:var(--gray);font-size:11px;">${formatCompactNumber(b.usageMonth?.tokens || 0)} tok</span>
+                        <span style="color:var(--gray);font-size:11px;">${formatCompactNumber(b.usageMonth?.messages || 0)} msg</span>
+                        <span style="color:var(--gray);font-size:11px;">${formatUsd(b.usageMonth?.cost || 0)}</span>
                         <div class="bot-actions">
                             ${b.status === 'active' ? `
                                 <button onclick="viewLogs('${b.tenantId}')">📋 Logs</button>
@@ -156,7 +183,71 @@ async function viewConfig(tenantId) {
     try {
         const res = await authFetch(`/api/admin/bots/${tenantId}?action=config`);
         const data = await res.json();
-        document.getElementById('logBody').textContent = data.ok ? JSON.stringify(data.config, null, 2) : `Error: ${data.error}`;
+        if (!data.ok) {
+            document.getElementById('logBody').textContent = `Error: ${data.error || 'Unable to load config'}`;
+            return;
+        }
+        const header = data.path ? `Path: ${data.path}\n\n` : '';
+        if (data.config && typeof data.config === 'object') {
+            document.getElementById('logBody').textContent = `${header}${JSON.stringify(data.config, null, 2)}`;
+        } else if (typeof data.raw === 'string') {
+            document.getElementById('logBody').textContent = `${header}${data.raw}`;
+        } else {
+            document.getElementById('logBody').textContent = `${header}Config file is empty or unreadable.`;
+        }
+    } catch (err) {
+        document.getElementById('logBody').textContent = `Failed: ${err.message}`;
+    }
+}
+
+async function viewClientDetails(email) {
+    document.getElementById('logTitle').textContent = `Client Details — ${email}`;
+    document.getElementById('logBody').textContent = 'Loading...';
+    document.getElementById('logModal').classList.add('open');
+
+    try {
+        const res = await authFetch(`/api/admin/clients/${encodeURIComponent(email)}`);
+        const data = await res.json();
+        if (!res.ok || !data.ok || !data.client) {
+            document.getElementById('logBody').textContent = `Error: ${data.error || 'Failed to load client detail'}`;
+            return;
+        }
+
+        const c = data.client;
+        const team = data.team || {};
+        const detailHtml = `
+            <div style="display:grid;gap:10px;line-height:1.5;">
+                <div style="padding:10px;border:1px solid #333;border-radius:8px;">
+                    <div><strong>Email:</strong> ${c.email}</div>
+                    <div><strong>Total bots:</strong> ${c.totalBots}</div>
+                    <div><strong>Active bots:</strong> ${c.activeBots}</div>
+                    <div><strong>First seen:</strong> ${c.firstSeen ? new Date(c.firstSeen).toLocaleString() : '—'}</div>
+                    <div><strong>Last active:</strong> ${c.lastActive ? new Date(c.lastActive).toLocaleString() : '—'}</div>
+                    <div><strong>Monthly usage:</strong> ${formatCompactNumber(c.usageMonth?.tokens || 0)} tokens, ${formatCompactNumber(c.usageMonth?.messages || 0)} messages, ${formatUsd(c.usageMonth?.cost || 0)}</div>
+                </div>
+                <div style="padding:10px;border:1px solid #333;border-radius:8px;">
+                    <div><strong>Team ID:</strong> ${team.teamId || '—'}</div>
+                    <div><strong>Team Name:</strong> ${team.name || '—'}</div>
+                    <div><strong>Plan:</strong> ${team.plan || '—'}</div>
+                    <div><strong>Seats:</strong> ${team.seats ?? '—'}</div>
+                    <div><strong>Created:</strong> ${team.createdAt ? new Date(team.createdAt).toLocaleString() : '—'}</div>
+                    <div><strong>Last login:</strong> ${team.lastLoginAt ? new Date(team.lastLoginAt).toLocaleString() : 'Not available'}</div>
+                </div>
+                <div style="padding:10px;border:1px solid #333;border-radius:8px;">
+                    <div style="font-weight:700;margin-bottom:6px;">Tenant Instances</div>
+                    ${(c.bots || []).map(b => `
+                        <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr 1fr;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:12px;">
+                            <span>${b.name || b.tenantId}</span>
+                            <span>${b.status}</span>
+                            <span>${formatCompactNumber(b.usageMonth?.tokens || 0)} tok</span>
+                            <span>${formatCompactNumber(b.usageMonth?.messages || 0)} msg</span>
+                            <span>${formatUsd(b.usageMonth?.cost || 0)}</span>
+                        </div>
+                    `).join('') || '<div style="color:#888;font-size:12px;">No tenant instances found.</div>'}
+                </div>
+            </div>
+        `;
+        document.getElementById('logBody').innerHTML = detailHtml;
     } catch (err) {
         document.getElementById('logBody').textContent = `Failed: ${err.message}`;
     }
@@ -242,15 +333,27 @@ async function showBackups(tenantId) {
             document.getElementById('logBody').textContent = 'No backups found.';
             return;
         }
-        document.getElementById('logBody').innerHTML = data.backups.map(b => `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #333;">
-                <div>
-                    <strong>${b.backupId}</strong><br>
-                    <span style="font-size:11px;">${b.createdAt} · ${b.sizeKB} KB · ${b.reason} · by ${b.triggeredBy}</span>
+        const rows = data.backups.map((b, idx) => `
+            <div style="border:1px solid #2b2b2b;border-radius:10px;padding:12px;margin-bottom:10px;background:rgba(255,255,255,0.02);">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+                    <div>
+                        <div style="font-weight:700;font-size:13px;">${b.backupId}</div>
+                        <div style="font-size:11px;color:#9a9a9a;margin-top:4px;">
+                            ${new Date(b.createdAt).toLocaleString()} • ${b.sizeKB} KB • ${b.reason} • by ${b.triggeredBy}
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        ${idx === 0 ? '<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(0,200,83,0.16);color:#00c853;">LATEST</span>' : ''}
+                        <button onclick="restoreBot('${tenantId}','${b.backupId}',this)" style="background:#ff6b35;color:white;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">Restore</button>
+                        <button onclick="deleteBackup('${tenantId}','${b.backupId}',this)" style="background:rgba(255,82,82,0.15);color:#ff5252;border:1px solid rgba(255,82,82,0.3);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">Delete</button>
+                    </div>
                 </div>
-                <button onclick="restoreBot('${tenantId}','${b.backupId}',this)" style="background:#ff6b35;color:white;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px;">Restore</button>
             </div>
         `).join('');
+        document.getElementById('logBody').innerHTML = `
+            <div style="font-size:12px;color:#999;margin-bottom:10px;">Backups are stored per tenant instance. Delete permanently removes the snapshot from storage.</div>
+            ${rows}
+        `;
     } catch (err) {
         document.getElementById('logBody').textContent = 'Error: ' + err.message;
     }
@@ -266,6 +369,24 @@ async function restoreBot(tenantId, backupId, btnEl) {
         const data = await res.json();
         showToast(data.ok ? `✅ Restored from ${backupId}` : `❌ ${data.error}`, data.ok ? 'success' : 'error');
     } catch (err) { showToast('Failed: ' + err.message, 'error'); }
+}
+
+async function deleteBackup(tenantId, backupId, btnEl) {
+    if (btnEl) {
+        const confirmed = await inlineConfirm(btnEl.parentElement, `Delete ${backupId}?`);
+        if (!confirmed) return;
+    }
+    try {
+        const res = await authFetch(`/api/admin/bots/${tenantId}/backups/${backupId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+            throw new Error(data.error || 'Delete failed');
+        }
+        showToast(`✅ Deleted backup ${backupId}`, 'success');
+        showBackups(tenantId);
+    } catch (err) {
+        showToast('Failed: ' + err.message, 'error');
+    }
 }
 
 // ─── Secrets ───

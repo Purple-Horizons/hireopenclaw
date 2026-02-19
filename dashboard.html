@@ -746,7 +746,7 @@
             <div class="user-info">
                 <span class="plan-badge" id="plan-badge">—</span>
                 <span class="email">Loading...</span>
-                <button class="btn btn-secondary" onclick="handleLogout()" style="padding:6px 12px;font-size:12px;">Log Out</button>
+                <button id="logoutBtn" class="btn btn-secondary" onclick="if (typeof handleLogout === 'function') { handleLogout(); } else { localStorage.removeItem('clawops_session_token'); localStorage.removeItem('clawops_email'); localStorage.removeItem('clawops_session_expires'); window.location.href = '/'; }" style="padding:6px 12px;font-size:12px;">Log Out</button>
             </div>
         </header>
 

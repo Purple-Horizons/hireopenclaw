@@ -59,13 +59,32 @@ async function getContainerConfig(containerName, filePath) {
   const container = docker.getContainer(containerName);
   const exec = await container.exec({
     Cmd: ['cat', filePath],
-    AttachStdout: true
+    AttachStdout: true,
+    AttachStderr: true,
   });
   const stream = await exec.start();
   return new Promise((resolve, reject) => {
-    let data = '';
-    stream.on('data', chunk => data += chunk.toString());
-    stream.on('end', () => resolve(data));
+    let stdout = '';
+    let stderr = '';
+
+    // dockerode exposes a helper to split multiplexed stdout/stderr streams.
+    docker.modem.demuxStream(
+      stream,
+      { write: (chunk) => { stdout += chunk.toString('utf8'); } },
+      { write: (chunk) => { stderr += chunk.toString('utf8'); } }
+    );
+
+    stream.on('end', async () => {
+      try {
+        const meta = await exec.inspect();
+        if (meta.ExitCode !== 0) {
+          return reject(new Error(stderr.trim() || `cat failed for ${filePath}`));
+        }
+        resolve(stdout);
+      } catch (err) {
+        reject(err);
+      }
+    });
     stream.on('error', reject);
   });
 }

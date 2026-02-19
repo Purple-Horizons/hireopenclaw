@@ -18,7 +18,7 @@ const { execFileSync } = require('child_process');
 const crypto = require('crypto');
 const { requireAdmin, getEmailFromSession } = require('../auth/middleware.js');
 const { validateTenantId, validateBackupId } = require('../util/validate.js');
-const { PutItemCommand, QueryCommand, GetItemCommand } = require('@aws-sdk/client-dynamodb');
+const { PutItemCommand, QueryCommand, GetItemCommand, DeleteItemCommand } = require('@aws-sdk/client-dynamodb');
 const { marshall, unmarshall } = require('@aws-sdk/util-dynamodb');
 const { client: dynamodb, TABLES } = require('../util/dynamodb.js');
 
@@ -187,6 +187,34 @@ async function restoreBackup(tenantId, backupId, triggeredBy) {
   return { restored: true, backupId };
 }
 
+async function deleteBackup(tenantId, backupId, triggeredBy) {
+  if (!validateTenantId(tenantId)) throw new Error('Invalid tenantId format');
+  if (!validateBackupId(backupId)) throw new Error('Invalid backupId format');
+
+  const existing = await dynamodb.send(new GetItemCommand({
+    TableName: BACKUP_TABLE,
+    Key: marshall({ tenantId, backupId })
+  }));
+  if (!existing.Item) throw new Error('Backup not found');
+
+  const item = unmarshall(existing.Item);
+  const s3Key = item.s3Key || `${tenantId}/${backupId}.tar.gz`;
+
+  execFileSync('aws', [
+    's3', 'rm', `s3://${S3_BUCKET}/${s3Key}`,
+    '--endpoint-url', EP,
+    '--region', 'us-east-1'
+  ], { encoding: 'utf8', env: ENV });
+
+  await dynamodb.send(new DeleteItemCommand({
+    TableName: BACKUP_TABLE,
+    Key: marshall({ tenantId, backupId })
+  }));
+
+  console.log(`[Backup] Deleted ${backupId} for ${tenantId} by ${triggeredBy}`);
+  return { deleted: true, backupId };
+}
+
 // ─── Admin handlers ───
 
 async function handleAdminBackup(req, res) {
@@ -201,6 +229,7 @@ async function handleAdminBackup(req, res) {
   let action = req.query.action;
   if (!action) {
     if (req.path.endsWith('/restore')) action = 'restore';
+    else if (req.method === 'DELETE' && req.path.includes('/backups/')) action = 'delete';
     else if (req.path.endsWith('/backups')) action = 'list';
     else if (req.path.endsWith('/backup')) action = 'create';
     else action = req.method === 'POST' ? 'create' : 'list';
@@ -224,6 +253,15 @@ async function handleAdminBackup(req, res) {
       if (!backupId) return res.status(400).json({ error: 'backupId required' });
       if (!validateBackupId(backupId)) return res.status(400).json({ error: 'Invalid backupId format' });
       const result = await restoreBackup(tenantId, backupId, admin);
+      return res.json({ ok: true, ...result });
+    }
+
+    if (action === 'delete') {
+      if (req.method !== 'DELETE') return res.status(405).json({ error: 'DELETE required' });
+      const backupId = req.params.backupId || req.body?.backupId || req.query?.backupId;
+      if (!backupId) return res.status(400).json({ error: 'backupId required' });
+      if (!validateBackupId(backupId)) return res.status(400).json({ error: 'Invalid backupId format' });
+      const result = await deleteBackup(tenantId, backupId, admin);
       return res.json({ ok: true, ...result });
     }
 

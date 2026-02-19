@@ -27,15 +27,16 @@ const TABLE = 'clawops-secrets';
 
 // Encryption key — in production, MUST be set via env var
 const ENV_KEY = process.env.SECRETS_ENCRYPTION_KEY;
-if (!ENV_KEY && process.env.NODE_ENV === 'production') {
-  console.error('FATAL: SECRETS_ENCRYPTION_KEY must be set in production');
+const DEV_DEFAULT_KEY = 'clawops-local-dev-key-change-in-production';
+if ((!ENV_KEY || ENV_KEY === DEV_DEFAULT_KEY) && process.env.NODE_ENV === 'production') {
+  console.error('FATAL: SECRETS_ENCRYPTION_KEY must be set to a non-default value in production');
   process.exit(1);
 }
 if (!ENV_KEY) {
   console.warn('[Secrets] WARNING: Using default encryption key — set SECRETS_ENCRYPTION_KEY for production');
 }
 const ENCRYPTION_KEY = crypto.scryptSync(
-  ENV_KEY || 'clawops-local-dev-key-change-in-production',
+  ENV_KEY || DEV_DEFAULT_KEY,
   'clawops-secrets-salt',
   32
 );

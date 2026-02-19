@@ -30,6 +30,7 @@ router.get('/clients/:email', wrap(adminClients));
 router.all('/bots/:tenantId', wrap(adminBots));
 router.post('/bots/:tenantId/backup', wrap(handleAdminBackup));
 router.get('/bots/:tenantId/backups', wrap(handleAdminBackup));
+router.delete('/bots/:tenantId/backups/:backupId', wrap(handleAdminBackup));
 router.post('/bots/:tenantId/restore', wrap(handleAdminBackup));
 router.post('/impersonate', wrap(adminImpersonate));
 router.post('/stop-impersonate', (req, res, next) => { req.path = '/stop'; next(); }, wrap(adminImpersonate));
