@@ -247,7 +247,7 @@
 
             <div class="highlight-box green">
                 <p><strong>🔒 Private-First Architecture</strong></p>
-                <p style="margin-bottom: 0;">Your AI employee talks only to you. It doesn't browse the public web, respond to strangers, or expose any attack surface. When it needs to act externally, it uses isolated accounts we create specifically for your business.</p>
+                <p style="margin-bottom: 0;">Your AI employee is configured to operate through channels and integrations you authorize. External actions run through isolated accounts we provision specifically for your business.</p>
             </div>
 
             <h2>Operating Models</h2>
@@ -276,12 +276,12 @@
                 <div class="principle-card">
                     <div class="icon">🏠</div>
                     <h4>Private by Default</h4>
-                    <p>Your AI employee is private. It communicates only through your authorized channels (Telegram, WhatsApp, Slack). No public-facing chat widgets. No attack surface for strangers.</p>
+                    <p>Your AI employee is private by default. It operates through authorized channels (Telegram, WhatsApp, Slack) and approved integrations rather than open public endpoints.</p>
                 </div>
                 <div class="principle-card">
                     <div class="icon">🔐</div>
                     <h4>Zero-Trust Keys</h4>
-                    <p>Your AI never holds real API keys. API keys and secrets are encrypted at rest, then injected at the network edge for runtime use only.</p>
+                    <p>API keys and secrets are encrypted at rest and injected through controlled runtime paths instead of being exposed in user-facing chat flows.</p>
                 </div>
                 <div class="principle-card">
                     <div class="icon">📦</div>
@@ -349,7 +349,7 @@
                     <tr>
                         <td><strong>Prompt Injection</strong></td>
                         <td>Attacker manipulates AI behavior via input</td>
-                        <td>Private channels only + anomaly detection</td>
+                        <td>Restricted channels + anomaly detection</td>
                         <td><span class="badge yellow">Mitigated</span></td>
                     </tr>
                 </tbody>
@@ -380,7 +380,7 @@
                 <div class="attack-card">
                     <h4>Prompt Injection <span class="badge yellow">Mitigated</span></h4>
                     <p class="risk">Attacker manipulates AI behavior via input</p>
-                    <p class="protection">✓ Private channels only + anomaly detection</p>
+                    <p class="protection">✓ Restricted channels + anomaly detection</p>
                 </div>
             </div>
 
@@ -397,10 +397,10 @@
                 <p><strong>⚠️ No AI system is 100% injection-proof</strong></p>
                 <p>Like all AI assistants, ours can theoretically be manipulated by sophisticated prompt injection attacks. The difference is:</p>
                 <ul style="margin-bottom: 0;">
-                    <li><strong>Private channels</strong> — Attackers can't reach your AI from the internet</li>
+                    <li><strong>Restricted channel model</strong> — Reduces direct public exposure to your AI workflows</li>
                     <li><strong>Isolated personas</strong> — Even if manipulated, the blast radius is contained</li>
                     <li><strong>Draft mode</strong> — High-stakes actions require your approval</li>
-                    <li><strong>Full audit logs</strong> — Every action is logged for review</li>
+                    <li><strong>Action logging</strong> — Sensitive operations are logged for review</li>
                 </ul>
                 <p style="margin-top: 16px; margin-bottom: 0;">We don't promise perfect security (no one honestly can). We promise defense in depth and minimal blast radius.</p>
             </div>
@@ -410,7 +410,7 @@
             <ol>
                 <li><strong>Keep sensitive credentials out of chat</strong> — Don't paste passwords or API keys to your AI. Use our secure integration setup instead.</li>
                 <li><strong>Review before publishing</strong> — Use draft mode for content. A human eye catches things AI misses.</li>
-                <li><strong>Check your audit logs</strong> — We provide full action logs. Review them periodically.</li>
+                <li><strong>Check your audit logs</strong> — We provide action logs. Review them periodically.</li>
                 <li><strong>Report anything weird</strong> — If your AI behaves unexpectedly, let us know immediately.</li>
             </ol>
 
