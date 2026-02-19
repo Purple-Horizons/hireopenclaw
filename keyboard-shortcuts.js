@@ -60,17 +60,25 @@ function showShortcutsHelp() {
             </div>`;
         })
         .join('');
-    
-    if (typeof showModal === 'function') {
-        const modal = document.getElementById('genericModal');
-        if (modal) {
-            document.getElementById('genericModalTitle').textContent = '⌨️ Keyboard Shortcuts';
-            document.getElementById('genericModalMessage').innerHTML = helpText;
-            document.getElementById('genericModalActions').innerHTML = `
-                <button class="btn btn-primary" onclick="closeModal()">Got It</button>
-            `;
-            openModal('genericModal');
-        }
+
+    const modal = document.getElementById('genericModal');
+    const titleEl = document.getElementById('genericModalTitle');
+    const messageEl = document.getElementById('genericModalMessage');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    if (modal && titleEl && messageEl && actionsEl && typeof openModal === 'function') {
+        titleEl.textContent = '⌨️ Keyboard Shortcuts';
+        messageEl.innerHTML = helpText;
+        actionsEl.innerHTML = `
+            <button class="btn btn-primary" onclick="closeModal()">Got It</button>
+        `;
+        openModal('genericModal');
+        return;
+    }
+
+    // Graceful fallback if modal shell is unavailable for any reason.
+    if (typeof showToast === 'function') {
+        showToast('Shortcuts: Ctrl/Cmd+K search, N new bot, 1-4 switch tabs, ? help', 'info', 5000);
     }
 }
 
@@ -106,14 +114,19 @@ function handleKeydown(e) {
 function addShortcutsButton() {
     const dashHeader = document.querySelector('.dash-header .user-info');
     if (!dashHeader) return;
-    
+
+    const existing = document.getElementById('shortcutsHelpBtn');
+    if (existing) return;
+
     const helpBtn = document.createElement('button');
+    helpBtn.id = 'shortcutsHelpBtn';
     helpBtn.className = 'btn btn-secondary';
-    helpBtn.innerHTML = '⌨️';
+    helpBtn.innerHTML = '⌨️ Keyboard Shortcuts';
     helpBtn.title = 'Keyboard shortcuts (?)';
-    helpBtn.style.cssText = 'padding:6px 12px;font-size:16px;';
-    helpBtn.onclick = showShortcutsHelp;
-    
+    helpBtn.setAttribute('aria-label', 'Show keyboard shortcuts');
+    helpBtn.style.cssText = 'padding:6px 12px;font-size:12px;';
+    helpBtn.addEventListener('click', showShortcutsHelp);
+
     dashHeader.insertBefore(helpBtn, dashHeader.firstChild);
 }
 
