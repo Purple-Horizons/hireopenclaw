@@ -24,12 +24,18 @@ async function loadClients() {
             document.getElementById('clientList').innerHTML = '<p style="color:var(--red);text-align:center;padding:40px;">Not authenticated. <a href="/?login=true" style="color:var(--primary);">Log in</a></p>';
             return;
         }
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         console.log('[admin] clients data:', data.ok, 'count:', data.clients?.length);
-        if (!data.ok) throw new Error(data.error);
+        if (!res.ok || !data.ok) throw new Error(data.error || `Request failed (${res.status})`);
 
         allClients = data.clients;
-        const s = data.summary;
+        const s = data.summary || {
+            totalClients: allClients.length,
+            activeClients: allClients.filter(c => (c.activeBots || 0) > 0).length,
+            activeBots: allClients.reduce((sum, c) => sum + (c.activeBots || 0), 0),
+            totalBots: allClients.reduce((sum, c) => sum + (c.totalBots || 0), 0),
+            terminatedBots: Math.max(0, allClients.reduce((sum, c) => sum + (c.totalBots || 0), 0) - allClients.reduce((sum, c) => sum + (c.activeBots || 0), 0)),
+        };
 
         document.getElementById('statClients').textContent = s.totalClients;
         document.getElementById('statActiveClients').textContent = s.activeClients;
@@ -40,6 +46,14 @@ async function loadClients() {
         renderClients(allClients);
     } catch (err) {
         document.getElementById('clientList').innerHTML = `<p style="color:var(--red);text-align:center;padding:40px;">Error: ${err.message}</p>`;
+        ['statClients', 'statActiveClients', 'statActiveBots', 'statTerminated'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = '!';
+        });
+        const totalEl = document.getElementById('statTotalBots');
+        if (totalEl) totalEl.textContent = 'stats unavailable';
+        const summaryEl = document.getElementById('resultsInfo');
+        if (summaryEl) summaryEl.textContent = `Failed to load clients: ${err.message}`;
     }
 }
 
@@ -182,16 +196,28 @@ async function impersonate(email) {
             impersonating = email;
             document.getElementById('impersonateBanner').classList.add('active');
             document.getElementById('impersonateEmail').textContent = email;
+            showToast(`Now viewing as ${email}`, 'success');
+        } else {
+            showToast(data.error || 'Failed to impersonate user', 'error');
         }
-    } catch {}
+    } catch (err) {
+        showToast(`Failed to impersonate: ${err.message}`, 'error');
+    }
 }
 
 async function stopImpersonate() {
     try {
-        await authFetch('/api/admin/stop-impersonate', { method: 'POST' });
+        const res = await authFetch('/api/admin/stop-impersonate', { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+            throw new Error(data.error || 'Could not stop impersonation');
+        }
         impersonating = null;
         document.getElementById('impersonateBanner').classList.remove('active');
-    } catch {}
+        showToast('Stopped impersonation', 'success');
+    } catch (err) {
+        showToast(`Failed to stop impersonation: ${err.message}`, 'error');
+    }
 }
 
 // ─── Backup & Restore ───

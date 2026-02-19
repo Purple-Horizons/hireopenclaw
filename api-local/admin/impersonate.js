@@ -4,8 +4,9 @@
  * POST /api/admin/stop-impersonate — Stop impersonating
  */
 
-const { requireAdmin, isAdmin } = require('../auth/middleware.js');
+const { requireAdmin, isAdmin, getSessionTokenFromRequest } = require('../auth/middleware.js');
 const tokenStore = require('../auth/token-store.js');
+const { validateEmail } = require('../util/validate.js');
 
 module.exports = async (req, res) => {
   const admin = await requireAdmin(req, res);
@@ -13,10 +14,8 @@ module.exports = async (req, res) => {
 
   const action = req.path.includes('stop') ? 'stop' : 'start';
 
-  // Get session token
-  const cookies = req.headers.cookie || '';
-  const match = cookies.match(/session=([^;]+)/);
-  const sessionToken = match ? match[1] : null;
+  // Accept the same session transport as the rest of auth middleware.
+  const sessionToken = getSessionTokenFromRequest(req);
 
   if (!sessionToken) {
     return res.status(401).json({ error: 'No session' });
@@ -28,9 +27,15 @@ module.exports = async (req, res) => {
   }
 
   if (action === 'start') {
-    const { email } = req.body || {};
+    const email = String(req.body?.email || '').trim().toLowerCase();
     if (!email) {
       return res.status(400).json({ error: 'email required' });
+    }
+    if (!validateEmail(email)) {
+      return res.status(400).json({ error: 'Invalid email' });
+    }
+    if (isAdmin(email)) {
+      return res.status(400).json({ error: 'Cannot impersonate another admin account' });
     }
 
     // Set impersonation with timestamp for timeout

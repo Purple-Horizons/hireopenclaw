@@ -17,8 +17,8 @@ const IMPERSONATION_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
  * Extract email from session cookie
  * Returns email string or null
  */
-async function getEmailFromSession(req) {
-  // Check cookie first, then Authorization header, then body
+function getSessionTokenFromRequest(req) {
+  // Cookie first, then Authorization bearer, then explicit body token.
   const cookies = req.headers.cookie || '';
   const match = cookies.match(/session=([^;]+)/);
   let sessionToken = match ? match[1] : null;
@@ -29,6 +29,11 @@ async function getEmailFromSession(req) {
   if (!sessionToken && req.body?.sessionToken) {
     sessionToken = req.body.sessionToken;
   }
+  return sessionToken || null;
+}
+
+async function getEmailFromSession(req) {
+  const sessionToken = getSessionTokenFromRequest(req);
   if (!sessionToken) return null;
   const session = await tokenStore.get(sessionToken);
   if (!session || session.type !== 'session' || session.expiresAt < Date.now()) return null;
@@ -40,7 +45,8 @@ async function getEmailFromSession(req) {
  * Sets req.userEmail if authenticated
  */
 async function requireAuth(req, res) {
-  const email = await getEmailFromSession(req);
+  // Respect admin impersonation when present.
+  const email = await getEffectiveEmail(req);
   if (!email) {
     res.status(ERROR_CODES.AUTH_REQUIRED.status).json(apiError(ERROR_CODES.AUTH_REQUIRED));
     return null;
@@ -123,9 +129,7 @@ async function requireAdmin(req, res) {
  * Falls back to actual session email
  */
 async function getEffectiveEmail(req) {
-  const cookies = req.headers.cookie || '';
-  const match = cookies.match(/session=([^;]+)/);
-  const sessionToken = match ? match[1] : null;
+  const sessionToken = getSessionTokenFromRequest(req);
   if (!sessionToken) return null;
   const session = await tokenStore.get(sessionToken);
   if (!session || session.type !== 'session' || session.expiresAt < Date.now()) return null;
@@ -146,4 +150,4 @@ async function getEffectiveEmail(req) {
   return session.email;
 }
 
-module.exports = { getEmailFromSession, requireAuth, requireBotOwnership, isAdmin, requireAdmin, getEffectiveEmail, ADMIN_EMAILS };
+module.exports = { getSessionTokenFromRequest, getEmailFromSession, requireAuth, requireBotOwnership, isAdmin, requireAdmin, getEffectiveEmail, ADMIN_EMAILS };

@@ -6,7 +6,7 @@
 
 
 const tokenStore = require('../api-local/auth/token-store.js');
-const { isAdmin, getEmailFromSession, getEffectiveEmail, ADMIN_EMAILS } = require('../api-local/auth/middleware.js');
+const { isAdmin, getSessionTokenFromRequest, getEmailFromSession, getEffectiveEmail, requireAuth, ADMIN_EMAILS } = require('../api-local/auth/middleware.js');
 
 // ─── Admin Auth ───
 
@@ -76,6 +76,71 @@ describe('Impersonation', () => {
   test('getEffectiveEmail returns null for missing cookie', async () => {
     const req = { headers: { cookie: '' } };
     expect(await getEffectiveEmail(req)).toBe(null);
+  });
+
+  test('getEffectiveEmail supports bearer token sessions', async () => {
+    tokenStore.set('bearer-sess', { type: 'session', email: 'g@purplehorizons.io', expiresAt: Date.now() + 60000, impersonating: 'client@test.com' });
+    const req = { headers: { authorization: 'Bearer bearer-sess' } };
+    expect(await getEffectiveEmail(req)).toBe('client@test.com');
+  });
+
+  test('requireAuth uses effective impersonated email', async () => {
+    tokenStore.set('imp-1', { type: 'session', email: 'g@purplehorizons.io', expiresAt: Date.now() + 60000, impersonating: 'client@test.com' });
+    const req = { headers: { cookie: 'session=imp-1' } };
+    const res = {
+      statusCode: 200,
+      status(code) { this.statusCode = code; return this; },
+      json() { return this; }
+    };
+    const email = await requireAuth(req, res);
+    expect(email).toBe('client@test.com');
+    expect(req.userEmail).toBe('client@test.com');
+  });
+});
+
+describe('Session token extraction', () => {
+  test('extracts session token from cookie', () => {
+    const req = { headers: { cookie: 'session=abc123; theme=dark' } };
+    expect(getSessionTokenFromRequest(req)).toBe('abc123');
+  });
+
+  test('extracts session token from Authorization header', () => {
+    const req = { headers: { authorization: 'Bearer tok-123' } };
+    expect(getSessionTokenFromRequest(req)).toBe('tok-123');
+  });
+
+  test('extracts session token from request body', () => {
+    const req = { headers: {}, body: { sessionToken: 'body-123' } };
+    expect(getSessionTokenFromRequest(req)).toBe('body-123');
+  });
+});
+
+describe('Impersonation handler', () => {
+  beforeEach(() => {
+    tokenStore.clear();
+  });
+
+  test('accepts bearer session token when starting impersonation', async () => {
+    const handler = require('../api-local/admin/impersonate.js');
+    tokenStore.set('bearer-admin', { type: 'session', email: 'g@purplehorizons.io', expiresAt: Date.now() + 60000 });
+    const req = {
+      path: '/impersonate',
+      headers: { authorization: 'Bearer bearer-admin' },
+      body: { email: 'client@test.com' }
+    };
+    const res = {
+      statusCode: 200,
+      body: null,
+      status(code) { this.statusCode = code; return this; },
+      json(payload) { this.body = payload; return this; }
+    };
+
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.ok).toBe(true);
+    const updated = await tokenStore.get('bearer-admin');
+    expect(updated.impersonating).toBe('client@test.com');
   });
 });
 
