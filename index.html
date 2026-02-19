@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HireOpenClaw — Stop Configuring. Start Delegating.</title>
-    <meta name="description" content="Skip the 3-day AI setup nightmare. Get a pre-trained AI employee ready to work in 48 hours. Fixed pricing. No surprise bills.">
+    <title>HireOpenClaw — Managed AI Operations Service</title>
+    <meta name="description" content="AI employees for your business, fully managed by our team. We deploy, secure, monitor, and operate your AI fleet.">
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
@@ -12,16 +12,16 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     
     <!-- Open Graph -->
-    <meta property="og:title" content="HireOpenClaw — Stop Configuring. Start Delegating.">
-    <meta property="og:description" content="Skip the 3-day AI setup nightmare. Get a pre-trained AI employee ready to work in 48 hours.">
+    <meta property="og:title" content="HireOpenClaw — Managed AI Operations Service">
+    <meta property="og:description" content="AI employees for your business, fully managed by our team.">
     <meta property="og:image" content="https://hireopenclaw.com/og-image.png">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://hireopenclaw.com">
     
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="HireOpenClaw — Stop Configuring. Start Delegating.">
-    <meta name="twitter:description" content="Skip the 3-day AI setup nightmare. Get a pre-trained AI employee ready to work in 48 hours.">
+    <meta name="twitter:title" content="HireOpenClaw — Managed AI Operations Service">
+    <meta name="twitter:description" content="AI employees for your business, fully managed by our team.">
     <meta name="twitter:image" content="https://hireopenclaw.com/og-image.png">
     
     <!-- Fonts -->
@@ -840,7 +840,8 @@
         <div class="container">
             <div class="header-inner">
                 <a href="/" class="logo">Hire<span>OpenClaw</span></a>
-                <a href="#pricing" class="nav-cta">View Plans</a>
+                <a href="/dashboard" style="color:#888;text-decoration:none;font-size:14px;margin-right:16px;">Dashboard</a>
+                <a href="/signup" class="nav-cta">Get Started</a>
             </div>
         </div>
     </header>
@@ -849,21 +850,75 @@
     <section class="hero">
         <div class="container">
             <span class="beta-badge">⚠️ BETA — We're small, scrappy, and improving fast</span>
-            <h1>Stop Configuring.<br><span>Start Delegating.</span></h1>
-            <p class="subtitle">Get a pre-trained AI employee ready to work in 48 hours. No setup. Fixed pricing.</p>
+            <h1>AI employees for your business.<br><span>Fully managed by our team.</span></h1>
+            <p class="subtitle">We deploy, secure, monitor, and operate your AI fleet so your team can focus on outcomes, not infrastructure.</p>
             
-            <div style="margin-top:32px;">
-                <button id="hero-waitlist-toggle" class="cta-button" onclick="document.getElementById('hero-waitlist').style.display='flex';this.style.display='none';">Join the Waitlist →</button>
-                <form id="hero-waitlist" style="display:none;flex-direction:column;gap:8px;max-width:400px;margin:0 auto;" onsubmit="submitWaitlist(event, this)">
-                    <input type="email" name="email" placeholder="you@company.com" required style="width:100%;padding:12px 16px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:#fff;font-size:16px;box-sizing:border-box;">
-                    <button type="submit" class="cta-button" style="width:100%;">Get Early Access</button>
-                    <p class="waitlist-msg" style="width:100%;margin:8px 0 0;font-size:14px;display:none;"></p>
+            <form id="signup-form" style="max-width:420px;margin:0 auto 20px;display:flex;flex-direction:column;gap:12px;">
+                <input type="text" name="name" required placeholder="Your name" aria-label="Full name" class="form-input" />
+                <input type="email" name="email" required placeholder="Email address" aria-label="Email address" class="form-input" />
+                <input type="tel" name="phone" required placeholder="Phone number" aria-label="Phone number" class="form-input" />
+                <button type="submit" class="cta-button" aria-label="Get started" style="border:none;cursor:pointer;font-family:inherit;width:100%;text-align:center;">
+                    <span class="btn-text">Get Started →</span>
+                    <span class="btn-loading" style="display:none;">Sending...</span>
+                </button>
+            </form>
+            <p class="hero-note">Starting at $29/mo. Fixed price. No surprise bills. Cancel anytime.</p>
+            
+            <!-- Login Section -->
+            <div style="max-width:420px;margin:32px auto 0;padding-top:24px;border-top:1px solid var(--light-gray);">
+                <p style="color:var(--gray);margin-bottom:12px;text-align:center;">Already have an account?</p>
+                <form id="login-form" style="display:flex;gap:12px;">
+                    <input type="email" name="email" required placeholder="your@email.com" aria-label="Email address" class="form-input-flex" />
+                    <button type="submit" class="cta-button" style="border:none;cursor:pointer;font-family:inherit;background:#333;color:white;white-space:nowrap;padding:14px 24px;">
+                        <span class="btn-text">Send Login Link</span>
+                        <span class="btn-loading" style="display:none;">Sending...</span>
+                    </button>
                 </form>
+                <p id="login-status" style="margin-top:12px;text-align:center;color:var(--green);display:none;"></p>
             </div>
         </div>
     </section>
     
     <!-- Pain Points -->
+    <section class="pain">
+        <div class="container">
+            <h2>We know what happened.</h2>
+            <div class="pain-grid">
+                <div class="pain-card">
+                    <div class="icon">🔥</div>
+                    <h3>3-Day Setup Hell</h3>
+                    <p class="quote">"I've been going in circles for 3 days and I'm going to frisbee my mac off the fucking balcony"</p>
+                    <p>Setting up AI is a nightmare. API keys, OAuth, YAML configs, random errors. Normal people give up.</p>
+                    <div class="solution">✓ We do all setup. You get a working bot in 48 hours.</div>
+                </div>
+                
+                <div class="pain-card">
+                    <div class="icon">💸</div>
+                    <h3>$50K Bill Terror</h3>
+                    <p class="quote">"Hope not get a $50k bill at the end of the month 😅"</p>
+                    <p>Usage-based pricing is terrifying. "Burning $5/day just on heartbeats." No idea what it will cost.</p>
+                    <div class="solution">✓ Fixed monthly pricing. Starter, Pro, Business, or Enterprise.</div>
+                </div>
+                
+                <div class="pain-card">
+                    <div class="icon">🤷</div>
+                    <h3>"What Do I Even Use This For?"</h3>
+                    <p class="quote">"My biggest issue is idk what to really use it for"</p>
+                    <p>Generic AI assistants are blank slates. You set them up, then stare at them wondering what to ask.</p>
+                    <div class="solution">✓ Pre-trained for actual jobs. They know what to do.</div>
+                </div>
+                
+                <div class="pain-card">
+                    <div class="icon">😰</div>
+                    <h3>Security Nightmares</h3>
+                    <p class="quote">"I want to love it, but the security implications are terrifying"</p>
+                    <p>Connecting AI to your email? Calendar? CRM? What if it sends the wrong email? What if it hallucinates?</p>
+                    <div class="solution">✓ We handle security. Approval workflows. Human oversight.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
     <!-- Team -->
     <section class="team">
         <div class="container">
@@ -886,6 +941,13 @@
                 </div>
                 
                 <div class="team-card">
+                    <img src="https://v3b.fal.media/files/b/0a8c7d17/qU0mbMGFrE1ziGiQUqGVo_McBUkpYY.png" alt="Riley" width="200" height="200" loading="lazy">
+                    <h3>Riley</h3>
+                    <div class="role">Social Media</div>
+                    <p>Schedules posts. Tracks engagement. Tells you what's working. You stay relevant.</p>
+                </div>
+                
+                <div class="team-card">
                     <img src="https://v3b.fal.media/files/b/0a8c7d18/XtDyB-GyZg5YtWlgQG3Q__cCXoxXgf.png" alt="Casey" width="200" height="200" loading="lazy">
                     <h3>Casey</h3>
                     <div class="role">Executive Assistant</div>
@@ -893,12 +955,11 @@
                 </div>
                 
                 <div class="team-card">
-                    <div style="width:200px;height:200px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-hover));display:flex;align-items:center;justify-content:center;font-size:64px;margin:0 auto 16px;">✨</div>
-                    <h3>Custom Agent</h3>
-                    <div class="role">Built for You</div>
-                    <p>Tell us what you need. We build an agent trained on your workflows, your data, your voice.</p>
+                    <img src="https://v3b.fal.media/files/b/0a8e19b7/xMoISRMckfSnrVK38rQVf.jpg" alt="Sam" width="200" height="200" loading="lazy">
+                    <h3>Sam</h3>
+                    <div class="role">Customer Support</div>
+                    <p>Answers tickets. Handles FAQs. Escalates the hard stuff. Your customers never wait.</p>
                 </div>
-                
             </div>
         </div>
     </section>
@@ -909,15 +970,101 @@
             <div class="security-banner">
                 <div class="security-icon">🔐</div>
                 <div class="security-content">
-                    <h3>Private-First. Zero-Trust. Your Data Stays Yours.</h3>
-                    <p>Your AI employee talks only to you. API keys are never exposed. External actions use isolated accounts. <a href="/security.html">See how we keep you protected →</a></p>
+                    <h3>Managed AI Operations. Private by Design.</h3>
+                    <p>Your AI employee talks only to your authorized channels. API keys and secrets are encrypted at rest. External actions use isolated service accounts. <a href="/security.html">See how we keep you protected →</a></p>
                 </div>
             </div>
         </div>
     </section>
     
     <!-- Voice Feature Callout -->
-        <!-- Comparison removed -->
+    <section class="security-callout">
+        <div class="container">
+            <div class="security-banner" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%); border-color: rgba(16, 185, 129, 0.4);">
+                <div class="security-icon">🎙️</div>
+                <div class="security-content">
+                    <h3>NEW: Voice Chat Built In — Talk to Your AI Employee</h3>
+                    <p>Skip the typing. Just talk. Every HireOpenClaw employee includes <strong class="text-success">OpenClaw Voice</strong> — real-time voice conversations in your browser. Like talking to Alexa, but it actually knows your business. <a href="https://openclawvoice.com" target="_blank" class="text-success">Learn more →</a></p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Operating Model -->
+    <section class="team">
+        <div class="container">
+            <h2>How we operate</h2>
+            <p class="subtitle">Choose speed with fully managed service, or deploy our infrastructure management system in your environment.</p>
+            <div class="pain-grid">
+                <div class="pain-card">
+                    <h3>Managed Service (Available Now)</h3>
+                    <p>We run and maintain the infrastructure and orchestration layer for you.</p>
+                    <ul style="margin: 12px 0 0 20px; color: #ccc;">
+                        <li>Onboarding, integrations, incident response, and upgrades handled by our team</li>
+                        <li>Operator support access available for troubleshooting</li>
+                        <li>Best for teams optimizing for speed, simplicity, and one accountable operator</li>
+                    </ul>
+                </div>
+                <div class="pain-card">
+                    <h3>Enterprise Deployment (Contact Us)</h3>
+                    <p>We can deploy our infrastructure management system in your environment (on-prem or private cloud).</p>
+                    <ul style="margin: 12px 0 0 20px; color: #ccc;">
+                        <li>Dedicated operating boundaries in your own environment</li>
+                        <li>Restricted support access paths with customer-defined approvals</li>
+                        <li>Best for teams optimizing for control, compliance, and tighter isolation</li>
+                    </ul>
+                </div>
+            </div>
+            <p style="text-align:center; margin-top: 28px;">
+                <a href="/pricing" style="color: var(--accent); text-decoration: none; font-weight: 600; font-size: 16px;">Compare Managed vs Enterprise Deployment →</a>
+            </p>
+        </div>
+    </section>
+    
+    <!-- Comparison -->
+    <section class="comparison">
+        <div class="container">
+            <h2>Managed vs Enterprise Deployment</h2>
+            <div class="comparison-table">
+                <div class="comparison-row header">
+                    <div class="comparison-cell"></div>
+                    <div class="comparison-cell">Managed Service (Now)</div>
+                    <div class="comparison-cell">Enterprise Deployment (Contact Us)</div>
+                </div>
+                <div class="comparison-row">
+                    <div class="comparison-cell">Operating model</div>
+                    <div class="comparison-cell">We operate the platform for you</div>
+                    <div class="comparison-cell">We deploy our infrastructure management system in your environment</div>
+                </div>
+                <div class="comparison-row">
+                    <div class="comparison-cell">Support access</div>
+                    <div class="comparison-cell">Operator support access for troubleshooting</div>
+                    <div class="comparison-cell">Restricted access paths with customer-defined approvals</div>
+                </div>
+                <div class="comparison-row">
+                    <div class="comparison-cell">Isolation boundaries</div>
+                    <div class="comparison-cell">Logical + container-level isolation</div>
+                    <div class="comparison-cell">Dedicated boundaries in your environment</div>
+                </div>
+                <div class="comparison-row">
+                    <div class="comparison-cell">Key handling</div>
+                    <div class="comparison-cell">Platform-managed key protection</div>
+                    <div class="comparison-cell">Aligned to your internal key-control policy</div>
+                </div>
+                <div class="comparison-row">
+                    <div class="comparison-cell">Change management</div>
+                    <div class="comparison-cell">Fast managed updates by our team</div>
+                    <div class="comparison-cell">Rollout windows coordinated with your team</div>
+                </div>
+                <div class="comparison-row">
+                    <div class="comparison-cell">Best for</div>
+                    <div class="comparison-cell">Speed, simplicity, and managed outcomes</div>
+                    <div class="comparison-cell">Control, compliance, and environment ownership</div>
+                </div>
+            </div>
+            <p style="margin-top:20px;color:var(--gray);text-align:center;">Need enterprise deployment details? Contact us for a technical briefing.</p>
+        </div>
+    </section>
     
     <!-- How it Works -->
     <section class="how-it-works">
@@ -931,13 +1078,13 @@
                 </div>
                 <div class="step">
                     <div class="step-number">2</div>
-                    <h3>We spin up your instance</h3>
-                    <p>Under 60 seconds. Secure, isolated, hosted — your own AI employee running on dedicated infrastructure.</p>
+                    <h3>We build your AI employee</h3>
+                    <p>24-48 hours. We do the part that makes normal people cry: API keys, configs, testing, all of it.</p>
                 </div>
                 <div class="step">
                     <div class="step-number">3</div>
-                    <h3>Start working</h3>
-                    <p>Chat via the web dashboard. Your AI employee is ready to go — trained on your context, connected to your tools.</p>
+                    <h3>Start chatting</h3>
+                    <p>Open WhatsApp or Telegram. Say "hey." Your AI employee is ready. No YouTube tutorials required.</p>
                 </div>
             </div>
         </div>
@@ -948,7 +1095,11 @@
         <div class="container">
             <h2>Fixed pricing. No surprises.</h2>
             <p class="subtitle">No usage calculators. No "contact sales." No anxiety.</p>
-            <p style="text-align: center; margin-bottom: 32px;"></p>
+            <p style="text-align: center; margin-bottom: 32px;">
+                <a href="/pricing" style="color: var(--accent); text-decoration: none; font-weight: 600; font-size: 16px;">
+                    View full pricing & comparison →
+                </a>
+            </p>
             
             <div class="pricing-grid">
                 <div class="pricing-card" data-plan="starter">
@@ -957,12 +1108,12 @@
                     <p class="description">One focused AI employee</p>
                     <ul>
                         <li>1 AI employee</li>
-                        <li>5,000 interactions/month</li>
+                        <li>500K tokens/month</li>
                         <li>Choose your role template</li>
-                        <li>Web dashboard</li>
+                        <li>Telegram or WhatsApp</li>
                         <li>Email support</li>
                     </ul>
-                    
+                    <a href="/signup?plan=starter" class="cta-button">Get Started</a>
                 </div>
 
                 <div class="pricing-card featured" data-plan="pro">
@@ -971,12 +1122,13 @@
                     <p class="description">Most popular</p>
                     <ul>
                         <li>Up to 3 AI employees</li>
-                        <li>25,000 interactions/month</li>
+                        <li>2M tokens/month</li>
                         <li>All role templates</li>
+                        <li>All messaging channels</li>
                         <li>Custom personalities</li>
                         <li>Priority support</li>
                     </ul>
-                    
+                    <a href="/signup?plan=pro" class="cta-button">Get Started</a>
                 </div>
 
                 <div class="pricing-card" data-plan="business">
@@ -985,57 +1137,33 @@
                     <p class="description">Scale your AI workforce</p>
                     <ul>
                         <li>Up to 10 AI employees</li>
-                        <li>100,000 interactions/month</li>
-                        <li>Team management</li>
+                        <li>5M tokens/month</li>
+                        <li>All messaging channels</li>
+                        <li>Custom personalities</li>
                         <li>Dedicated support</li>
+                        <li>Team management</li>
                     </ul>
-                    
+                    <a href="/signup?plan=business" class="cta-button">Get Started</a>
                 </div>
 
-            </div>
-            <div style="max-width:700px;margin:32px auto 0;padding:20px 28px;background:var(--bg-card);border:1px solid var(--light-gray);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:20px;">
-                <div>
-                    <strong style="font-size:16px;">Enterprise / On-Prem</strong>
-                    <p style="color:var(--gray);font-size:14px;margin-top:4px;">Dedicated infrastructure, customer-managed encryption, unlimited employees, white-glove onboarding.</p>
+                <div class="pricing-card" data-plan="enterprise">
+                    <h3>Enterprise</h3>
+                    <div class="price" data-price="999">$999<span>/mo</span></div>
+                    <p class="description">Full AI workforce</p>
+                    <ul>
+                        <li>Up to 50 AI employees</li>
+                        <li>20M tokens/month</li>
+                        <li>Dedicated infrastructure</li>
+                        <li>All messaging channels</li>
+                        <li>Deployment in your environment (on-prem/private cloud)</li>
+                        <li>White-glove onboarding</li>
+                    </ul>
+                    <a href="/signup?plan=enterprise" class="cta-button">Contact Us</a>
                 </div>
-                <a href="#apply" style="color:var(--accent);font-size:14px;white-space:nowrap;text-decoration:none;">Contact us →</a>
             </div>
         </div>
     </section>
     
-    <!-- Platform -->
-    <section class="security-callout">
-        <div class="container">
-            <h2 style="text-align:center;margin-bottom:32px;">Built for scale, not demos.</h2>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:24px;max-width:900px;margin:0 auto;">
-                <div style="padding:20px;">
-                    <h4 style="margin-bottom:8px;">🔒 Isolated by default</h4>
-                    <p style="color:var(--gray);font-size:14px;">Every customer gets dedicated infrastructure. No shared data, no cross-contamination, no noisy neighbors.</p>
-                </div>
-                <div style="padding:20px;">
-                    <h4 style="margin-bottom:8px;">⚡ 60-second provisioning</h4>
-                    <p style="color:var(--gray);font-size:14px;">New AI employees are live in under a minute. Not a sales demo — actual production instances.</p>
-                </div>
-                <div style="padding:20px;">
-                    <h4 style="margin-bottom:8px;">🎛️ Fleet orchestration</h4>
-                    <p style="color:var(--gray);font-size:14px;">Manage hundreds of AI employees from a single control plane. Provision, pause, scale — all automated.</p>
-                </div>
-                <div style="padding:20px;">
-                    <h4 style="margin-bottom:8px;">📊 Real-time metering</h4>
-                    <p style="color:var(--gray);font-size:14px;">Transparent usage tracking with per-employee dashboards. No surprise bills — ever.</p>
-                </div>
-                <div style="padding:20px;">
-                    <h4 style="margin-bottom:8px;">🔓 Open-source foundation</h4>
-                    <p style="color:var(--gray);font-size:14px;">Built on OpenClaw — no vendor lock-in. Customers can self-host anytime. We win on service, not lock-in.</p>
-                </div>
-                <div style="padding:20px;">
-                    <h4 style="margin-bottom:8px;">🏗️ Enterprise-ready</h4>
-                    <p style="color:var(--gray);font-size:14px;">On-prem deployment, customer-managed encryption keys, and audit logging. Built for companies that care about security.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <!-- FAQ -->
     <section class="faq">
         <div class="container">
@@ -1055,25 +1183,18 @@
                 </div>
                 <div class="faq-item">
                     <h3>"I could figure this out myself..."</h3>
-                    <p>You probably could! The question is: do you want to spend 3 days doing that, or pay a fixed monthly fee to skip it?</p>
+                    <p>You probably could! The question is: do you want to spend 3 days doing that, or $29/month to skip it?</p>
                 </div>
             </div>
         </div>
     </section>
     
-    <!-- CTA -->
+    <!-- CTA Section (replaces old form) -->
     <section class="apply" id="apply">
         <div class="container" style="text-align:center;">
-            <h2>Get early access</h2>
-            <p class="subtitle">We're onboarding select companies. Join the waitlist.</p>
-            <div style="margin-top:24px;">
-                <button id="bottom-waitlist-toggle" class="cta-button" onclick="document.getElementById('bottom-waitlist').style.display='flex';this.style.display='none';">Join the Waitlist →</button>
-                <form id="bottom-waitlist" style="display:none;flex-direction:column;gap:8px;max-width:400px;margin:0 auto;" onsubmit="submitWaitlist(event, this)">
-                    <input type="email" name="email" placeholder="you@company.com" required style="width:100%;padding:12px 16px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:#fff;font-size:16px;box-sizing:border-box;">
-                    <button type="submit" class="cta-button" style="width:100%;">Get Early Access</button>
-                    <p class="waitlist-msg" style="width:100%;margin:8px 0 0;font-size:14px;display:none;"></p>
-                </form>
-            </div>
+            <h2>Ready to get started?</h2>
+            <p class="subtitle">Choose your plan and get started in minutes.</p>
+            <a href="/signup" class="cta-button">Get Your AI Employee →</a>
         </div>
     </section>
     
@@ -1087,41 +1208,8 @@
     </footer>
 
     <script>
-        async function submitWaitlist(e, form) {
-            e.preventDefault();
-            const btn = form.querySelector('button[type=submit]');
-            const msg = form.querySelector('.waitlist-msg');
-            const email = form.querySelector('input[name=email]').value;
-            btn.disabled = true;
-            btn.textContent = 'Submitting...';
-            msg.style.display = 'none';
-            try {
-                const res = await fetch('/api/waitlist', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    form.innerHTML = '<p style="color:#4ade80;font-size:16px;">✓ You\'re on the list! Check your inbox.</p>';
-                } else {
-                    msg.textContent = data.error || 'Something went wrong. Try again.';
-                    msg.style.color = '#f87171';
-                    msg.style.display = 'block';
-                    btn.disabled = false;
-                    btn.textContent = 'Get Early Access';
-                }
-            } catch {
-                msg.textContent = 'Network error. Try again.';
-                msg.style.color = '#f87171';
-                msg.style.display = 'block';
-                btn.disabled = false;
-                btn.textContent = 'Get Early Access';
-            }
-        }
-
-        // Form handlers disabled for production
-        if (document.getElementById('login-form')) document.getElementById('login-form').addEventListener('submit', async (e) => {
+        // Magic link login
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const form = e.target;
             const btn = form.querySelector('button');
@@ -1168,8 +1256,8 @@
             }
         });
 
-        // Signup form (disabled)
-        if (document.getElementById('signup-form')) document.getElementById('signup-form').addEventListener('submit', async (e) => {
+        // Signup form
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const form = e.target;
             const btn = form.querySelector('button');

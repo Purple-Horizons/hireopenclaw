@@ -432,6 +432,11 @@
             color: var(--white);
             font-weight: 600;
         }
+
+        .deployment-mode .comparison-header,
+        .deployment-mode .comparison-row {
+            grid-template-columns: 2fr repeat(2, 1fr);
+        }
         
         /* FAQ Section */
         .faq-section {
@@ -573,6 +578,21 @@
             .comparison-header > div:not(:first-child),
             .comparison-row > div:not(:first-child) {
                 display: none;
+            }
+
+            .deployment-mode {
+                overflow-x: auto;
+            }
+
+            .deployment-mode .comparison-header,
+            .deployment-mode .comparison-row {
+                grid-template-columns: 1.2fr repeat(2, minmax(180px, 1fr));
+                min-width: 720px;
+            }
+
+            .deployment-mode .comparison-header > div:not(:first-child),
+            .deployment-mode .comparison-row > div:not(:first-child) {
+                display: block;
             }
             
             .comparison-section {
@@ -720,7 +740,7 @@
                         <li>Unlimited AI employees</li>
                         <li>Custom interaction limits</li>
                         <li>Dedicated infrastructure</li>
-                        <li>Customer-managed encryption</li>
+                        <li>Deployment in your environment (on-prem/private cloud)</li>
                         <li>White-glove onboarding</li>
                         <li>24/7 priority support</li>
                         <li>SLA guarantees</li>
@@ -728,6 +748,62 @@
                     <a href="mailto:hello@hireopenclaw.com?subject=Enterprise Inquiry" class="cta-button secondary">Contact Us</a>
                 </div>
             </div>
+        </div>
+    </section>
+
+    <!-- Operating Model Comparison -->
+    <section class="comparison-section">
+        <div class="container">
+            <h2>Managed Service vs Enterprise Deployment</h2>
+
+            <div class="comparison-table deployment-mode">
+                <div class="comparison-header">
+                    <div>Category</div>
+                    <div>Managed Service (Now)</div>
+                    <div>Enterprise Deployment (Contact Us)</div>
+                </div>
+
+                <div class="comparison-row">
+                    <div>Operating model</div>
+                    <div class="value">We operate the platform for you</div>
+                    <div class="value">We deploy our infrastructure management system in your environment</div>
+                </div>
+
+                <div class="comparison-row">
+                    <div>Support access</div>
+                    <div class="value">Operator support access for troubleshooting</div>
+                    <div class="value">Restricted access paths with customer-defined approvals</div>
+                </div>
+
+                <div class="comparison-row">
+                    <div>Isolation boundaries</div>
+                    <div class="value">Logical + container-level isolation</div>
+                    <div class="value">Dedicated boundaries in your environment</div>
+                </div>
+
+                <div class="comparison-row">
+                    <div>Key management</div>
+                    <div class="value">Platform-managed key protection</div>
+                    <div class="value">Aligned to your internal key-control policy</div>
+                </div>
+
+                <div class="comparison-row">
+                    <div>Change management</div>
+                    <div class="value">Fast managed updates by our team</div>
+                    <div class="value">Rollout windows coordinated with your team</div>
+                </div>
+
+                <div class="comparison-row">
+                    <div>Best for</div>
+                    <div class="value">Speed, simplicity, managed outcomes</div>
+                    <div class="value">Control, compliance, and environment ownership</div>
+                </div>
+            </div>
+
+            <p style="text-align:center; margin-top: 20px; color: var(--gray);">Contact us to review fit, architecture, and rollout options for enterprise deployment.</p>
+            <p style="text-align:center; margin-top: 12px;">
+                <a href="mailto:hello@hireopenclaw.com?subject=Enterprise Deployment Briefing" style="color: var(--accent); text-decoration: none; font-weight: 600;">Request Enterprise Deployment Briefing →</a>
+            </p>
         </div>
     </section>
     
@@ -890,7 +966,7 @@
                     <button class="faq-question">Is my data secure?</button>
                     <div class="faq-answer">
                         <div class="faq-answer-content">
-                            Yes. Your AI employee talks only to you. API keys are encrypted at rest. External actions use isolated service accounts. We never train on your data. See our <a href="/security.html" style="color: var(--accent);">security page</a> for full details.
+                            Yes. Your AI employee talks only to your authorized channels. API keys and secrets are encrypted at rest. External actions use isolated service accounts. We never train on your data. See our <a href="/security.html" style="color: var(--accent);">security page</a> for full details.
                         </div>
                     </div>
                 </div>
