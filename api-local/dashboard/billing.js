@@ -4,10 +4,11 @@
  */
 
 const { requireAuth } = require('../auth/middleware.js');
-const { getUserPlan } = require('../auth/team-plan.js');
+const teamPlan = require('../auth/team-plan.js');
 const { QueryCommand } = require('@aws-sdk/client-dynamodb');
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 const { client: dynamodb, TABLES } = require('../util/dynamodb.js');
+const { normalizeUsagePolicy } = require('../billing/team-billing.js');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -23,7 +24,12 @@ module.exports = async (req, res) => {
     PLANS[k] = { price: v.price, tokens: PLAN_TOKEN_LIMITS[k], maxBots: v.maxBots };
   }
 
-  const plan = await getUserPlan(email);
+  const [plan, team] = await Promise.all([
+    teamPlan.getUserPlan(email),
+    typeof teamPlan.getTeamByOwner === 'function'
+      ? teamPlan.getTeamByOwner(email)
+      : Promise.resolve(null),
+  ]);
   const planInfo = PLANS[plan] || PLANS.starter;
   const usage = await getMonthlyUsage(email);
 
@@ -31,32 +37,45 @@ module.exports = async (req, res) => {
   const hasTokenLimit = Number.isFinite(planInfo.tokens);
   const tokensLimit = hasTokenLimit ? planInfo.tokens : null;
   const percentUsed = tokensLimit ? Math.min(100, (usage.tokensUsed / tokensLimit) * 100) : null;
+  const usagePolicy = normalizeUsagePolicy(team?.usagePolicy);
+  const tokensOver = tokensLimit ? Math.max(0, usage.tokensUsed - tokensLimit) : 0;
+  const estimatedOverageCost = tokensOver > 0
+    ? (tokensOver / 1_000_000) * 15
+    : 0;
 
   return res.status(200).json({
     plan,
     planPrice: hasNumericPrice ? planInfo.price : null,
     customPlan: !hasNumericPrice,
-    status: 'active',
+    status: team?.billingStatus || 'active',
+    stripeConnected: Boolean(team?.stripeCustomerId),
+    stripeCustomerId: team?.stripeCustomerId || null,
+    stripeSubscriptionId: team?.stripeSubscriptionId || null,
     billingCycle: 'monthly',
-    nextBillingDate: hasNumericPrice
-      ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-      : null,
+    nextBillingDate: team?.currentPeriodEnd
+      || (hasNumericPrice
+        ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        : null),
     currentPeriod: {
       start: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-      end: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
+      end: team?.currentPeriodEnd
+        || new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
     },
+    usagePolicy,
     usage: {
       tokensUsed: usage.tokensUsed,
       estimatedCost: usage.estimatedCost,
       tokensLimit,
-      percentUsed
+      percentUsed,
+      tokensOver,
+      estimatedOverageCost,
     },
     upcomingInvoice: {
       amount: hasNumericPrice ? planInfo.price * 100 : null, // cents
       currency: 'usd',
-      date: hasNumericPrice
+      date: team?.currentPeriodEnd || (hasNumericPrice
         ? new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
-        : null
+        : null),
     },
     bots: {
       count: usage.botCount,

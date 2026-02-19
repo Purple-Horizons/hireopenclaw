@@ -100,7 +100,7 @@
             <div class="plan-grid">
                 <div class="plan-card" data-plan="starter" onclick="selectPlan(this)">
                     <h3>Starter</h3>
-                    <div class="price">$299<small>/mo</small></div>
+                    <div class="price">$29<small>/mo</small></div>
                     <p class="desc">One focused AI employee</p>
                     <ul>
                         <li>1 AI employee</li>
@@ -110,17 +110,29 @@
                         <li>Email support</li>
                     </ul>
                 </div>
-                <div class="plan-card featured" data-plan="professional" onclick="selectPlan(this)">
-                    <h3>Professional</h3>
-                    <div class="price">$799<small>/mo</small></div>
+                <div class="plan-card featured" data-plan="pro" onclick="selectPlan(this)">
+                    <h3>Pro</h3>
+                    <div class="price">$99<small>/mo</small></div>
                     <p class="desc">Most popular — up to 3 employees</p>
                     <ul>
                         <li>Up to 3 AI employees</li>
-                        <li>2M tokens/month</li>
+                        <li>2.5M tokens/month</li>
                         <li>All role templates</li>
                         <li>All messaging channels</li>
                         <li>Custom personalities</li>
                         <li>Priority support</li>
+                    </ul>
+                </div>
+                <div class="plan-card" data-plan="business" onclick="selectPlan(this)">
+                    <h3>Business</h3>
+                    <div class="price">$299<small>/mo</small></div>
+                    <p class="desc">Scale your AI workforce across teams</p>
+                    <ul>
+                        <li>Up to 10 AI employees</li>
+                        <li>10M tokens/month</li>
+                        <li>All messaging channels</li>
+                        <li>Team management</li>
+                        <li>Dedicated support</li>
                     </ul>
                 </div>
                 <div class="plan-card" data-plan="enterprise" onclick="selectPlan(this)">
@@ -207,10 +219,21 @@
             btn.textContent = 'Redirecting...';
 
             try {
+                const email = (localStorage.getItem('clawops_email')
+                    || new URLSearchParams(window.location.search).get('email')
+                    || '').trim();
+                let billingEmail = email;
+                if (!billingEmail) {
+                    billingEmail = window.prompt('Enter billing email to continue checkout:');
+                }
+                if (!billingEmail) {
+                    throw new Error('Billing email is required');
+                }
+
                 const res = await fetch('/api/checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ plan: selectedPlan, template: selectedTemplate })
+                    body: JSON.stringify({ plan: selectedPlan, template: selectedTemplate, email: billingEmail })
                 });
                 const data = await res.json();
                 if (data.url) {

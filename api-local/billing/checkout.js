@@ -1,81 +1,103 @@
 /**
  * POST /api/billing/checkout
- * Create a Stripe Checkout session for plan upgrade
- * 
- * Requires STRIPE_SECRET_KEY env var
+ * Create a Stripe Checkout session for initial subscription purchase.
+ *
+ * Supports both signed-in and onboarding flows:
+ * - session email via auth middleware
+ * - explicit body email for unauthenticated checkout
  */
 
-// Import from single source of truth
-const { plans } = require('../data/plans.js');
-
-// Derive Stripe amounts from plans.json (price in dollars → cents)
-const PLANS = {};
-for (const [key, plan] of Object.entries(plans)) {
-  if (plan.price === null || plan.price === 0) continue; // skip free/enterprise
-  PLANS[key] = { priceId: null, amount: plan.price * 100, name: plan.name };
-}
-// Enterprise is custom/contact-us
-PLANS.enterprise = { priceId: null, amount: 99900, name: 'Enterprise' };
+const { getEmailFromSession } = require('../auth/middleware.js');
+const {
+  normalizePlan,
+  getStripePriceIdForPlan,
+  getPlanAmountCents,
+  getPlanDisplayName,
+  getCheckoutEligiblePlans,
+} = require('./stripe-plans.js');
 
 module.exports = async (req, res) => {
   try {
-    const { plan, email } = req.body;
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
 
-    if (!plan || !PLANS[plan]) {
-      return res.status(400).json({ 
+    const rawPlan = req.body?.plan;
+    const plan = normalizePlan(rawPlan);
+    const available = getCheckoutEligiblePlans();
+    if (!plan || !available.includes(plan)) {
+      return res.status(400).json({
         error: 'Invalid plan',
-        available: Object.keys(PLANS)
+        available,
       });
+    }
+
+    const sessionEmail = await getEmailFromSession(req);
+    const email = String(req.body?.email || sessionEmail || '').trim().toLowerCase();
+    if (!email) {
+      return res.status(400).json({ error: 'Billing email is required' });
     }
 
     const stripeKey = process.env.STRIPE_SECRET_KEY;
-    
+    const baseUrl = process.env.BASE_URL || process.env.SITE_URL || 'http://localhost:3000';
+
     if (!stripeKey) {
-      // Dev mode: return mock checkout URL
-      return res.json({
-        url: `http://localhost:3000/checkout-success?plan=${plan}&email=${email}`,
+      // Dev mode: return mock checkout URL so UX flows still work.
+      return res.status(200).json({
+        url: `${baseUrl}/success?plan=${encodeURIComponent(plan)}&mock_checkout=true`,
         sessionId: `cs_test_mock_${Date.now()}`,
         mode: 'development',
-        message: 'Stripe not configured. Using mock checkout.'
+        message: 'Stripe not configured. Using mock checkout.',
       });
     }
 
-    // Production: create real Stripe session
     const stripe = require('stripe')(stripeKey);
-    
+    const stripePriceId = getStripePriceIdForPlan(plan);
+    const amountCents = getPlanAmountCents(plan);
+    const planName = getPlanDisplayName(plan) || plan;
+
+    if (!stripePriceId && !amountCents) {
+      return res.status(400).json({ error: `Plan ${plan} is not billable via checkout` });
+    }
+
+    const lineItems = stripePriceId
+      ? [{ price: stripePriceId, quantity: 1 }]
+      : [{
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: `HireOpenClaw ${planName}`,
+            description: `${planName} monthly subscription`,
+          },
+          unit_amount: amountCents,
+          recurring: { interval: 'month' },
+        },
+        quantity: 1,
+      }];
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
       customer_email: email,
-      line_items: [{
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: `ClawOps ${PLANS[plan].name} Plan`,
-            description: `AI Employee Management - ${PLANS[plan].name}`
-          },
-          unit_amount: PLANS[plan].amount,
-          recurring: {
-            interval: 'month'
-          }
-        },
-        quantity: 1
-      }],
-      success_url: `${process.env.BASE_URL || 'http://localhost:3000'}/checkout-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.BASE_URL || 'http://localhost:3000'}/dashboard?cancelled=true`,
+      line_items: lineItems,
+      success_url: `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/pricing?canceled=true`,
       metadata: {
+        plan,
         email,
-        plan
-      }
+        source: 'hireopenclaw',
+      },
+      subscription_data: {
+        metadata: { plan, email },
+      },
     });
 
-    res.json({
+    return res.status(200).json({
       url: session.url,
-      sessionId: session.id
+      sessionId: session.id,
     });
-
   } catch (error) {
     console.error('Checkout error:', error);
-    res.status(500).json({ error: 'Failed to create checkout session' });
+    return res.status(500).json({ error: 'Failed to create checkout session' });
   }
 };

@@ -6,13 +6,15 @@
 const { PutCommand } = require('@aws-sdk/lib-dynamodb');
 const { docClient, TABLES } = require('./util/dynamodb.js');
 const { ERROR_CODES, apiError } = require('./util/error-codes.js');
+const { ensureTeam } = require('./auth/team-plan.js');
+const { normalizePlan } = require('./billing/stripe-plans.js');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json(apiError(ERROR_CODES.METHOD_NOT_ALLOWED));
   }
 
-  const { name, email, phone, company } = req.body || {};
+  const { name, email, phone, company, plan: rawPlan } = req.body || {};
 
   if (!name || !email) {
     return res.status(400).json(apiError(ERROR_CODES.MISSING_FIELD, 'Name and email are required'));
@@ -26,6 +28,8 @@ module.exports = async (req, res) => {
   const safeCompany = escapeHtml(String(company || 'N/A'));
 
   try {
+    const plan = normalizePlan(rawPlan) || 'starter';
+
     // Generate tenant ID (simplified version)
     const timestamp = Date.now().toString().slice(-6);
     const random = Math.random().toString(36).substring(2, 6);
@@ -45,7 +49,7 @@ module.exports = async (req, res) => {
         contactPhone: phone || '',
         company: company || '',
         status: 'pending_onboarding',  // Not yet provisioned
-        plan: 'starter',  // Default plan
+        plan,
         createdAt: new Date().toISOString(),
         createdBy: 'signup-form',
         healthStatus: 'pending',
@@ -54,6 +58,7 @@ module.exports = async (req, res) => {
     }));
 
     console.log(`[Signup] Created tenant record: ${tenantId}`);
+    await ensureTeam(email, plan);
 
     // Try to send notification email (non-blocking)
     if (process.env.RESEND_API_KEY) {

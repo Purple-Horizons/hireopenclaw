@@ -377,6 +377,7 @@ function renderBillingDetails(billing, margin) {
         container.innerHTML = `<p class="empty-state">Unable to load billing details${billing?.error ? `: ${billing.error}` : '.'}</p>`;
         return;
     }
+    window.__billingState = billing;
     
     const tokensUsed = Number(billing.usage?.tokensUsed || 0);
     const tokensLimit = Number.isFinite(billing.usage?.tokensLimit) ? billing.usage.tokensLimit : null;
@@ -399,6 +400,14 @@ function renderBillingDetails(billing, margin) {
     const botCount = billing.bots?.count ?? margin.bots?.count ?? 0;
     const uptimeHours = margin.bots?.uptimeHours || 0;
     const estimatedUsageCost = Number(billing.usage?.estimatedCost || 0);
+    const tokensOver = Number(billing.usage?.tokensOver || 0);
+    const estimatedOverageCost = Number(billing.usage?.estimatedOverageCost || 0);
+    const usagePolicyMode = billing.usagePolicy?.mode || 'notify_only';
+    const usagePolicyLabel = usagePolicyMode === 'hard_cap'
+        ? 'Hard cap at plan limit'
+        : usagePolicyMode === 'metered'
+        ? 'Metered overage enabled'
+        : 'Notify only';
     
     container.innerHTML = `
         <div class="billing-summary">
@@ -426,7 +435,11 @@ function renderBillingDetails(billing, margin) {
         
         <div class="billing-actions">
             <button class="btn btn-primary" onclick="upgradePlan()">Upgrade Plan</button>
+            <button class="btn btn-secondary" onclick="downgradePlan()">Downgrade Plan</button>
             <button class="btn btn-secondary" onclick="manageBilling()">Manage Billing</button>
+            <button class="btn btn-secondary" onclick="setUsagePolicy('${usagePolicyMode === 'hard_cap' ? 'metered' : 'hard_cap'}')">
+              ${usagePolicyMode === 'hard_cap' ? 'Allow Overage' : 'Set Hard Cap'}
+            </button>
             <button class="btn btn-secondary" onclick="downloadInvoice()">Download Invoice</button>
         </div>
         
@@ -441,6 +454,14 @@ function renderBillingDetails(billing, margin) {
                 <div style="background:rgba(255,255,255,0.03);padding:16px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
                     <span>Estimated Usage Cost</span>
                     <strong>$${estimatedUsageCost.toFixed(2)} this month</strong>
+                </div>
+                <div style="background:rgba(255,255,255,0.03);padding:16px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+                    <span>Overage</span>
+                    <strong>${tokensOver > 0 ? `${tokensOver.toLocaleString()} tokens (~$${estimatedOverageCost.toFixed(2)})` : 'None'}</strong>
+                </div>
+                <div style="background:rgba(255,255,255,0.03);padding:16px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+                    <span>Usage Policy</span>
+                    <strong>${usagePolicyLabel}</strong>
                 </div>
                 <div style="background:rgba(255,255,255,0.03);padding:16px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
                     <span>Status</span>

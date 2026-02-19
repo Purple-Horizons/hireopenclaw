@@ -5,7 +5,9 @@ const { docClient: db, TABLES } = require('../util/dynamodb.js');
 
 module.exports = async (req, res) => {
   try {
-    const { name, plan = 'team' } = req.body;
+    const { normalizePlan } = require('../billing/stripe-plans.js');
+    const { name, plan: rawPlan } = req.body;
+    const plan = normalizePlan(rawPlan) || 'starter';
     const userId = req.userEmail;
 
     if (!userId) {
@@ -26,7 +28,7 @@ module.exports = async (req, res) => {
       ownerId: userId,
       name,
       plan,
-      seats: plan === 'team' ? 5 : plan === 'agency' ? 20 : 100,
+      seats: plan === 'starter' ? 1 : plan === 'pro' ? 3 : plan === 'business' ? 10 : 50,
       createdAt: nowIso,
       settings: {
         requireApproval: true

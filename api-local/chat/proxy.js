@@ -12,14 +12,19 @@
 
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 const tokenStore = require('../auth/token-store.js');
-const { GetItemCommand } = require('@aws-sdk/client-dynamodb');
+const { GetItemCommand, QueryCommand } = require('@aws-sdk/client-dynamodb');
 const { client: dynamodb, TABLES } = require('../util/dynamodb.js');
+const { getTeamByOwner } = require('../auth/team-plan.js');
+const { PLAN_TOKEN_LIMITS } = require('../data/plans.js');
+const { normalizeUsagePolicy } = require('../billing/team-billing.js');
 
 // In-memory conversation history per bot (ephemeral — lost on portal restart)
 // botId -> { messages: [{role, content}], lastActivity }
 const conversationStore = new Map();
 const MAX_HISTORY = 50;
 const HISTORY_TTL_MS = 3600000; // 1 hour
+const USAGE_CACHE_TTL_MS = 60 * 1000; // 1 minute
+const usageCache = new Map();
 
 // ─── Auth helpers ───
 
@@ -84,6 +89,16 @@ async function handleSend(req, res) {
   const bot = await getBotForUser(botId, email);
   if (!bot) return res.status(403).json({ error: 'Bot not found or access denied' });
   if (!bot.endpoint || !bot.gatewayToken) return res.status(503).json({ error: 'Bot not ready' });
+
+  const usageGate = await checkUsageGate(email);
+  if (!usageGate.allowed) {
+    return res.status(402).json({
+      error: 'Monthly usage limit reached',
+      code: 'USAGE_LIMIT_REACHED',
+      usage: usageGate,
+      message: 'Upgrade your plan or wait for the next billing cycle to continue.',
+    });
+  }
 
   // Build conversation context
   const conv = getConversation(botId);
@@ -252,3 +267,160 @@ const cleanupTimer = setInterval(() => {
 if (typeof cleanupTimer.unref === 'function') cleanupTimer.unref();
 
 module.exports = { handleSend, handleEvents, handleHistory, handleClear };
+
+async function checkUsageGate(email) {
+  if (process.env.NODE_ENV === 'test') {
+    return {
+      allowed: true,
+      policyMode: 'notify_only',
+      plan: 'starter',
+      tokensLimit: null,
+      tokensUsed: 0,
+      tokensRemaining: null,
+    };
+  }
+
+  const team = await getTeamByOwner(email);
+  const plan = team?.plan || 'starter';
+  const rawLimit = PLAN_TOKEN_LIMITS[plan];
+  const limit = Number.isFinite(rawLimit) ? rawLimit : null;
+  const usagePolicy = normalizeUsagePolicy(team?.usagePolicy);
+  const policyMode = usagePolicy.mode;
+
+  if (!limit) {
+    return {
+      allowed: true,
+      policyMode,
+      plan,
+      tokensLimit: null,
+      tokensUsed: 0,
+    };
+  }
+
+  if (policyMode !== 'hard_cap') {
+    return {
+      allowed: true,
+      policyMode,
+      plan,
+      tokensLimit: limit,
+      tokensUsed: null,
+      tokensRemaining: null,
+    };
+  }
+
+  const tokensUsed = await getMonthlyTokenUsage(email);
+  const tokensRemaining = Math.max(0, limit - tokensUsed);
+
+  if (policyMode === 'hard_cap' && tokensUsed >= limit) {
+    return {
+      allowed: false,
+      policyMode,
+      plan,
+      tokensLimit: limit,
+      tokensUsed,
+      tokensRemaining: 0,
+    };
+  }
+
+  return {
+    allowed: true,
+    policyMode,
+    plan,
+    tokensLimit: limit,
+    tokensUsed,
+    tokensRemaining,
+  };
+}
+
+async function getMonthlyTokenUsage(email) {
+  const now = new Date();
+  const monthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+  const cacheKey = `${email}:${monthKey}`;
+  const cached = usageCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.tokensUsed;
+  }
+
+  const monthStartMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
+  const tenantsResult = await dynamodb.send(makeQueryCommand({
+    TableName: TABLES.TENANTS || TABLES.tenants || 'clawops-tenants',
+    IndexName: 'email-index',
+    KeyConditionExpression: 'email = :email',
+    ExpressionAttributeValues: { ':email': { S: email } },
+  }));
+
+  const tenants = (tenantsResult.Items || []).map((raw) => unmarshall(raw));
+  let tokensUsed = 0;
+
+  for (const tenant of tenants) {
+    if (!tenant.tenantId) continue;
+    const usageResult = await dynamodb.send(makeQueryCommand({
+      TableName: TABLES.USAGE || TABLES.usage || 'clawops-usage',
+      KeyConditionExpression: 'tenantId = :tid',
+      ExpressionAttributeValues: { ':tid': { S: tenant.tenantId } },
+    }));
+
+    for (const raw of (usageResult.Items || [])) {
+      const record = unmarshall(raw);
+      const recordMs = getRecordTimeMs(record);
+      if (recordMs !== null && recordMs < monthStartMs) continue;
+      const input = parseNumber(
+        record.inputTokens,
+        record.tokensIn,
+        record.tokenIn,
+        record.promptTokens,
+        record.prompt_tokens,
+        record.inputTokenCount,
+        record.totalInputTokens,
+        record.tokens_input
+      ) || 0;
+      const output = parseNumber(
+        record.outputTokens,
+        record.tokensOut,
+        record.tokenOut,
+        record.completionTokens,
+        record.completion_tokens,
+        record.outputTokenCount,
+        record.totalOutputTokens,
+        record.tokens_output
+      ) || 0;
+      tokensUsed += input + output;
+    }
+  }
+
+  usageCache.set(cacheKey, {
+    tokensUsed,
+    expiresAt: Date.now() + USAGE_CACHE_TTL_MS,
+  });
+
+  return tokensUsed;
+}
+
+function parseNumber(...values) {
+  for (const value of values) {
+    if (value === null || value === undefined || value === '') continue;
+    const n = Number(value);
+    if (!Number.isNaN(n)) return n;
+  }
+  return null;
+}
+
+function getRecordTimeMs(record) {
+  const timestamp = parseNumber(record.timestamp);
+  if (timestamp !== null) return timestamp > 1_000_000_000_000 ? timestamp : timestamp * 1000;
+
+  for (const field of [record.date, record.lastUpdated, record.updatedAt, record.createdAt]) {
+    if (!field) continue;
+    const numericField = parseNumber(field);
+    if (numericField !== null) return numericField > 1_000_000_000_000 ? numericField : numericField * 1000;
+    const parsed = Date.parse(field);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return null;
+}
+
+function makeQueryCommand(params) {
+  return typeof QueryCommand === 'function'
+    ? new QueryCommand(params)
+    : params;
+}

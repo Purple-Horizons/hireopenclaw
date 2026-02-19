@@ -1,17 +1,19 @@
 /**
  * POST /api/billing/webhook
  * Stripe webhook handler
- * 
+ *
  * Events handled:
- * - checkout.session.completed → Activate subscription
- * - customer.subscription.updated → Plan changes
- * - customer.subscription.deleted → Cancellation
- * - invoice.paid → Record payment
- * - invoice.payment_failed → Alert
+ * - checkout.session.completed -> Activate subscription + assign plan
+ * - customer.subscription.updated -> Plan/status changes
+ * - customer.subscription.deleted -> Cancellation
+ * - invoice.paid -> Mark active
+ * - invoice.payment_failed -> Mark past_due
  */
 
 const { QueryCommand, ScanCommand, UpdateCommand, GetCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
 const { docClient: db, TABLES } = require('../util/dynamodb.js');
+const { updateTeamBillingByEmail } = require('./team-billing.js');
+const { normalizePlan, getPlanByStripePriceId } = require('./stripe-plans.js');
 
 module.exports = async (req, res) => {
   try {
@@ -21,12 +23,12 @@ module.exports = async (req, res) => {
       ? req.body
       : Buffer.from(JSON.stringify(req.body || {}));
     let event;
+    let stripe = null;
 
     if (stripeKey && webhookSecret) {
-      // Production: verify webhook signature
-      const stripe = require('stripe')(stripeKey);
+      stripe = require('stripe')(stripeKey);
       const sig = req.headers['stripe-signature'];
-      
+
       try {
         event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
       } catch (err) {
@@ -34,7 +36,6 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Invalid signature' });
       }
     } else {
-      // Dev mode: accept raw event
       event = Buffer.isBuffer(req.body)
         ? JSON.parse(req.body.toString('utf8') || '{}')
         : (req.body || {});
@@ -56,33 +57,27 @@ module.exports = async (req, res) => {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object;
-        const email = session.metadata?.email || session.customer_email;
-        const plan = session.metadata?.plan || 'starter';
-        const customerId = session.customer;
-        const subscriptionId = session.subscription;
+        const email = String(
+          session.metadata?.email
+          || session.customer_details?.email
+          || session.customer_email
+          || ''
+        ).trim().toLowerCase();
+        const customerId = session.customer || null;
+        const subscriptionId = session.subscription || null;
+        const plan = normalizePlan(session.metadata?.plan) || 'starter';
 
-        // Update user with Stripe IDs
-        const users = await db.send(new QueryCommand({
-          TableName: TABLES.TENANTS,
-          IndexName: 'email-index',
-          KeyConditionExpression: 'email = :email',
-          ExpressionAttributeValues: { ':email': email }
-        }));
-
-        for (const user of (users.Items || [])) {
-          await db.send(new UpdateCommand({
-            TableName: TABLES.TENANTS,
-            Key: { tenantId: user.tenantId },
-            UpdateExpression: 'SET #plan = :plan, stripeCustomerId = :cid, stripeSubscriptionId = :sid, billingStatus = :active',
-            ExpressionAttributeNames: { '#plan': 'plan' },
-            ExpressionAttributeValues: {
-              ':plan': plan,
-              ':cid': customerId,
-              ':sid': subscriptionId,
-              ':active': 'active'
-            }
-          }));
+        if (!email) {
+          console.warn('[Stripe Webhook] checkout.session.completed missing email');
+          break;
         }
+
+        await updateRecordsByEmail(email, {
+          plan,
+          stripeCustomerId: customerId,
+          stripeSubscriptionId: subscriptionId,
+          billingStatus: 'active',
+        });
 
         console.log(`✅ Subscription activated for ${email}: ${plan}`);
         break;
@@ -91,16 +86,36 @@ module.exports = async (req, res) => {
       case 'customer.subscription.updated': {
         const subscription = event.data.object;
         const customerId = subscription.customer;
-        const status = subscription.status; // active, past_due, canceled, etc.
+        const status = subscription.status;
         const subscriptionId = subscription.id;
+        const currentPeriodEnd = subscription.current_period_end
+          ? new Date(subscription.current_period_end * 1000).toISOString()
+          : null;
+        const priceId = subscription.items?.data?.[0]?.price?.id || null;
+        const plan = normalizePlan(subscription.metadata?.plan) || getPlanByStripePriceId(priceId);
 
-        await updateTenantsByCustomerId(customerId, {
+        const updated = await updateRecordsByCustomerId(customerId, {
+          plan,
           stripeSubscriptionId: subscriptionId,
           billingStatus: status,
-          updatedAt: new Date().toISOString(),
+          currentPeriodEnd,
         });
 
-        console.log(`🔄 Subscription updated for ${customerId}: ${status}`);
+        if (!updated && stripeKey && stripe && customerId) {
+          const customer = await stripe.customers.retrieve(customerId);
+          const email = String(customer?.email || '').trim().toLowerCase();
+          if (email) {
+            await updateRecordsByEmail(email, {
+              plan,
+              stripeCustomerId: customerId,
+              stripeSubscriptionId: subscriptionId,
+              billingStatus: status,
+              currentPeriodEnd,
+            });
+          }
+        }
+
+        console.log(`🔄 Subscription updated for ${customerId}: ${status}${plan ? ` (${plan})` : ''}`);
         break;
       }
 
@@ -109,31 +124,26 @@ module.exports = async (req, res) => {
         const customerId = subscription.customer;
         const subscriptionId = subscription.id;
 
-        console.log(`❌ Subscription cancelled for ${customerId}`);
-
-        await updateTenantsByCustomerId(customerId, {
+        await updateRecordsByCustomerId(customerId, {
           stripeSubscriptionId: subscriptionId,
           billingStatus: 'canceled',
-          updatedAt: new Date().toISOString(),
         });
+
+        console.log(`❌ Subscription cancelled for ${customerId}`);
         break;
       }
 
       case 'invoice.paid': {
         const invoice = event.data.object;
+        await updateRecordsByCustomerId(invoice.customer, { billingStatus: 'active' });
         console.log(`💰 Invoice paid: $${invoice.amount_paid / 100} for ${invoice.customer}`);
         break;
       }
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object;
-        const customerId = invoice.customer;
-        console.log(`⚠️ Payment failed for ${customerId}`);
-
-        await updateTenantsByCustomerId(customerId, {
-          billingStatus: 'past_due',
-          updatedAt: new Date().toISOString(),
-        });
+        await updateRecordsByCustomerId(invoice.customer, { billingStatus: 'past_due' });
+        console.log(`⚠️ Payment failed for ${invoice.customer}`);
         break;
       }
 
@@ -145,12 +155,10 @@ module.exports = async (req, res) => {
       await markEventProcessed(event.id, event.type);
     }
 
-    // Always return 200 to acknowledge receipt
-    res.json({ received: true });
-
+    return res.json({ received: true });
   } catch (error) {
     console.error('Webhook error:', error);
-    res.status(500).json({ error: 'Webhook processing failed' });
+    return res.status(500).json({ error: 'Webhook processing failed' });
   }
 };
 
@@ -158,13 +166,11 @@ async function wasEventProcessed(eventId) {
   try {
     const existing = await db.send(new GetCommand({
       TableName: TABLES.STRIPE_EVENTS,
-      Key: { eventId }
+      Key: { eventId },
     }));
     return !!existing.Item;
   } catch (err) {
-    if (err.name === 'ResourceNotFoundException') {
-      return false;
-    }
+    if (err.name === 'ResourceNotFoundException') return false;
     throw err;
   }
 }
@@ -181,7 +187,6 @@ async function markEventProcessed(eventId, eventType) {
       ConditionExpression: 'attribute_not_exists(eventId)',
     }));
   } catch (err) {
-    // Table may not be provisioned in local dev; do not fail webhook handling.
     if (err.name === 'ResourceNotFoundException' || err.name === 'ConditionalCheckFailedException') {
       return;
     }
@@ -189,41 +194,101 @@ async function markEventProcessed(eventId, eventType) {
   }
 }
 
+async function updateRecordsByEmail(email, fields) {
+  if (!email) return false;
+  await updateTeamBillingByEmail(email, fields);
+  await updateTenantsByEmail(email, fields);
+  return true;
+}
+
+async function updateRecordsByCustomerId(customerId, fields) {
+  if (!customerId) return false;
+  const [tenantCount, teamCount] = await Promise.all([
+    updateTenantsByCustomerId(customerId, fields),
+    updateTeamsByCustomerId(customerId, fields),
+  ]);
+  return (tenantCount + teamCount) > 0;
+}
+
+async function updateTenantsByEmail(email, fields) {
+  const result = await db.send(new QueryCommand({
+    TableName: TABLES.TENANTS,
+    IndexName: 'email-index',
+    KeyConditionExpression: 'email = :email',
+    ExpressionAttributeValues: { ':email': email },
+  }));
+  const items = result.Items || [];
+  for (const item of items) {
+    await updateTenant(item.tenantId, fields);
+  }
+  return items.length;
+}
+
 async function updateTenantsByCustomerId(customerId, fields) {
-  if (!customerId) return;
   const result = await db.send(new ScanCommand({
     TableName: TABLES.TENANTS,
     FilterExpression: 'stripeCustomerId = :cid',
     ExpressionAttributeValues: { ':cid': customerId },
   }));
-
   const items = result.Items || [];
   for (const item of items) {
-    const updates = [];
-    const values = {};
-    const names = {};
-
-    if (fields.stripeSubscriptionId !== undefined) {
-      updates.push('stripeSubscriptionId = :sid');
-      values[':sid'] = fields.stripeSubscriptionId;
-    }
-    if (fields.billingStatus !== undefined) {
-      updates.push('billingStatus = :status');
-      values[':status'] = fields.billingStatus;
-    }
-    if (fields.updatedAt !== undefined) {
-      updates.push('#updatedAt = :updatedAt');
-      names['#updatedAt'] = 'updatedAt';
-      values[':updatedAt'] = fields.updatedAt;
-    }
-    if (!updates.length) continue;
-
-    await db.send(new UpdateCommand({
-      TableName: TABLES.TENANTS,
-      Key: { tenantId: item.tenantId },
-      UpdateExpression: `SET ${updates.join(', ')}`,
-      ...(Object.keys(names).length ? { ExpressionAttributeNames: names } : {}),
-      ExpressionAttributeValues: values,
-    }));
+    await updateTenant(item.tenantId, fields);
   }
+  return items.length;
+}
+
+async function updateTeamsByCustomerId(customerId, fields) {
+  const result = await db.send(new ScanCommand({
+    TableName: TABLES.TEAMS,
+    FilterExpression: 'stripeCustomerId = :cid',
+    ExpressionAttributeValues: { ':cid': customerId },
+  }));
+  const items = result.Items || [];
+  for (const team of items) {
+    const ownerEmail = team.ownerId || team.email;
+    if (!ownerEmail) continue;
+    await updateTeamBillingByEmail(ownerEmail, fields);
+  }
+  return items.length;
+}
+
+async function updateTenant(tenantId, fields) {
+  const updates = [];
+  const values = {};
+  const names = {};
+
+  if (fields.plan) {
+    updates.push('#plan = :plan');
+    names['#plan'] = 'plan';
+    values[':plan'] = fields.plan;
+  }
+  if (fields.stripeCustomerId !== undefined) {
+    updates.push('stripeCustomerId = :stripeCustomerId');
+    values[':stripeCustomerId'] = fields.stripeCustomerId;
+  }
+  if (fields.stripeSubscriptionId !== undefined) {
+    updates.push('stripeSubscriptionId = :stripeSubscriptionId');
+    values[':stripeSubscriptionId'] = fields.stripeSubscriptionId;
+  }
+  if (fields.billingStatus !== undefined) {
+    updates.push('billingStatus = :billingStatus');
+    values[':billingStatus'] = fields.billingStatus;
+  }
+  if (fields.currentPeriodEnd !== undefined) {
+    updates.push('currentPeriodEnd = :currentPeriodEnd');
+    values[':currentPeriodEnd'] = fields.currentPeriodEnd;
+  }
+  if (!updates.length) return;
+
+  updates.push('#updatedAt = :updatedAt');
+  names['#updatedAt'] = 'updatedAt';
+  values[':updatedAt'] = new Date().toISOString();
+
+  await db.send(new UpdateCommand({
+    TableName: TABLES.TENANTS,
+    Key: { tenantId },
+    UpdateExpression: `SET ${updates.join(', ')}`,
+    ...(Object.keys(names).length ? { ExpressionAttributeNames: names } : {}),
+    ExpressionAttributeValues: values,
+  }));
 }
