@@ -840,8 +840,7 @@
         <div class="container">
             <div class="header-inner">
                 <a href="/" class="logo">Hire<span>OpenClaw</span></a>
-                <a href="/dashboard" style="color:#888;text-decoration:none;font-size:14px;margin-right:16px;">Dashboard</a>
-                <a href="/signup" class="nav-cta">Get Started</a>
+                <a href="#apply" class="nav-cta">Join Waitlist</a>
             </div>
         </div>
     </header>
@@ -853,28 +852,13 @@
             <h1>AI employees for your business.<br><span>Fully managed by our team.</span></h1>
             <p class="subtitle">We deploy, secure, monitor, and operate your AI fleet so your team can focus on outcomes, not infrastructure.</p>
             
-            <form id="signup-form" style="max-width:420px;margin:0 auto 20px;display:flex;flex-direction:column;gap:12px;">
-                <input type="text" name="name" required placeholder="Your name" aria-label="Full name" class="form-input" />
-                <input type="email" name="email" required placeholder="Email address" aria-label="Email address" class="form-input" />
-                <input type="tel" name="phone" required placeholder="Phone number" aria-label="Phone number" class="form-input" />
-                <button type="submit" class="cta-button" aria-label="Get started" style="border:none;cursor:pointer;font-family:inherit;width:100%;text-align:center;">
-                    <span class="btn-text">Get Started →</span>
-                    <span class="btn-loading" style="display:none;">Sending...</span>
-                </button>
-            </form>
-            <p class="hero-note">Starting at $29/mo. Fixed price. No surprise bills. Cancel anytime.</p>
-            
-            <!-- Login Section -->
-            <div style="max-width:420px;margin:32px auto 0;padding-top:24px;border-top:1px solid var(--light-gray);">
-                <p style="color:var(--gray);margin-bottom:12px;text-align:center;">Already have an account?</p>
-                <form id="login-form" style="display:flex;gap:12px;">
-                    <input type="email" name="email" required placeholder="your@email.com" aria-label="Email address" class="form-input-flex" />
-                    <button type="submit" class="cta-button" style="border:none;cursor:pointer;font-family:inherit;background:#333;color:white;white-space:nowrap;padding:14px 24px;">
-                        <span class="btn-text">Send Login Link</span>
-                        <span class="btn-loading" style="display:none;">Sending...</span>
-                    </button>
+            <div style="margin-top:32px;">
+                <button id="hero-waitlist-toggle" class="cta-button" onclick="document.getElementById('hero-waitlist').style.display='flex';this.style.display='none';">Join the Waitlist →</button>
+                <form id="hero-waitlist" style="display:none;flex-direction:column;gap:8px;max-width:420px;margin:0 auto;" onsubmit="submitWaitlist(event, this)">
+                    <input type="email" name="email" placeholder="you@company.com" required class="form-input" />
+                    <button type="submit" class="cta-button" style="width:100%;">Get Early Access</button>
+                    <p class="waitlist-msg" style="width:100%;margin:8px 0 0;font-size:14px;display:none;"></p>
                 </form>
-                <p id="login-status" style="margin-top:12px;text-align:center;color:var(--green);display:none;"></p>
             </div>
         </div>
     </section>
@@ -1113,7 +1097,7 @@
                         <li>Telegram or WhatsApp</li>
                         <li>Email support</li>
                     </ul>
-                    <a href="/signup?plan=starter" class="cta-button">Get Started</a>
+                    <a href="#apply" class="cta-button">Join Waitlist</a>
                 </div>
 
                 <div class="pricing-card featured" data-plan="pro">
@@ -1128,7 +1112,7 @@
                         <li>Custom personalities</li>
                         <li>Priority support</li>
                     </ul>
-                    <a href="/signup?plan=pro" class="cta-button">Get Started</a>
+                    <a href="#apply" class="cta-button">Join Waitlist</a>
                 </div>
 
                 <div class="pricing-card" data-plan="business">
@@ -1143,7 +1127,7 @@
                         <li>Dedicated support</li>
                         <li>Team management</li>
                     </ul>
-                    <a href="/signup?plan=business" class="cta-button">Get Started</a>
+                    <a href="#apply" class="cta-button">Join Waitlist</a>
                 </div>
 
                 <div class="pricing-card" data-plan="enterprise">
@@ -1158,7 +1142,7 @@
                         <li>Deployment in your environment (on-prem/private cloud)</li>
                         <li>White-glove onboarding</li>
                     </ul>
-                    <a href="/signup?plan=enterprise" class="cta-button">Contact Us</a>
+                    <a href="#apply" class="cta-button">Join Waitlist</a>
                 </div>
             </div>
         </div>
@@ -1189,12 +1173,19 @@
         </div>
     </section>
     
-    <!-- CTA Section (replaces old form) -->
+    <!-- CTA -->
     <section class="apply" id="apply">
         <div class="container" style="text-align:center;">
-            <h2>Ready to get started?</h2>
-            <p class="subtitle">Choose your plan and get started in minutes.</p>
-            <a href="/signup" class="cta-button">Get Your AI Employee →</a>
+            <h2>Get early access</h2>
+            <p class="subtitle">We're onboarding select companies. Join the waitlist.</p>
+            <div style="margin-top:24px;">
+                <button id="bottom-waitlist-toggle" class="cta-button" onclick="document.getElementById('bottom-waitlist').style.display='flex';this.style.display='none';">Join the Waitlist →</button>
+                <form id="bottom-waitlist" style="display:none;flex-direction:column;gap:8px;max-width:420px;margin:0 auto;" onsubmit="submitWaitlist(event, this)">
+                    <input type="email" name="email" placeholder="you@company.com" required class="form-input" />
+                    <button type="submit" class="cta-button" style="width:100%;">Get Early Access</button>
+                    <p class="waitlist-msg" style="width:100%;margin:8px 0 0;font-size:14px;display:none;"></p>
+                </form>
+            </div>
         </div>
     </section>
     
@@ -1208,93 +1199,40 @@
     </footer>
 
     <script>
-        // Magic link login
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
+        async function submitWaitlist(e, form) {
             e.preventDefault();
-            const form = e.target;
-            const btn = form.querySelector('button');
-            const btnText = btn.querySelector('.btn-text');
-            const btnLoading = btn.querySelector('.btn-loading');
-            const status = document.getElementById('login-status');
+            const btn = form.querySelector('button[type=submit]');
+            const msg = form.querySelector('.waitlist-msg');
             const email = form.querySelector('input[name=email]').value;
 
-            btnText.style.display = 'none';
-            btnLoading.style.display = 'inline';
             btn.disabled = true;
+            btn.textContent = 'Submitting...';
+            msg.style.display = 'none';
 
             try {
-                const response = await fetch('/api/auth/magic-link', {
+                const res = await fetch('/api/waitlist', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email })
                 });
-
-                const data = await response.json();
-
-                if (data.ok) {
-                    status.textContent = '✓ Magic link sent! Check your email.';
-                    status.style.display = 'block';
-                    status.style.color = 'var(--green)';
-                    
-                    // For local dev, show the link
-                    if (data.magicLink) {
-                        setTimeout(() => {
-                            status.innerHTML = `✓ Magic link sent!<br><a href="${data.magicLink}" style="color:var(--accent);">Click here to log in (dev mode)</a>`;
-                        }, 500);
-                    }
+                const data = await res.json();
+                if (res.ok) {
+                    form.innerHTML = "<p style=\"color:#4ade80;font-size:16px;\">✓ You're on the list! Check your inbox.</p>";
                 } else {
-                    throw new Error(data.error || 'Failed to send magic link');
+                    msg.textContent = data.error || 'Something went wrong. Try again.';
+                    msg.style.color = '#f87171';
+                    msg.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Get Early Access';
                 }
-            } catch (error) {
-                status.textContent = '✗ ' + error.message;
-                status.style.display = 'block';
-                status.style.color = '#ff6b6b';
-            } finally {
-                btnText.style.display = 'inline';
-                btnLoading.style.display = 'none';
+            } catch {
+                msg.textContent = 'Network error. Try again.';
+                msg.style.color = '#f87171';
+                msg.style.display = 'block';
                 btn.disabled = false;
+                btn.textContent = 'Get Early Access';
             }
-        });
-
-        // Signup form
-        document.getElementById('signup-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const form = e.target;
-            const btn = form.querySelector('button');
-            const btnText = btn.querySelector('.btn-text');
-            const btnLoading = btn.querySelector('.btn-loading');
-            
-            btnText.style.display = 'none';
-            btnLoading.style.display = 'inline';
-            btn.disabled = true;
-
-            const formData = new FormData(form);
-            const data = {
-                name: formData.get('name'),
-                email: formData.get('email'),
-                phone: formData.get('phone')
-            };
-
-            try {
-                const response = await fetch('/api/signup', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-
-                if (response.ok) {
-                    window.location.href = '/dashboard?welcome=true';
-                } else {
-                    throw new Error('Signup failed');
-                }
-            } catch (error) {
-                if (typeof showToast === 'function') showToast('Something went wrong. Please try again.', 'error');
-                else { const t = document.createElement('div'); t.textContent = 'Something went wrong. Please try again.'; t.style.cssText = 'position:fixed;bottom:20px;right:20px;padding:12px 20px;border-radius:8px;color:white;background:#ef4444;z-index:10000;font-size:14px;'; document.body.appendChild(t); setTimeout(() => t.remove(), 4000); }
-                btnText.style.display = 'inline';
-                btnLoading.style.display = 'none';
-                btn.disabled = false;
-            }
-        });
+        }
     </script>
     <style>
         .input-error { border-color: #ef4444 !important; }
