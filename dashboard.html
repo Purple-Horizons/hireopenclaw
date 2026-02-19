@@ -91,6 +91,9 @@
                 grid-template-columns: 1fr 1fr !important;
                 gap: 12px;
             }
+            .bot-update-meta {
+                grid-template-columns: 1fr;
+            }
             
             .bot-actions {
                 flex-direction: column;
@@ -413,6 +416,31 @@
         .bot-stat .value { 
             font-size: 20px; 
             font-weight: 700;
+            color: var(--white);
+        }
+        .bot-update-meta {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 6px;
+            margin-bottom: 6px;
+        }
+        .bot-update-meta .update-item {
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            padding: 8px;
+            background: rgba(255,255,255,0.02);
+        }
+        .bot-update-meta .update-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            color: var(--gray);
+            margin-bottom: 4px;
+        }
+        .bot-update-meta .update-value {
+            font-size: 12px;
+            font-weight: 600;
             color: var(--white);
         }
 
@@ -864,6 +892,7 @@
             <div>
                 <button class="btn btn-secondary" onclick="manageBilling()">Manage Billing</button>
                 <button class="btn btn-primary" style="margin-left:8px;" onclick="upgradePlan()">Upgrade Plan</button>
+                <button class="btn btn-secondary" style="margin-left:8px;" onclick="downgradePlan()">Downgrade</button>
             </div>
         </div>
     </div>
@@ -1026,7 +1055,9 @@
     <script src="/dashboard-search.js"></script>
     <!-- Onboarding tour -->
     <script src="/onboarding-tour.js"></script>
+    <!-- OpenClaw updates adapter -->
+    <script src="/js/openclaw-updates-adapter.js?v=2"></script>
     <!-- Dynamic dashboard functionality -->
-    <script src="/dashboard-dynamic.js?v=8"></script>
+    <script src="/dashboard-dynamic.js?v=9"></script>
 </body>
 </html>

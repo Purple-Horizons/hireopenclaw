@@ -4,6 +4,20 @@ let activeClientEmail = null;
 const PLAN_OPTIONS = ['starter', 'pro', 'team', 'agency', 'enterprise'];
 const STATUS_OPTIONS = ['active', 'paused', 'terminated', 'provisioning', 'error'];
 const HEALTH_OPTIONS = ['healthy', 'unhealthy', 'pending', 'unknown'];
+const updatesAdapter = window.OpenClawUpdatesAdapter || null;
+const ADMIN_THEME_KEY = 'clawops_admin_theme';
+let tenantVersionMap = new Map();
+let updateRuns = [];
+let selectedUpdateRunId = null;
+let runDetailPollTimer = null;
+let confirmResolver = null;
+let updateRunsRefreshTimer = null;
+let currentRunDetails = null;
+let activeAdminSection = 'tenants';
+let updatesMode = 'easy';
+let easyDryRunState = null;
+let easyDryRunPollTimer = null;
+let versionCatalogState = null;
 
 // Auth helper — adds Bearer token from localStorage
 function authHeaders(extra = {}) {
@@ -42,12 +56,194 @@ function safeId(value) {
     return String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
+function getStoredAdminTheme() {
+    const stored = localStorage.getItem(ADMIN_THEME_KEY);
+    if (stored === 'dark' || stored === 'light') return stored;
+    return null;
+}
+
+function preferredAdminTheme() {
+    const stored = getStoredAdminTheme();
+    if (stored) return stored;
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return prefersDark ? 'dark' : 'light';
+}
+
+function updateThemeToggleLabel(theme) {
+    const btn = document.getElementById('adminThemeToggle');
+    if (!btn) return;
+    if (theme === 'dark') {
+        btn.textContent = '☀ Light';
+        btn.title = 'Switch to light mode';
+    } else {
+        btn.textContent = '🌙 Dark';
+        btn.title = 'Switch to dark mode';
+    }
+}
+
+function applyAdminTheme(theme, announce = false) {
+    const nextTheme = theme === 'light' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', nextTheme);
+    localStorage.setItem(ADMIN_THEME_KEY, nextTheme);
+    updateThemeToggleLabel(nextTheme);
+    if (announce) showToast(`Switched to ${nextTheme} mode`, 'success', 1400);
+}
+
+function toggleAdminTheme() {
+    const current = document.documentElement.getAttribute('data-theme') || preferredAdminTheme();
+    const next = current === 'dark' ? 'light' : 'dark';
+    applyAdminTheme(next, true);
+}
+
+function initAdminTheme() {
+    applyAdminTheme(preferredAdminTheme(), false);
+    const btn = document.getElementById('adminThemeToggle');
+    if (btn) btn.addEventListener('click', toggleAdminTheme);
+}
+
+function formatDateTime(value) {
+    if (!value) return '—';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return String(value);
+    return parsed.toLocaleString();
+}
+
+function formatOpenClawVersion(value) {
+    const v = String(value || '').trim();
+    if (!v || v === 'unknown') return '—';
+    return v;
+}
+
+function normalizeUpdateStatus(status) {
+    const value = String(status || '').trim().toLowerCase();
+    if (!value) return 'unknown';
+    if (value.includes('success')) return 'success';
+    if (value.includes('fail') || value.includes('error')) return 'failed';
+    if (value.includes('run') || value.includes('progress') || value.includes('queue')) return 'running';
+    if (value.includes('pending')) return 'pending';
+    return value;
+}
+
+function updateStatusLabel(status) {
+    const normalized = normalizeUpdateStatus(status);
+    if (normalized === 'success') return 'Success';
+    if (normalized === 'failed') return 'Failed';
+    if (normalized === 'running') return 'Running';
+    if (normalized === 'pending') return 'Pending';
+    if (normalized === 'unknown') return 'Unknown';
+    return normalized;
+}
+
+function statusChipClass(status) {
+    const normalized = normalizeUpdateStatus(status);
+    if (normalized === 'success') return 'success';
+    if (normalized === 'failed') return 'failed';
+    if (normalized === 'running') return 'running';
+    if (normalized === 'pending') return 'pending';
+    return 'neutral';
+}
+
+function renderStatusChip(status) {
+    const css = statusChipClass(status);
+    const label = updateStatusLabel(status);
+    return `<span class="status-chip ${css}">${escapeHtml(label)}</span>`;
+}
+
+function applyTenantMetadataToClients(clients) {
+    const mapped = (clients || []).map((client) => {
+        const bots = (client.bots || []).map((bot) => {
+            const tenantMeta = tenantVersionMap.get(bot.tenantId);
+            if (!tenantMeta) return bot;
+            return {
+                ...bot,
+                openClawVersion: tenantMeta.openClawVersion || bot.openClawVersion || null,
+                lastUpdateStatus: tenantMeta.lastUpdateStatus || bot.lastUpdateStatus || null,
+                lastUpdateTime: tenantMeta.lastUpdateTime || bot.lastUpdateTime || null,
+            };
+        });
+        return { ...client, bots };
+    });
+    return mapped;
+}
+
+function applyTenantMetadataToClient(client) {
+    if (!client) return client;
+    const wrapped = applyTenantMetadataToClients([client]);
+    return wrapped[0] || client;
+}
+
+function currentTenantRows() {
+    const rows = [];
+    for (const client of allClients || []) {
+        for (const bot of client.bots || []) {
+            rows.push({
+                tenantId: bot.tenantId,
+                name: bot.name || bot.tenantId,
+                email: client.email,
+                status: bot.status || 'active',
+            });
+        }
+    }
+    rows.sort((a, b) => a.tenantId.localeCompare(b.tenantId));
+    return rows;
+}
+
+async function refreshTenantVersionMap({ applyToClients = true, rerender = false, silent = true } = {}) {
+    if (!updatesAdapter || typeof updatesAdapter.getTenantVersions !== 'function') return;
+    try {
+        const payload = await updatesAdapter.getTenantVersions();
+        const rows = Array.isArray(payload?.tenants) ? payload.tenants : [];
+        tenantVersionMap = new Map(rows.map((row) => [row.tenantId, row]));
+        if (applyToClients && allClients.length) {
+            allClients = applyTenantMetadataToClients(allClients);
+        }
+        renderRolloutTenantSelection();
+        if (!versionCatalogState || !(versionCatalogState.recentVersions || []).length) {
+            versionCatalogState = buildFallbackVersionCatalog();
+        }
+        renderVersionCatalog();
+        if (rerender) filterClients();
+    } catch (err) {
+        if (!silent) showToast(`Failed to load tenant versions: ${err.message}`, 'error');
+    }
+}
+
 function openModal(title, mode = 'text') {
     document.getElementById('logTitle').textContent = title;
     const body = document.getElementById('logBody');
     body.classList.toggle('rich', mode === 'rich');
     body.textContent = 'Loading...';
     document.getElementById('logModal').classList.add('open');
+}
+
+function switchAdminSection(sectionName) {
+    activeAdminSection = sectionName || 'tenants';
+    const tenantsVisible = activeAdminSection === 'tenants';
+    const updatesVisible = activeAdminSection === 'updates';
+    const secretsVisible = activeAdminSection === 'secrets';
+
+    const searchBar = document.getElementById('adminTenantsSearchBar');
+    const resultsInfo = document.getElementById('resultsInfo');
+    const clientList = document.getElementById('clientList');
+    const updatesBlock = document.getElementById('openclawUpdatesRoot');
+    const secretsBlock = document.getElementById('adminSecretsBlock');
+
+    if (searchBar) searchBar.style.display = tenantsVisible ? 'flex' : 'none';
+    if (resultsInfo) resultsInfo.style.display = tenantsVisible ? 'block' : 'none';
+    if (clientList) clientList.style.display = tenantsVisible ? 'block' : 'none';
+    if (updatesBlock) updatesBlock.classList.toggle('admin-section-hidden', !updatesVisible);
+    if (secretsBlock) secretsBlock.classList.toggle('admin-section-hidden', !secretsVisible);
+
+    document.querySelectorAll('#adminNav .nav-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.section === activeAdminSection);
+    });
+}
+
+function initAdminSectionNav() {
+    document.querySelectorAll('#adminNav .nav-btn').forEach((btn) => {
+        btn.addEventListener('click', () => switchAdminSection(btn.dataset.section));
+    });
+    switchAdminSection('tenants');
 }
 
 async function loadClients() {
@@ -67,7 +263,7 @@ async function loadClients() {
         console.log('[admin] clients data:', data.ok, 'count:', data.clients?.length);
         if (!res.ok || !data.ok) throw new Error(data.error || `Request failed (${res.status})`);
 
-        allClients = data.clients;
+        allClients = data.clients || [];
         const s = data.summary || {
             totalClients: allClients.length,
             activeClients: allClients.filter(c => (c.activeBots || 0) > 0).length,
@@ -89,6 +285,7 @@ async function loadClients() {
         if (costEl) costEl.textContent = formatUsd(s.monthlyCost || 0);
 
         renderClients(allClients);
+        refreshTenantVersionMap({ applyToClients: true, rerender: true, silent: true }).catch(() => {});
     } catch (err) {
         document.getElementById('clientList').innerHTML = `<p style="color:var(--red);text-align:center;padding:40px;">Error: ${err.message}</p>`;
         ['statClients', 'statActiveClients', 'statActiveBots', 'statTerminated', 'statMonthTokens', 'statMonthMessages', 'statMonthCost'].forEach(id => {
@@ -138,6 +335,9 @@ function renderClients(clients) {
                         <span class="bot-name">${b.name || b.tenantId}</span>
                         <span style="color:var(--gray);font-size:11px;">${b.tenantId}</span>
                         <span style="color:var(--gray);font-size:11px;">${b.health}</span>
+                        <span style="color:var(--gray);font-size:11px;">v${escapeHtml(formatOpenClawVersion(b.openClawVersion))}</span>
+                        <span>${renderStatusChip(b.lastUpdateStatus || 'unknown')}</span>
+                        <span style="color:var(--gray);font-size:11px;">${escapeHtml(formatDateTime(b.lastUpdateTime))}</span>
                         <span style="color:var(--gray);font-size:11px;">${formatCompactNumber(b.usageMonth?.tokens || 0)} tok</span>
                         <span style="color:var(--gray);font-size:11px;">${formatCompactNumber(b.usageMonth?.messages || 0)} msg</span>
                         <span style="color:var(--gray);font-size:11px;">${formatUsd(b.usageMonth?.cost || 0)}</span>
@@ -234,7 +434,7 @@ async function viewClientDetails(email) {
             return;
         }
 
-        const c = data.client;
+        const c = applyTenantMetadataToClient(data.client);
         const profile = c.profile || {};
         const team = data.team || {};
         const teamExists = Boolean(team.teamId);
@@ -256,6 +456,9 @@ async function viewClientDetails(email) {
                     <td><input class="crud-input" id="tenant-name-${rowId}" value="${escapeHtml(bot.name || bot.tenantId)}"></td>
                     <td><select class="crud-select" id="tenant-status-${rowId}">${statusOptions}</select></td>
                     <td><select class="crud-select" id="tenant-health-${rowId}">${healthOptions}</select></td>
+                    <td>v${escapeHtml(formatOpenClawVersion(bot.openClawVersion))}</td>
+                    <td>${renderStatusChip(bot.lastUpdateStatus || 'unknown')}</td>
+                    <td>${escapeHtml(formatDateTime(bot.lastUpdateTime))}</td>
                     <td>${formatCompactNumber(bot.usageMonth?.tokens || 0)} tok</td>
                     <td>${formatCompactNumber(bot.usageMonth?.messages || 0)} msg</td>
                     <td>${formatUsd(bot.usageMonth?.cost || 0)}</td>
@@ -353,6 +556,9 @@ async function viewClientDetails(email) {
                             <th>Name</th>
                             <th>Status</th>
                             <th>Health</th>
+                            <th>OpenClaw Version</th>
+                            <th>Last Update Status</th>
+                            <th>Last Update Time</th>
                             <th>Tokens</th>
                             <th>Msgs</th>
                             <th>Cost</th>
@@ -360,7 +566,7 @@ async function viewClientDetails(email) {
                         </tr>
                     </thead>
                     <tbody>
-                        ${tenantRows || '<tr><td colspan="8" style="color:#888;">No tenant instances found.</td></tr>'}
+                        ${tenantRows || '<tr><td colspan="11" style="color:#888;">No tenant instances found.</td></tr>'}
                     </tbody>
                 </table>
             </div>
@@ -818,6 +1024,756 @@ async function deleteSecret(scope, key, containerId, btnEl) {
     } catch {}
 }
 
+// ─── OpenClaw Updates ───
+
+function stopEasyDryRunPolling() {
+    if (easyDryRunPollTimer) {
+        clearInterval(easyDryRunPollTimer);
+        easyDryRunPollTimer = null;
+    }
+}
+
+function parseComparableVersion(input) {
+    const raw = String(input || '').trim();
+    const match = raw.match(/^v?(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/i);
+    if (!match) return null;
+    return { major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3]) };
+}
+
+function sortVersionsDesc(values) {
+    const unique = Array.from(new Set((values || []).map((v) => String(v || '').trim()).filter(Boolean)));
+    unique.sort((a, b) => {
+        const va = parseComparableVersion(a);
+        const vb = parseComparableVersion(b);
+        if (va && vb) {
+            if (va.major !== vb.major) return vb.major - va.major;
+            if (va.minor !== vb.minor) return vb.minor - va.minor;
+            if (va.patch !== vb.patch) return vb.patch - va.patch;
+            return b.localeCompare(a);
+        }
+        if (va) return -1;
+        if (vb) return 1;
+        return b.localeCompare(a);
+    });
+    return unique;
+}
+
+function setRolloutTargetVersionValue(version) {
+    const normalized = String(version || '').trim();
+    if (!normalized) return;
+    const easyInput = document.getElementById('easyRolloutTargetVersion');
+    const advancedInput = document.getElementById('rolloutTargetVersion');
+    if (easyInput) easyInput.value = normalized;
+    if (advancedInput) advancedInput.value = normalized;
+}
+
+function renderVersionCatalog() {
+    const hintEl = document.getElementById('versionCatalogHint');
+    const listEl = document.getElementById('versionCatalogList');
+    const datalistEl = document.getElementById('openclawVersionOptions');
+    const catalog = versionCatalogState || {};
+    const versions = Array.isArray(catalog.recentVersions) ? catalog.recentVersions : [];
+    const recommended = catalog.recommendedVersion || versions[0] || null;
+
+    if (datalistEl) {
+        datalistEl.innerHTML = versions.map((v) => `<option value=\"${escapeHtml(v)}\"></option>`).join('');
+    }
+
+    if (listEl) {
+        if (!versions.length) {
+            listEl.innerHTML = '<span style=\"font-size:12px;color:var(--gray);\">No recent version history available yet.</span>';
+        } else {
+            listEl.innerHTML = versions.map((version) => `
+                <button type="button" class="version-chip" onclick="setRolloutTargetVersionValue(decodeURIComponent('${encodeURIComponent(version)}'))">
+                    ${escapeHtml(version)}
+                </button>
+            `).join('');
+        }
+    }
+
+    if (hintEl) {
+        if (!recommended) {
+            hintEl.textContent = 'No reliable latest version found yet. Enter version manually.';
+        } else {
+            const githubLatest = catalog?.sources?.github?.latest;
+            const sourceText = githubLatest ? `GitHub latest ${githubLatest}` : `recommended ${recommended}`;
+            hintEl.textContent = `Latest known: ${recommended} (${sourceText}). Showing last ${Math.min(5, versions.length)} versions.`;
+        }
+    }
+
+    if (recommended) {
+        const easyInput = document.getElementById('easyRolloutTargetVersion');
+        const advancedInput = document.getElementById('rolloutTargetVersion');
+        if (easyInput && !easyInput.value.trim()) easyInput.value = recommended;
+        if (advancedInput && !advancedInput.value.trim()) advancedInput.value = recommended;
+    }
+}
+
+function buildFallbackVersionCatalog() {
+    const observedTenantVersions = sortVersionsDesc(
+        Array.from(tenantVersionMap.values())
+            .map((tenant) => tenant?.openClawVersion)
+            .filter((value) => value && value !== 'unknown')
+    );
+    return {
+        recommendedVersion: observedTenantVersions[0] || null,
+        recentVersions: observedTenantVersions.slice(0, 5),
+        sources: {
+            github: { latest: null, recentVersions: [] },
+            tenants: { latest: observedTenantVersions[0] || null, recentVersions: observedTenantVersions.slice(0, 5) },
+        },
+    };
+}
+
+async function loadVersionCatalog() {
+    const hintEl = document.getElementById('versionCatalogHint');
+    if (hintEl) hintEl.textContent = 'Checking latest OpenClaw versions…';
+    try {
+        if (updatesAdapter && typeof updatesAdapter.getVersionCatalog === 'function') {
+            const payload = await updatesAdapter.getVersionCatalog();
+            versionCatalogState = {
+                recommendedVersion: payload?.recommendedVersion || null,
+                recentVersions: sortVersionsDesc(payload?.recentVersions || []).slice(0, 5),
+                sources: payload?.sources || {},
+            };
+        } else {
+            versionCatalogState = buildFallbackVersionCatalog();
+        }
+    } catch {
+        versionCatalogState = buildFallbackVersionCatalog();
+    }
+    renderVersionCatalog();
+}
+
+function setUpdatesMode(mode) {
+    updatesMode = mode === 'advanced' ? 'advanced' : 'easy';
+    const easyBtn = document.getElementById('updatesModeEasyBtn');
+    const advancedBtn = document.getElementById('updatesModeAdvancedBtn');
+    const easyPanel = document.getElementById('updatesEasyPanel');
+    const advancedRollout = document.getElementById('rolloutAdvancedSection');
+    const advancedRollback = document.getElementById('rollbackAdvancedSection');
+    const grid = document.getElementById('updatesGrid');
+
+    easyBtn?.classList.toggle('active', updatesMode === 'easy');
+    advancedBtn?.classList.toggle('active', updatesMode === 'advanced');
+    if (easyPanel) easyPanel.style.display = updatesMode === 'easy' ? 'block' : 'none';
+    if (advancedRollout) advancedRollout.classList.toggle('admin-section-hidden', updatesMode !== 'advanced');
+    if (advancedRollback) advancedRollback.classList.toggle('admin-section-hidden', updatesMode !== 'advanced');
+    if (grid) grid.classList.toggle('single-column', updatesMode !== 'advanced');
+}
+
+function renderEasyChecklist() {
+    const checklist = document.getElementById('easyRolloutChecklist');
+    const promoteBtn = document.getElementById('easyPromoteBtn');
+    if (!checklist || !promoteBtn) return;
+
+    if (!easyDryRunState) {
+        checklist.innerHTML = `
+            <div>Step 1: Run dry-run with safe defaults.</div>
+            <div>Step 2: Live rollout is enabled only after a clean dry-run.</div>
+        `;
+        promoteBtn.disabled = true;
+        return;
+    }
+
+    if (!easyDryRunState.completed) {
+        checklist.innerHTML = `
+            <div class="warn">Dry-run ${escapeHtml(easyDryRunState.runId)} is in progress.</div>
+            <div>Live rollout stays disabled until dry-run finishes.</div>
+        `;
+        promoteBtn.disabled = true;
+        return;
+    }
+
+    if (easyDryRunState.failedCount > 0) {
+        checklist.innerHTML = `
+            <div class="bad">Dry-run ${escapeHtml(easyDryRunState.runId)} found ${easyDryRunState.failedCount} failure(s).</div>
+            <div>Open the run details to inspect errors before going live.</div>
+        `;
+        promoteBtn.disabled = true;
+        return;
+    }
+
+    checklist.innerHTML = `
+        <div class="ok">Dry-run ${escapeHtml(easyDryRunState.runId)} completed with no failures.</div>
+        <div class="ok">Live rollout is unlocked.</div>
+    `;
+    promoteBtn.disabled = false;
+}
+
+function collectEasyRolloutPayload() {
+    const targetVersion = document.getElementById('easyRolloutTargetVersion')?.value?.trim() || '';
+    const imageUri = document.getElementById('easyRolloutImageUri')?.value?.trim() || '';
+    if (!targetVersion && !imageUri) {
+        throw new Error('Enter a target version or image URI to continue.');
+    }
+
+    return {
+        targetVersion: targetVersion || undefined,
+        imageUri: imageUri || undefined,
+        scope: 'all_active',
+        tenantIds: [],
+        includePaused: Boolean(document.getElementById('easyRolloutIncludePaused')?.checked),
+        dryRun: true,
+        skipBackup: false,
+    };
+}
+
+async function startEasyDryRunPolling(runId) {
+    stopEasyDryRunPolling();
+    easyDryRunPollTimer = setInterval(async () => {
+        if (!easyDryRunState || easyDryRunState.runId !== runId || easyDryRunState.completed) {
+            stopEasyDryRunPolling();
+            return;
+        }
+        try {
+            const payload = await updatesAdapter.getUpdateRun(runId, false);
+            const run = payload?.run;
+            if (!run) return;
+            easyDryRunState.failedCount = Number(run.failedCount || 0);
+            easyDryRunState.status = run.status || easyDryRunState.status;
+            if (isTerminalRunStatus(run.status)) {
+                easyDryRunState.completed = true;
+                stopEasyDryRunPolling();
+                setUpdatesState('easyRolloutState', `Dry-run ${runId} completed. Failed: ${easyDryRunState.failedCount}.`, easyDryRunState.failedCount > 0);
+            }
+            renderEasyChecklist();
+        } catch {
+            // keep polling quiet
+        }
+    }, 3500);
+}
+
+function setUpdatesState(id, text, isError = false) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text || '';
+    el.style.color = isError ? 'var(--red)' : 'var(--gray)';
+}
+
+function setButtonLoading(button, loading, loadingLabel) {
+    if (!button) return;
+    if (!button.dataset.defaultLabel) button.dataset.defaultLabel = button.textContent;
+    button.disabled = Boolean(loading);
+    button.textContent = loading ? loadingLabel : button.dataset.defaultLabel;
+}
+
+function parseTenantListInput(text) {
+    return String(text || '')
+        .split(/[\n, ]+/g)
+        .map((item) => item.trim())
+        .filter(Boolean);
+}
+
+function selectedRolloutScope() {
+    return document.querySelector('input[name="rolloutScope"]:checked')?.value || 'all_active';
+}
+
+function toggleRolloutScopeSelection() {
+    const wrap = document.getElementById('rolloutSelectedTenantsWrap');
+    if (!wrap) return;
+    wrap.style.display = selectedRolloutScope() === 'selected' ? 'block' : 'none';
+}
+
+function renderRolloutTenantSelection() {
+    const container = document.getElementById('rolloutTenantSelection');
+    if (!container) return;
+    const selectedNow = new Set(
+        Array.from(container.querySelectorAll('.rollout-tenant-check:checked')).map((el) => el.value)
+    );
+    const tenants = currentTenantRows();
+    if (!tenants.length) {
+        container.innerHTML = '<div style="color:#888;font-size:12px;">Load tenants first to target selected rollout scope.</div>';
+        return;
+    }
+
+    container.innerHTML = tenants.map((tenant) => {
+        const meta = tenantVersionMap.get(tenant.tenantId) || {};
+        const checked = selectedNow.has(tenant.tenantId) ? 'checked' : '';
+        return `
+            <label class="scope-item">
+                <input class="rollout-tenant-check" type="checkbox" value="${escapeHtml(tenant.tenantId)}" ${checked}>
+                <span>
+                    <strong>${escapeHtml(tenant.tenantId)}</strong>
+                    <div class="meta">${escapeHtml(tenant.email || 'unknown')} • ${escapeHtml(tenant.status || 'active')} • v${escapeHtml(formatOpenClawVersion(meta.openClawVersion || null))}</div>
+                </span>
+            </label>
+        `;
+    }).join('');
+}
+
+function collectRolloutPayload(forceDryRun = false) {
+    const targetVersion = document.getElementById('rolloutTargetVersion')?.value?.trim() || '';
+    const imageUri = document.getElementById('rolloutImageUri')?.value?.trim() || '';
+    if (!targetVersion && !imageUri) {
+        throw new Error('Provide either target version or image URI.');
+    }
+
+    const scope = selectedRolloutScope();
+    const selectedTenantIds = Array.from(document.querySelectorAll('.rollout-tenant-check:checked')).map((el) => el.value);
+    if (scope === 'selected' && !selectedTenantIds.length) {
+        throw new Error('Select at least one tenant for selected scope.');
+    }
+
+    return {
+        targetVersion: targetVersion || undefined,
+        imageUri: imageUri || undefined,
+        scope,
+        tenantIds: scope === 'selected' ? selectedTenantIds : [],
+        includePaused: Boolean(document.getElementById('rolloutIncludePaused')?.checked),
+        dryRun: forceDryRun ? true : Boolean(document.getElementById('rolloutDryRun')?.checked),
+        skipBackup: Boolean(document.getElementById('rolloutSkipBackup')?.checked),
+    };
+}
+
+function collectRollbackPayloadFromForm() {
+    const runId = document.getElementById('rollbackRunId')?.value?.trim();
+    if (!runId) throw new Error('Run ID is required.');
+    const tenantIds = parseTenantListInput(document.getElementById('rollbackTenantFilter')?.value || '');
+    return {
+        runId,
+        tenantIds,
+        restoreBackup: Boolean(document.getElementById('rollbackRestoreBackup')?.checked),
+        dryRun: Boolean(document.getElementById('rollbackDryRun')?.checked),
+    };
+}
+
+function normalizeRunPayload(run) {
+    return {
+        runId: run.runId,
+        operation: run.operation || 'rollout',
+        status: run.status || 'running',
+        startedAt: run.startedAt || new Date().toISOString(),
+        finishedAt: run.finishedAt || null,
+        successCount: Number(run.successCount || 0),
+        failedCount: Number(run.failedCount || 0),
+        tenantCount: Number(run.tenantCount || 0),
+    };
+}
+
+function isTerminalRunStatus(status) {
+    return ['completed', 'completed_with_errors', 'failed'].includes(String(status || '').toLowerCase());
+}
+
+function renderUpdateRunsTable() {
+    const body = document.getElementById('updateRunsTableBody');
+    if (!body) return;
+
+    if (!updateRuns.length) {
+        body.innerHTML = '<tr><td colspan="8" style="color:#888;">No update runs found.</td></tr>';
+        return;
+    }
+
+    body.innerHTML = updateRuns.map((run) => `
+        <tr>
+            <td><code>${escapeHtml(run.runId)}</code></td>
+            <td>${escapeHtml(String(run.operation || 'rollout').toUpperCase())}</td>
+            <td>${escapeHtml(formatDateTime(run.startedAt))}</td>
+            <td>${escapeHtml(formatDateTime(run.finishedAt))}</td>
+            <td>${run.successCount || 0}</td>
+            <td>${run.failedCount || 0}</td>
+            <td>${renderStatusChip(run.status || 'unknown')}</td>
+            <td><button class="updates-row-btn" onclick="openUpdateRunFromTable('${encodeURIComponent(run.runId)}')">View</button></td>
+        </tr>
+    `).join('');
+}
+
+async function loadUpdateRuns({ silent = false } = {}) {
+    if (!updatesAdapter || typeof updatesAdapter.getUpdateRuns !== 'function') return;
+    try {
+        const failedOnly = Boolean(document.getElementById('runsFailedOnly')?.checked);
+        const runId = document.getElementById('runsRunIdSearch')?.value?.trim() || '';
+        if (!silent) setUpdatesState('updateRunsState', 'Loading runs…');
+        const payload = await updatesAdapter.getUpdateRuns({ failedOnly, runId });
+        updateRuns = Array.isArray(payload?.runs) ? payload.runs : [];
+        if (easyDryRunState?.runId) {
+            const dryRunSummary = updateRuns.find((run) => run.runId === easyDryRunState.runId);
+            if (dryRunSummary) {
+                easyDryRunState.failedCount = Number(dryRunSummary.failedCount || easyDryRunState.failedCount || 0);
+                easyDryRunState.status = dryRunSummary.status || easyDryRunState.status;
+                if (isTerminalRunStatus(dryRunSummary.status)) {
+                    easyDryRunState.completed = true;
+                    stopEasyDryRunPolling();
+                }
+            }
+            renderEasyChecklist();
+        }
+        renderUpdateRunsTable();
+        setUpdatesState('updateRunsState', `${updateRuns.length} run${updateRuns.length === 1 ? '' : 's'} loaded.`);
+    } catch (err) {
+        renderUpdateRunsTable();
+        setUpdatesState('updateRunsState', `Failed to load runs: ${err.message}`, true);
+    }
+}
+
+function stopRunDetailPolling() {
+    if (runDetailPollTimer) {
+        clearInterval(runDetailPollTimer);
+        runDetailPollTimer = null;
+    }
+}
+
+function startRunDetailPolling(runId) {
+    stopRunDetailPolling();
+    runDetailPollTimer = setInterval(async () => {
+        if (!selectedUpdateRunId || selectedUpdateRunId !== runId) {
+            stopRunDetailPolling();
+            return;
+        }
+        await loadAndRenderUpdateRun(runId, { silent: true });
+        await loadUpdateRuns({ silent: true });
+        if (isTerminalRunStatus(currentRunDetails?.status)) {
+            stopRunDetailPolling();
+            await refreshTenantVersionMap({ applyToClients: true, rerender: true, silent: true });
+        }
+    }, 4000);
+}
+
+function closeUpdateRunDrawer(event) {
+    if (event && event.currentTarget && event.target !== event.currentTarget) return;
+    document.getElementById('updateRunDrawerBackdrop')?.classList.remove('open');
+    stopRunDetailPolling();
+}
+
+async function openUpdateRunFromTable(encodedRunId) {
+    const runId = decodeURIComponent(encodedRunId);
+    selectedUpdateRunId = runId;
+    document.getElementById('updateRunDrawerBackdrop')?.classList.add('open');
+    await loadAndRenderUpdateRun(runId);
+    startRunDetailPolling(runId);
+}
+
+async function loadAndRenderUpdateRun(runId, { silent = false } = {}) {
+    if (!updatesAdapter || typeof updatesAdapter.getUpdateRun !== 'function') return;
+    const stateEl = document.getElementById('updateRunDrawerState');
+    const titleEl = document.getElementById('updateRunDrawerTitle');
+    const rowsEl = document.getElementById('updateRunTenantRows');
+    const calloutEl = document.getElementById('updateRunDrawerCallout');
+    try {
+        if (!silent && stateEl) stateEl.textContent = 'Loading run details…';
+        const failedOnly = Boolean(document.getElementById('drawerFailedOnly')?.checked);
+        const payload = await updatesAdapter.getUpdateRun(runId, failedOnly);
+        const run = payload?.run;
+        if (!run) throw new Error('Run details unavailable.');
+        currentRunDetails = run;
+        setRollbackInputs(run.runId, []);
+        titleEl.textContent = `Run ${run.runId} • ${String(run.operation || '').toUpperCase()}`;
+
+        const tenants = Array.isArray(run.tenants) ? run.tenants : [];
+        const ordered = tenants.slice().sort((a, b) => {
+            const priority = { failed: 0, pending: 1, success: 2 };
+            const delta = (priority[normalizeUpdateStatus(a.status)] ?? 99) - (priority[normalizeUpdateStatus(b.status)] ?? 99);
+            if (delta !== 0) return delta;
+            return String(a.tenantId || '').localeCompare(String(b.tenantId || ''));
+        });
+
+        if (!ordered.length) {
+            rowsEl.innerHTML = '<tr><td colspan="5" style="color:#888;">No tenant rows for this run.</td></tr>';
+        } else {
+            rowsEl.innerHTML = ordered.map((row) => `
+                <tr>
+                    <td><code>${escapeHtml(row.tenantId)}</code></td>
+                    <td>${renderStatusChip(row.status || 'unknown')}</td>
+                    <td>${escapeHtml(row.previousVersion || 'unknown')} → ${escapeHtml(row.newVersion || 'unknown')}</td>
+                    <td>${escapeHtml(row.error || row.message || '—')}</td>
+                    <td>
+                        <button class="updates-row-btn" onclick="rollbackSingleTenant('${encodeURIComponent(run.runId)}','${encodeURIComponent(row.tenantId)}')">Rollback tenant</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        const hasFailures = Number(run.failedCount || 0) > 0 || ordered.some((row) => normalizeUpdateStatus(row.status) === 'failed');
+        if (hasFailures) {
+            calloutEl.classList.add('show');
+            calloutEl.innerHTML = `Rollback Recommended: this run has failures (${run.failedCount || 0}).`;
+        } else {
+            calloutEl.classList.remove('show');
+            calloutEl.textContent = '';
+        }
+
+        if (stateEl) {
+            stateEl.textContent = `Status: ${updateStatusLabel(run.status)} • Success ${run.successCount || 0} • Failed ${run.failedCount || 0} • Started ${formatDateTime(run.startedAt)}`;
+        }
+    } catch (err) {
+        if (rowsEl) rowsEl.innerHTML = '<tr><td colspan="5" style="color:var(--red);">Failed to load run details.</td></tr>';
+        if (stateEl) stateEl.textContent = `Failed to load run details: ${err.message}`;
+    }
+}
+
+async function copySelectedRunId() {
+    if (!currentRunDetails?.runId) return;
+    try {
+        await navigator.clipboard.writeText(currentRunDetails.runId);
+        showToast('Run ID copied', 'success');
+    } catch (err) {
+        showToast(`Copy failed: ${err.message}`, 'error');
+    }
+}
+
+function setRollbackInputs(runId, tenantIds = []) {
+    const runInput = document.getElementById('rollbackRunId');
+    const filterInput = document.getElementById('rollbackTenantFilter');
+    if (runInput) runInput.value = runId || '';
+    if (filterInput) filterInput.value = (tenantIds || []).join(', ');
+}
+
+async function showConfirmModal({ title, message, confirmText = 'Confirm' }) {
+    return new Promise((resolve) => {
+        confirmResolver = resolve;
+        const backdrop = document.getElementById('adminConfirmBackdrop');
+        const titleEl = document.getElementById('adminConfirmTitle');
+        const messageEl = document.getElementById('adminConfirmMessage');
+        const acceptBtn = document.getElementById('adminConfirmAcceptBtn');
+        if (titleEl) titleEl.textContent = title || 'Confirm Action';
+        if (messageEl) messageEl.textContent = message || 'Are you sure?';
+        if (acceptBtn) acceptBtn.textContent = confirmText;
+        backdrop?.classList.add('open');
+    });
+}
+
+function resolveAdminConfirm(accepted, event) {
+    if (event && event.currentTarget && event.target !== event.currentTarget) return;
+    const backdrop = document.getElementById('adminConfirmBackdrop');
+    backdrop?.classList.remove('open');
+    const resolver = confirmResolver;
+    confirmResolver = null;
+    if (resolver) resolver(Boolean(accepted));
+}
+
+async function startRollbackFlow(payload, stateTargetId) {
+    if (!updatesAdapter || typeof updatesAdapter.startRollback !== 'function') {
+        throw new Error('OpenClaw updates adapter unavailable.');
+    }
+
+    if (!payload.dryRun) {
+        const confirmed = await showConfirmModal({
+            title: 'Confirm Live Rollback',
+            message: `This will execute a live rollback for run ${payload.runId}.`,
+            confirmText: 'Start Live Rollback',
+        });
+        if (!confirmed) return null;
+    }
+
+    setUpdatesState(stateTargetId, payload.dryRun ? 'Starting rollback dry-run…' : 'Starting live rollback…');
+    const result = await updatesAdapter.startRollback(payload);
+    const run = normalizeRunPayload(result?.run || result || {});
+    updateRuns = [run, ...updateRuns.filter((item) => item.runId !== run.runId)];
+    renderUpdateRunsTable();
+    selectedUpdateRunId = run.runId;
+    setRollbackInputs(payload.runId, payload.tenantIds || []);
+    showToast(payload.dryRun ? 'Rollback dry-run started' : 'Rollback started', 'success');
+    await openUpdateRunFromTable(encodeURIComponent(run.runId));
+    await loadUpdateRuns({ silent: true });
+    return run;
+}
+
+async function triggerRollbackFromForm() {
+    const button = document.getElementById('rollbackRunBtn');
+    try {
+        const payload = collectRollbackPayloadFromForm();
+        setButtonLoading(button, true, 'Starting…');
+        const run = await startRollbackFlow(payload, 'rollbackState');
+        if (run) setUpdatesState('rollbackState', `Rollback run started: ${run.runId}`);
+    } catch (err) {
+        setUpdatesState('rollbackState', err.message, true);
+        showToast(err.message, 'error');
+    } finally {
+        setButtonLoading(button, false);
+    }
+}
+
+async function rollbackSelectedRunFromDrawer() {
+    if (!currentRunDetails?.runId) return;
+    const payload = {
+        runId: currentRunDetails.runId,
+        tenantIds: [],
+        restoreBackup: Boolean(document.getElementById('drawerRollbackRestoreBackup')?.checked),
+        dryRun: Boolean(document.getElementById('drawerRollbackDryRun')?.checked),
+    };
+    try {
+        await startRollbackFlow(payload, 'updateRunDrawerState');
+    } catch (err) {
+        setUpdatesState('updateRunDrawerState', err.message, true);
+        showToast(err.message, 'error');
+    }
+}
+
+async function rollbackSingleTenant(encodedRunId, encodedTenantId) {
+    const runId = decodeURIComponent(encodedRunId);
+    const tenantId = decodeURIComponent(encodedTenantId);
+    const payload = {
+        runId,
+        tenantIds: [tenantId],
+        restoreBackup: Boolean(document.getElementById('drawerRollbackRestoreBackup')?.checked),
+        dryRun: Boolean(document.getElementById('drawerRollbackDryRun')?.checked),
+    };
+    try {
+        await startRollbackFlow(payload, 'updateRunDrawerState');
+    } catch (err) {
+        setUpdatesState('updateRunDrawerState', err.message, true);
+        showToast(err.message, 'error');
+    }
+}
+
+async function startRolloutFlow(payload, stateTargetId) {
+    if (!updatesAdapter || typeof updatesAdapter.startRollout !== 'function') {
+        throw new Error('OpenClaw updates adapter unavailable.');
+    }
+    if (!payload?.targetVersion && !payload?.imageUri) {
+        throw new Error('Provide either target version or image URI.');
+    }
+
+    if (!payload.dryRun) {
+        const confirmed = await showConfirmModal({
+            title: 'Confirm Live Rollout',
+            message: 'This will start a live rollout across the selected tenants.',
+            confirmText: 'Start Live Rollout',
+        });
+        if (!confirmed) return null;
+    }
+
+    setUpdatesState(stateTargetId, payload.dryRun ? 'Starting rollout dry-run…' : 'Starting live rollout…');
+    const result = await updatesAdapter.startRollout(payload);
+    const run = normalizeRunPayload(result?.run || result || {});
+    updateRuns = [run, ...updateRuns.filter((item) => item.runId !== run.runId)];
+    renderUpdateRunsTable();
+    selectedUpdateRunId = run.runId;
+    setRollbackInputs(run.runId, []);
+    showToast(payload.dryRun ? 'Rollout dry-run started' : 'Rollout started', 'success');
+    await openUpdateRunFromTable(encodeURIComponent(run.runId));
+    await loadUpdateRuns({ silent: true });
+    setUpdatesState(stateTargetId, `Run started: ${run.runId}`);
+    return run;
+}
+
+async function triggerRollout(forceDryRun = false) {
+    const startBtn = document.getElementById('rolloutStartBtn');
+    const dryBtn = document.getElementById('rolloutDryRunBtn');
+    try {
+        const payload = collectRolloutPayload(forceDryRun);
+
+        setButtonLoading(startBtn, true, 'Starting…');
+        setButtonLoading(dryBtn, true, 'Running…');
+        await startRolloutFlow(payload, 'rolloutActionState');
+    } catch (err) {
+        setUpdatesState('rolloutActionState', err.message, true);
+        showToast(err.message, 'error');
+    } finally {
+        setButtonLoading(startBtn, false);
+        setButtonLoading(dryBtn, false);
+    }
+}
+
+async function triggerEasyDryRun() {
+    const btn = document.getElementById('easyDryRunBtn');
+    const promoteBtn = document.getElementById('easyPromoteBtn');
+    try {
+        setButtonLoading(btn, true, 'Running…');
+        setButtonLoading(promoteBtn, true, 'Waiting…');
+        const payload = collectEasyRolloutPayload();
+        const run = await startRolloutFlow(payload, 'easyRolloutState');
+        if (!run) return;
+
+        easyDryRunState = {
+            runId: run.runId,
+            payload,
+            failedCount: Number(run.failedCount || 0),
+            status: run.status || 'running',
+            completed: isTerminalRunStatus(run.status),
+        };
+        renderEasyChecklist();
+        if (!easyDryRunState.completed) {
+            setUpdatesState('easyRolloutState', `Dry-run ${run.runId} started. Waiting for results…`);
+            await startEasyDryRunPolling(run.runId);
+        } else {
+            renderEasyChecklist();
+        }
+    } catch (err) {
+        setUpdatesState('easyRolloutState', err.message, true);
+        showToast(err.message, 'error');
+    } finally {
+        setButtonLoading(btn, false);
+        setButtonLoading(promoteBtn, false);
+        renderEasyChecklist();
+    }
+}
+
+async function triggerEasyPromoteLive() {
+    const promoteBtn = document.getElementById('easyPromoteBtn');
+    try {
+        if (!easyDryRunState?.payload || !easyDryRunState?.runId) {
+            throw new Error('Run a dry-run first.');
+        }
+        if (!easyDryRunState.completed) {
+            throw new Error('Dry-run is still running. Wait for completion.');
+        }
+        if (easyDryRunState.failedCount > 0) {
+            throw new Error('Dry-run has failures. Resolve them before live rollout.');
+        }
+
+        setButtonLoading(promoteBtn, true, 'Starting…');
+        const livePayload = { ...easyDryRunState.payload, dryRun: false };
+        const liveRun = await startRolloutFlow(livePayload, 'easyRolloutState');
+        if (liveRun) {
+            setUpdatesState('easyRolloutState', `Live rollout started: ${liveRun.runId}`);
+        }
+    } catch (err) {
+        setUpdatesState('easyRolloutState', err.message, true);
+        showToast(err.message, 'error');
+    } finally {
+        setButtonLoading(promoteBtn, false);
+        renderEasyChecklist();
+    }
+}
+
+function bindUpdatesUiEvents() {
+    document.getElementById('updatesModeEasyBtn')?.addEventListener('click', () => setUpdatesMode('easy'));
+    document.getElementById('updatesModeAdvancedBtn')?.addEventListener('click', () => setUpdatesMode('advanced'));
+    document.getElementById('easyOpenAdvancedBtn')?.addEventListener('click', () => setUpdatesMode('advanced'));
+    document.getElementById('easyDryRunBtn')?.addEventListener('click', triggerEasyDryRun);
+    document.getElementById('easyPromoteBtn')?.addEventListener('click', triggerEasyPromoteLive);
+    document.querySelectorAll('input[name="rolloutScope"]').forEach((el) => {
+        el.addEventListener('change', toggleRolloutScopeSelection);
+    });
+    document.getElementById('rolloutDryRunBtn')?.addEventListener('click', () => triggerRollout(true));
+    document.getElementById('rolloutStartBtn')?.addEventListener('click', () => triggerRollout(false));
+    document.getElementById('rollbackRunBtn')?.addEventListener('click', triggerRollbackFromForm);
+    document.getElementById('updatesRefreshBtn')?.addEventListener('click', async () => {
+        await refreshTenantVersionMap({ applyToClients: true, rerender: true, silent: false });
+        await loadVersionCatalog();
+        await loadUpdateRuns();
+    });
+    document.getElementById('runsFailedOnly')?.addEventListener('change', () => loadUpdateRuns({ silent: true }));
+    document.getElementById('runsRunIdSearch')?.addEventListener('input', () => loadUpdateRuns({ silent: true }));
+    document.getElementById('drawerFailedOnly')?.addEventListener('change', () => {
+        if (selectedUpdateRunId) loadAndRenderUpdateRun(selectedUpdateRunId, { silent: true });
+    });
+    document.getElementById('copyRunIdBtn')?.addEventListener('click', copySelectedRunId);
+    document.getElementById('rollbackRunBtnDrawer')?.addEventListener('click', rollbackSelectedRunFromDrawer);
+}
+
+async function initOpenClawUpdates() {
+    if (!document.getElementById('openclawUpdatesRoot')) return;
+    if (!updatesAdapter) {
+        setUpdatesState('rolloutActionState', 'OpenClaw updates adapter unavailable.', true);
+        return;
+    }
+
+    bindUpdatesUiEvents();
+    setUpdatesMode('easy');
+    renderEasyChecklist();
+    renderRolloutTenantSelection();
+    await loadVersionCatalog();
+    toggleRolloutScopeSelection();
+    await loadUpdateRuns({ silent: true });
+
+    if (updateRunsRefreshTimer) clearInterval(updateRunsRefreshTimer);
+    updateRunsRefreshTimer = setInterval(() => {
+        loadUpdateRuns({ silent: true });
+    }, 10000);
+}
+
 // ─── Toast & Inline Confirm (no JS dialogs!) ───
 
 function showToast(msg, type = 'success', duration = 3000) {
@@ -847,5 +1803,8 @@ function inlineConfirm(el, msg) {
 }
 
 // Init
+initAdminTheme();
+initAdminSectionNav();
 loadClients();
 loadSecrets('platform', 'platformSecrets');
+initOpenClawUpdates();

@@ -6,15 +6,84 @@
     <title>Admin — HireOpenClaw</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root { --bg: #0a0a0a; --card: #111; --border: #222; --gray: #888; --white: #fff; --orange: #ff6b35; --green: #00c853; --yellow: #ffc107; --red: #ff5252; --purple: #9c27b0; }
+        :root {
+            --bg: #0a0a0a;
+            --card: #111;
+            --border: #222;
+            --gray: #888;
+            --white: #fff;
+            --orange: #ff6b35;
+            --green: #00c853;
+            --yellow: #ffc107;
+            --red: #ff5252;
+            --purple: #9c27b0;
+            --header-bg: rgba(17,17,17,0.88);
+            --search-bg-start: rgba(10,10,10,0.95);
+            --search-bg-end: rgba(10,10,10,0.7);
+            --surface-subtle: rgba(255,255,255,0.02);
+            --line-subtle: rgba(255,255,255,0.08);
+            --overlay-strong: rgba(0,0,0,0.8);
+            --overlay-medium: rgba(0,0,0,0.65);
+            --drawer-bg: #0f0f10;
+            --drawer-border: #2a2a2a;
+            --modal-bg: #121212;
+            --card-shadow: 0 8px 26px rgba(0,0,0,0.25);
+            --border-strong: #2f2f2f;
+            --bg-radial-a: rgba(255,107,53,0.14);
+            --bg-radial-b: rgba(59,130,246,0.10);
+            --btn-primary-bg: #ff6b35;
+            --btn-primary-hover: #ef5b2b;
+            --btn-primary-text: #ffffff;
+            --btn-secondary-bg: #141518;
+            --btn-secondary-border: #2a2f38;
+            --btn-secondary-hover: #1c2027;
+            --btn-secondary-text: #f5f7fb;
+            --btn-danger-bg: rgba(255,82,82,0.18);
+            --btn-danger-border: rgba(255,82,82,0.35);
+            --btn-danger-hover: rgba(255,82,82,0.26);
+            --btn-danger-text: #ff8181;
+        }
+        :root[data-theme='light'] {
+            --bg: #f6f7fb;
+            --card: #ffffff;
+            --border: #d9dce5;
+            --gray: #5e6473;
+            --white: #181d29;
+            --header-bg: rgba(255,255,255,0.9);
+            --search-bg-start: rgba(246,247,251,0.97);
+            --search-bg-end: rgba(246,247,251,0.8);
+            --surface-subtle: rgba(0,0,0,0.03);
+            --line-subtle: rgba(0,0,0,0.1);
+            --overlay-strong: rgba(15,20,31,0.45);
+            --overlay-medium: rgba(15,20,31,0.35);
+            --drawer-bg: #f9fafc;
+            --drawer-border: #d9dce5;
+            --modal-bg: #ffffff;
+            --card-shadow: 0 6px 20px rgba(14,24,44,0.1);
+            --border-strong: #b8bfce;
+            --bg-radial-a: rgba(255,107,53,0.08);
+            --bg-radial-b: rgba(59,130,246,0.06);
+            --btn-primary-bg: #df5929;
+            --btn-primary-hover: #c94f23;
+            --btn-primary-text: #ffffff;
+            --btn-secondary-bg: #f2f5fb;
+            --btn-secondary-border: #c4ccdb;
+            --btn-secondary-hover: #e8edf7;
+            --btn-secondary-text: #1e2635;
+            --btn-danger-bg: #d94a4a;
+            --btn-danger-border: #bf3737;
+            --btn-danger-hover: #c83f3f;
+            --btn-danger-text: #ffffff;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Inter', -apple-system, sans-serif;
             background:
-                radial-gradient(1100px 520px at 8% -10%, rgba(255,107,53,0.14), transparent 62%),
-                radial-gradient(900px 460px at 100% -12%, rgba(59,130,246,0.10), transparent 65%),
+                radial-gradient(1100px 520px at 8% -10%, var(--bg-radial-a), transparent 62%),
+                radial-gradient(900px 460px at 100% -12%, var(--bg-radial-b), transparent 65%),
                 var(--bg);
             color: var(--white);
+            transition: background 0.2s ease, color 0.2s ease;
         }
         
         /* Impersonate banner */
@@ -23,22 +92,23 @@
         .impersonate-banner button { background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
         
         /* Header */
-        .header { position: sticky; top: 0; z-index: 20; padding: 16px 24px; background: rgba(17,17,17,0.88); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 16px; }
+        .header { position: sticky; top: 0; z-index: 20; padding: 16px 24px; background: var(--header-bg); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 16px; }
         .header h1 { font-size: 18px; flex: 1; }
         .header .badge { background: var(--purple); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
         .header a { color: var(--gray); text-decoration: none; font-size: 13px; }
         .header a:hover { color: var(--white); }
+        .theme-btn { min-width: 88px; }
         
         /* Stats bar */
         .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; padding: 20px 24px; }
         .stat { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; transition: transform 0.15s ease, border-color 0.15s ease; }
-        .stat:hover { transform: translateY(-1px); border-color: #2f2f2f; }
+        .stat:hover { transform: translateY(-1px); border-color: var(--border-strong); }
         .stat .label { font-size: 11px; color: var(--gray); text-transform: uppercase; margin-bottom: 4px; }
         .stat .value { font-size: 24px; font-weight: 700; }
         .stat .sub { font-size: 12px; color: var(--gray); margin-top: 4px; }
         
         /* Search */
-        .search-bar { padding: 0 24px 16px; display: flex; gap: 12px; position: sticky; top: 64px; z-index: 12; background: linear-gradient(to bottom, rgba(10,10,10,0.95), rgba(10,10,10,0.7)); backdrop-filter: blur(4px); }
+        .search-bar { padding: 0 24px 16px; display: flex; gap: 12px; position: sticky; top: 64px; z-index: 12; background: linear-gradient(to bottom, var(--search-bg-start), var(--search-bg-end)); backdrop-filter: blur(4px); }
         .search-bar input { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; color: var(--white); font-size: 14px; outline: none; }
         .search-bar input:focus { border-color: var(--orange); }
         .search-bar select { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--white); font-size: 13px; }
@@ -46,10 +116,10 @@
         /* Client list */
         .clients { padding: 0 24px 24px; }
         .client-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
-        .client-card:hover { border-color: #2f2f2f; box-shadow: 0 8px 26px rgba(0,0,0,0.25); }
+        .client-card:hover { border-color: var(--border-strong); box-shadow: var(--card-shadow); }
         .client-header { padding: 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
-        .client-header:hover { background: rgba(255,255,255,0.02); }
-        .client-header.open { border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .client-header:hover { background: var(--surface-subtle); }
+        .client-header.open { border-bottom: 1px solid var(--line-subtle); }
         .client-email { font-weight: 600; font-size: 14px; flex: 1; }
         .client-meta { display: flex; gap: 16px; font-size: 12px; color: var(--gray); }
         .client-meta .active { color: var(--green); }
@@ -64,36 +134,40 @@
         /* Bot list (expanded) */
         .client-bots { display: none; padding: 0 16px 16px; border-top: 1px solid var(--border); }
         .client-bots.open { display: block; }
-        .bot-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
+        .bot-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line-subtle); font-size: 13px; }
         .bot-row:last-child { border-bottom: none; }
         .bot-name { flex: 1; font-weight: 500; }
         .bot-actions { display: flex; gap: 6px; }
-        .bot-actions button { background: var(--bg); border: 1px solid var(--border); color: var(--gray); padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; }
-        .bot-actions button:hover { color: var(--white); border-color: var(--orange); }
+        .bot-actions button { background: var(--btn-secondary-bg); border: 1px solid var(--btn-secondary-border); color: var(--btn-secondary-text); padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; }
+        .bot-actions button:hover { background: var(--btn-secondary-hover); border-color: var(--orange); }
         
         /* Action buttons */
-        .btn { padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
-        .btn-primary { background: var(--orange); color: white; }
-        .btn-secondary { background: var(--card); border: 1px solid var(--border); color: var(--white); }
-        .btn-danger { background: rgba(255,82,82,0.15); color: var(--red); border: 1px solid rgba(255,82,82,0.3); }
+        .btn { padding: 8px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease, opacity 0.14s ease; }
+        .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+        .btn-primary { background: var(--btn-primary-bg); color: var(--btn-primary-text); }
+        .btn-primary:hover:not(:disabled) { background: var(--btn-primary-hover); }
+        .btn-secondary { background: var(--btn-secondary-bg); border: 1px solid var(--btn-secondary-border); color: var(--btn-secondary-text); }
+        .btn-secondary:hover:not(:disabled) { background: var(--btn-secondary-hover); border-color: var(--border-strong); }
+        .btn-danger { background: var(--btn-danger-bg); color: var(--btn-danger-text); border: 1px solid var(--btn-danger-border); }
+        .btn-danger:hover:not(:disabled) { background: var(--btn-danger-hover); }
         
         /* Log viewer */
-        .log-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 100; justify-content: center; align-items: center; }
+        .log-modal { display: none; position: fixed; inset: 0; background: var(--overlay-strong); z-index: 100; justify-content: center; align-items: center; }
         .log-modal.open { display: flex; }
         .log-content { background: var(--card); border: 1px solid var(--border); border-radius: 12px; width: 90%; max-width: 800px; max-height: 80vh; display: flex; flex-direction: column; }
         .log-header { padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
         .log-body { flex: 1; overflow-y: auto; padding: 16px; font-family: 'SF Mono', monospace; font-size: 12px; line-height: 1.8; color: var(--gray); white-space: pre-wrap; }
         .log-body.rich { font-family: 'Inter', -apple-system, sans-serif; font-size: 13px; line-height: 1.55; color: var(--white); white-space: normal; }
         .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
-        .detail-card { border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; background: rgba(255,255,255,0.02); padding: 12px; }
+        .detail-card { border: 1px solid var(--line-subtle); border-radius: 10px; background: var(--surface-subtle); padding: 12px; }
         .detail-title { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
         .detail-meta { font-size: 12px; color: var(--gray); margin: 4px 0; }
         .crud-field { display: grid; gap: 4px; margin-bottom: 8px; }
         .crud-label { font-size: 11px; color: var(--gray); text-transform: uppercase; letter-spacing: 0.02em; }
         .crud-input, .crud-select, .crud-textarea {
             width: 100%;
-            background: rgba(0,0,0,0.35);
-            border: 1px solid rgba(255,255,255,0.12);
+            background: var(--surface-subtle);
+            border: 1px solid var(--line-subtle);
             border-radius: 8px;
             color: var(--white);
             padding: 8px 10px;
@@ -104,7 +178,7 @@
         .crud-input:focus, .crud-select:focus, .crud-textarea:focus { outline: none; border-color: var(--orange); }
         .detail-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
         .crud-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .crud-table th, .crud-table td { border-bottom: 1px solid rgba(255,255,255,0.08); padding: 8px 6px; text-align: left; vertical-align: middle; }
+        .crud-table th, .crud-table td { border-bottom: 1px solid var(--line-subtle); padding: 8px 6px; text-align: left; vertical-align: middle; }
         .crud-table th { color: var(--gray); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; }
         .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
         /* Toast notifications */
@@ -121,13 +195,166 @@
         .inline-confirm .warn { color: var(--red); font-weight: 600; }
         .inline-confirm button { padding: 4px 10px; border-radius: 4px; border: none; cursor: pointer; font-size: 11px; font-weight: 600; }
         .inline-confirm .yes { background: var(--red); color: #fff; }
-        .inline-confirm .no { background: rgba(255,255,255,0.1); color: var(--gray); }
+        .inline-confirm .no { background: var(--surface-subtle); color: var(--gray); }
+
+        /* OpenClaw updates */
+        .updates-shell { margin: 0 24px 20px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .updates-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+        .updates-title-row h2 { font-size: 18px; }
+        .updates-subtitle { color: var(--gray); font-size: 12px; margin-top: 3px; }
+        .updates-mode-switch { display: inline-flex; gap: 6px; padding: 4px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-subtle); }
+        .updates-mode-btn { border: 1px solid transparent; background: transparent; color: var(--gray); border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .updates-mode-btn.active { color: var(--white); border-color: var(--orange); background: rgba(255,107,53,0.14); }
+        .updates-easy-panel { margin-bottom: 14px; }
+        .updates-help { font-size: 12px; color: var(--gray); margin-bottom: 10px; }
+        .updates-checklist { display: grid; gap: 6px; margin: 8px 0 0; font-size: 12px; color: var(--gray); }
+        .updates-checklist .ok { color: var(--green); }
+        .updates-checklist .warn { color: var(--yellow); }
+        .updates-checklist .bad { color: var(--red); }
+        .version-catalog { margin-bottom: 12px; }
+        .version-catalog-title { font-size: 11px; text-transform: uppercase; color: var(--gray); letter-spacing: 0.03em; margin-bottom: 6px; }
+        .version-catalog-list { display: flex; gap: 6px; flex-wrap: wrap; }
+        .version-chip {
+            border: 1px solid var(--btn-secondary-border);
+            background: var(--btn-secondary-bg);
+            color: var(--btn-secondary-text);
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .version-chip:hover { border-color: var(--orange); background: var(--btn-secondary-hover); }
+        .updates-grid.single-column { grid-template-columns: 1fr; }
+        .updates-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .updates-section { border: 1px solid var(--line-subtle); border-radius: 10px; padding: 14px; background: var(--surface-subtle); }
+        .updates-section h3 { font-size: 14px; margin-bottom: 10px; }
+        .updates-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
+        .updates-field { display: grid; gap: 4px; }
+        .updates-field label { font-size: 11px; text-transform: uppercase; color: var(--gray); letter-spacing: 0.02em; }
+        .updates-input, .updates-textarea, .updates-select {
+            width: 100%;
+            background: var(--surface-subtle);
+            border: 1px solid var(--line-subtle);
+            border-radius: 8px;
+            color: var(--white);
+            padding: 8px 10px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+        .updates-textarea { min-height: 68px; resize: vertical; }
+        .updates-input:focus, .updates-textarea:focus, .updates-select:focus { outline: none; border-color: var(--orange); }
+        .updates-inline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+        .updates-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--gray); }
+        .updates-toggle input { accent-color: var(--orange); }
+        .scope-selector { display: flex; gap: 12px; margin-bottom: 10px; }
+        .scope-list {
+            border: 1px solid var(--line-subtle);
+            border-radius: 8px;
+            max-height: 140px;
+            overflow-y: auto;
+            padding: 8px;
+            display: grid;
+            gap: 8px;
+            background: var(--surface-subtle);
+            margin-bottom: 10px;
+        }
+        .scope-item { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; }
+        .scope-item .meta { color: var(--gray); font-size: 11px; }
+        .updates-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+        .updates-state { margin-top: 8px; font-size: 12px; color: var(--gray); min-height: 16px; }
+        .updates-filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+        .updates-filter-row input { flex: 1; min-width: 180px; }
+        .updates-table-wrap { border: 1px solid var(--line-subtle); border-radius: 8px; overflow: auto; max-height: 280px; }
+        .updates-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 720px; }
+        .updates-table th, .updates-table td { border-bottom: 1px solid var(--line-subtle); padding: 8px 6px; text-align: left; vertical-align: top; }
+        .updates-table th { color: var(--gray); font-size: 11px; text-transform: uppercase; letter-spacing: 0.02em; }
+        .updates-row-btn { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--btn-secondary-border); background: var(--btn-secondary-bg); color: var(--btn-secondary-text); font-size: 11px; cursor: pointer; }
+        .updates-row-btn:hover { background: var(--btn-secondary-hover); border-color: var(--orange); }
+        .status-chip { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+        .status-chip.success { background: rgba(0,200,83,0.16); color: var(--green); }
+        .status-chip.failed { background: rgba(255,82,82,0.16); color: var(--red); }
+        .status-chip.running { background: rgba(59,130,246,0.16); color: #60a5fa; }
+        .status-chip.pending { background: rgba(255,193,7,0.16); color: var(--yellow); }
+        .status-chip.neutral { background: rgba(255,255,255,0.08); color: var(--gray); }
+        .rollback-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .updates-drawer-backdrop {
+            position: fixed;
+            inset: 0;
+            background: var(--overlay-medium);
+            display: none;
+            justify-content: flex-end;
+            z-index: 130;
+        }
+        .updates-drawer-backdrop.open { display: flex; }
+        .updates-drawer {
+            width: min(760px, 96vw);
+            height: 100%;
+            background: var(--drawer-bg);
+            border-left: 1px solid var(--drawer-border);
+            display: flex;
+            flex-direction: column;
+        }
+        .updates-drawer-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--drawer-border); }
+        .updates-drawer-title { font-size: 15px; font-weight: 700; }
+        .updates-drawer-controls { padding: 12px 16px 0; display: flex; gap: 12px; flex-wrap: wrap; }
+        .updates-drawer-actions { padding: 10px 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+        .updates-callout { margin: 0 16px 10px; padding: 10px 12px; border-radius: 8px; font-size: 12px; border: 1px solid rgba(255,82,82,0.45); background: rgba(255,82,82,0.12); color: #ffb4b4; display: none; }
+        .updates-callout.show { display: block; }
+        .updates-drawer-state { margin: 0 16px 10px; color: var(--gray); font-size: 12px; min-height: 16px; }
+        .updates-drawer-table { margin: 0 16px 16px; border: 1px solid var(--line-subtle); border-radius: 8px; overflow: auto; flex: 1; }
+        .confirm-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 150;
+            background: var(--overlay-medium);
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .confirm-modal-backdrop.open { display: flex; }
+        .confirm-modal { width: min(420px, 92vw); background: var(--modal-bg); border: 1px solid var(--drawer-border); border-radius: 12px; padding: 16px; }
+        .confirm-modal h3 { font-size: 16px; margin-bottom: 8px; }
+        .confirm-modal p { color: var(--gray); font-size: 13px; line-height: 1.5; }
+        .confirm-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+        .admin-nav {
+            margin: 2px 24px 14px;
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--surface-subtle);
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .admin-nav .nav-btn {
+            background: var(--btn-secondary-bg);
+            border: 1px solid var(--btn-secondary-border);
+            color: var(--btn-secondary-text);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .admin-nav .nav-btn:hover { background: var(--btn-secondary-hover); border-color: var(--border-strong); }
+        .admin-nav .nav-btn.active {
+            color: var(--white);
+            border-color: var(--orange);
+            background: rgba(255,107,53,0.13);
+        }
+        .admin-section-hidden { display: none; }
         @media (max-width: 768px) {
             .search-bar { flex-direction: column; }
             .search-bar input, .search-bar select { max-width: 100%; box-sizing: border-box; font-size: 16px; }
             button, .btn, [role="button"] { min-height: 44px; min-width: 44px; padding: 10px 16px; }
             .detail-grid { grid-template-columns: 1fr; }
             .crud-table { display: block; overflow-x: auto; }
+            .updates-shell { margin: 0 12px 14px; padding: 14px; }
+            .updates-grid { grid-template-columns: 1fr; }
+            .updates-form-grid, .rollback-grid { grid-template-columns: 1fr; }
+            .updates-drawer { width: 100%; }
+            .admin-nav { margin: 2px 12px 12px; }
         }
     </style>
 </head>
@@ -142,6 +369,7 @@
 <div class="header">
     <h1>🛡 Admin Dashboard</h1>
     <span class="badge">ADMIN</span>
+    <button class="btn btn-secondary theme-btn" id="adminThemeToggle" type="button">☀ Light</button>
     <a href="/dashboard">← My Dashboard</a>
 </div>
 
@@ -155,7 +383,13 @@
     <div class="stat"><div class="label">Est. Usage Cost</div><div class="value" id="statMonthCost">—</div></div>
 </div>
 
-<div class="search-bar">
+<div class="admin-nav" id="adminNav">
+    <button class="nav-btn active" data-section="tenants">Tenants</button>
+    <button class="nav-btn" data-section="updates">OpenClaw Updates</button>
+    <button class="nav-btn" data-section="secrets">Platform Secrets</button>
+</div>
+
+<div class="search-bar" id="adminTenantsSearchBar">
     <input type="text" id="searchInput" placeholder="Search clients by email..." oninput="filterClients()" aria-label="Search clients by email">
     <select id="filterStatus" onchange="filterClients()">
         <option value="all">All</option>
@@ -166,7 +400,7 @@
 <div id="resultsInfo" style="padding:0 24px 14px;color:var(--gray);font-size:12px;">Loading clients…</div>
 
 <!-- Platform Secrets -->
-<div style="padding:0 24px 20px;">
+<div style="padding:0 24px 20px;" id="adminSecretsBlock" class="admin-section-hidden">
     <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
             <div>
@@ -177,6 +411,144 @@
         </div>
         <div id="platformSecrets"><p style="color:var(--gray);font-size:13px;">Loading...</p></div>
     </div>
+</div>
+
+<!-- OpenClaw Updates -->
+<div class="updates-shell admin-section-hidden" id="openclawUpdatesRoot">
+    <div class="updates-title-row">
+        <div>
+            <h2>🚀 OpenClaw Updates</h2>
+            <div class="updates-subtitle">Roll out OpenClaw upgrades, monitor per-tenant results, and run rollbacks by run ID.</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <div class="updates-mode-switch" role="tablist" aria-label="Updates mode">
+                <button class="updates-mode-btn active" id="updatesModeEasyBtn" type="button">Easy Mode</button>
+                <button class="updates-mode-btn" id="updatesModeAdvancedBtn" type="button">Advanced Mode</button>
+            </div>
+            <button class="btn btn-secondary" id="updatesRefreshBtn">Refresh</button>
+        </div>
+    </div>
+
+    <div class="updates-easy-panel" id="updatesEasyPanel">
+        <section class="updates-section">
+            <h3>Safe Rollout Assistant</h3>
+            <div class="updates-help">Recommended for most updates: dry-run first across all active tenants, then launch live rollout only if no failures.</div>
+            <div class="version-catalog">
+                <div class="version-catalog-title" id="versionCatalogHint">Checking latest OpenClaw versions…</div>
+                <div class="version-catalog-list" id="versionCatalogList"></div>
+            </div>
+            <div class="updates-form-grid">
+                <div class="updates-field">
+                    <label for="easyRolloutTargetVersion">Target version</label>
+                    <input id="easyRolloutTargetVersion" class="updates-input" placeholder="0.2.3" list="openclawVersionOptions">
+                </div>
+                <div class="updates-field">
+                    <label for="easyRolloutImageUri">Image URI (optional)</label>
+                    <input id="easyRolloutImageUri" class="updates-input" placeholder="ghcr.io/org/openclaw:0.2.3">
+                </div>
+            </div>
+            <div class="updates-inline">
+                <label class="updates-toggle"><input type="checkbox" id="easyRolloutIncludePaused"> Include paused tenants</label>
+            </div>
+            <div class="updates-actions">
+                <button class="btn btn-secondary" id="easyDryRunBtn">1) Run Safe Dry-Run</button>
+                <button class="btn btn-primary" id="easyPromoteBtn" disabled>2) Start Live Rollout</button>
+                <button class="btn btn-secondary" id="easyOpenAdvancedBtn">Advanced Controls</button>
+            </div>
+            <div class="updates-state" id="easyRolloutState"></div>
+            <div class="updates-checklist" id="easyRolloutChecklist">
+                <div>Step 1: Run dry-run with safe defaults.</div>
+                <div>Step 2: Live rollout is enabled only after a clean dry-run.</div>
+            </div>
+        </section>
+    </div>
+
+    <div class="updates-grid single-column" id="updatesGrid">
+        <section class="updates-section admin-section-hidden" id="rolloutAdvancedSection">
+            <h3>Section A (Advanced): Start rollout</h3>
+            <div class="updates-form-grid">
+                <div class="updates-field">
+                    <label for="rolloutTargetVersion">Target version</label>
+                    <input id="rolloutTargetVersion" class="updates-input" placeholder="0.2.3" list="openclawVersionOptions">
+                </div>
+                <div class="updates-field">
+                    <label for="rolloutImageUri">Image URI</label>
+                    <input id="rolloutImageUri" class="updates-input" placeholder="ghcr.io/org/openclaw:0.2.3">
+                </div>
+            </div>
+            <datalist id="openclawVersionOptions"></datalist>
+
+            <div class="scope-selector" role="radiogroup" aria-label="Rollout scope">
+                <label class="updates-toggle"><input type="radio" name="rolloutScope" value="all_active" checked> All active tenants</label>
+                <label class="updates-toggle"><input type="radio" name="rolloutScope" value="selected"> Selected tenants</label>
+            </div>
+            <div id="rolloutSelectedTenantsWrap" style="display:none;">
+                <div class="scope-list" id="rolloutTenantSelection"></div>
+            </div>
+
+            <div class="updates-inline">
+                <label class="updates-toggle"><input type="checkbox" id="rolloutIncludePaused"> Include paused</label>
+                <label class="updates-toggle"><input type="checkbox" id="rolloutDryRun" checked> Dry run</label>
+                <label class="updates-toggle"><input type="checkbox" id="rolloutSkipBackup"> Skip backup</label>
+            </div>
+
+            <div class="updates-actions">
+                <button class="btn btn-secondary" id="rolloutDryRunBtn">Run Dry-Run</button>
+                <button class="btn btn-primary" id="rolloutStartBtn">Start Rollout</button>
+            </div>
+            <div class="updates-state" id="rolloutActionState"></div>
+        </section>
+
+        <section class="updates-section">
+            <h3>Section B: Runs history</h3>
+            <div class="updates-filter-row">
+                <label class="updates-toggle"><input type="checkbox" id="runsFailedOnly"> Failed only</label>
+                <input id="runsRunIdSearch" class="updates-input" placeholder="Search run ID">
+            </div>
+            <div class="updates-table-wrap">
+                <table class="updates-table">
+                    <thead>
+                        <tr>
+                            <th>Run ID</th>
+                            <th>Operation</th>
+                            <th>Started</th>
+                            <th>Finished</th>
+                            <th>Success</th>
+                            <th>Failed</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="updateRunsTableBody">
+                        <tr><td colspan="8" style="color:#888;">Loading update runs…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="updates-state" id="updateRunsState"></div>
+        </section>
+    </div>
+
+    <section class="updates-section admin-section-hidden" style="margin-top:14px;" id="rollbackAdvancedSection">
+        <h3>Rollback by run ID (Advanced)</h3>
+        <div class="rollback-grid">
+            <div class="updates-field">
+                <label for="rollbackRunId">Run ID</label>
+                <input id="rollbackRunId" class="updates-input" placeholder="rollback target run ID">
+            </div>
+            <div class="updates-field">
+                <label for="rollbackTenantFilter">Tenant filter (optional)</label>
+                <textarea id="rollbackTenantFilter" class="updates-textarea" placeholder="tenant-a, tenant-b"></textarea>
+            </div>
+        </div>
+        <div class="updates-inline">
+            <label class="updates-toggle"><input type="checkbox" id="rollbackRestoreBackup"> Restore backup</label>
+            <label class="updates-toggle"><input type="checkbox" id="rollbackDryRun" checked> Dry run</label>
+        </div>
+        <div class="updates-actions">
+            <button class="btn btn-danger" id="rollbackRunBtn">Start Rollback</button>
+        </div>
+        <div class="updates-state" id="rollbackState"></div>
+    </section>
 </div>
 
 <div class="clients" id="clientList">
@@ -191,6 +563,55 @@
             <button class="btn btn-secondary" onclick="closeLogModal()" style="padding:4px 12px;">✕</button>
         </div>
         <div class="log-body" id="logBody">Loading...</div>
+    </div>
+</div>
+
+<!-- Run details drawer -->
+<div class="updates-drawer-backdrop" id="updateRunDrawerBackdrop" onclick="closeUpdateRunDrawer(event)">
+    <aside class="updates-drawer" onclick="event.stopPropagation()">
+        <div class="updates-drawer-header">
+            <div class="updates-drawer-title" id="updateRunDrawerTitle">Run details</div>
+            <button class="btn btn-secondary" style="padding:6px 10px;" onclick="closeUpdateRunDrawer()">Close</button>
+        </div>
+        <div class="updates-drawer-controls">
+            <label class="updates-toggle"><input type="checkbox" id="drawerFailedOnly"> Failed only</label>
+            <label class="updates-toggle"><input type="checkbox" id="drawerRollbackRestoreBackup"> Restore backup</label>
+            <label class="updates-toggle"><input type="checkbox" id="drawerRollbackDryRun" checked> Dry run</label>
+        </div>
+        <div class="updates-drawer-actions">
+            <button class="btn btn-secondary" id="copyRunIdBtn">Copy Run ID</button>
+            <button class="btn btn-danger" id="rollbackRunBtnDrawer">Rollback this run</button>
+        </div>
+        <div class="updates-callout" id="updateRunDrawerCallout"></div>
+        <div class="updates-drawer-state" id="updateRunDrawerState">Select a run to inspect rollout/rollback tenant outcomes.</div>
+        <div class="updates-drawer-table">
+            <table class="updates-table">
+                <thead>
+                    <tr>
+                        <th>Tenant ID</th>
+                        <th>Status</th>
+                        <th>Previous → New</th>
+                        <th>Message/Error</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="updateRunTenantRows">
+                    <tr><td colspan="5" style="color:#888;">No run selected.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </aside>
+</div>
+
+<!-- Confirm modal -->
+<div class="confirm-modal-backdrop" id="adminConfirmBackdrop" onclick="resolveAdminConfirm(false, event)">
+    <div class="confirm-modal" onclick="event.stopPropagation()">
+        <h3 id="adminConfirmTitle">Confirm Action</h3>
+        <p id="adminConfirmMessage">Are you sure?</p>
+        <div class="confirm-modal-actions">
+            <button class="btn btn-secondary" onclick="resolveAdminConfirm(false)">Cancel</button>
+            <button class="btn btn-danger" id="adminConfirmAcceptBtn" onclick="resolveAdminConfirm(true)">Confirm</button>
+        </div>
     </div>
 </div>
 
@@ -210,6 +631,7 @@
     }
 })();
 </script>
-<script src="/js/admin.js?v=3"></script>
+<script src="/js/openclaw-updates-adapter.js?v=2"></script>
+<script src="/js/admin.js?v=8"></script>
 </body>
 </html>

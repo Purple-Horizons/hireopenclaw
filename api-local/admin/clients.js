@@ -593,6 +593,9 @@ function toTenantView(item) {
     name: item.botName || item.name || item.tenantId,
     status: item.status || 'unknown',
     healthStatus: item.healthStatus || 'unknown',
+    openClawVersion: pickFirstNonEmpty(item.openClawVersion, item.openclawVersion, item.version, null),
+    lastUpdateStatus: pickFirstNonEmpty(item.lastUpdateStatus, item.updateStatus, null),
+    lastUpdateTime: pickFirstNonEmpty(item.lastUpdateTime, item.lastUpdateAt, item.lastUpdatedAt, null),
     role: item.role || null,
     updatedAt: item.updatedAt || null,
     updatedBy: item.updatedBy || null,
@@ -638,6 +641,9 @@ function buildClients(items, usageMap) {
     const name = item.botName || item.name || tenantId;
     const createdAt = item.createdAt || item.provisionedAt;
     const health = item.healthStatus || 'unknown';
+    const openClawVersion = pickFirstNonEmpty(item.openClawVersion, item.openclawVersion, item.version, null);
+    const lastUpdateStatus = pickFirstNonEmpty(item.lastUpdateStatus, item.updateStatus, null);
+    const lastUpdateTime = pickFirstNonEmpty(item.lastUpdateTime, item.lastUpdateAt, item.lastUpdatedAt, null);
     const role = item.role || null;
     const endpoint = item.endpoint;
     const port = item.port;
@@ -692,6 +698,9 @@ function buildClients(items, usageMap) {
       role,
       endpoint,
       port: port ? parseInt(port, 10) : null,
+      openClawVersion,
+      lastUpdateStatus,
+      lastUpdateTime,
       createdAt,
       lastRequestAt: usage.lastRequestAt || null,
       usageMonth: {

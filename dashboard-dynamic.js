@@ -42,6 +42,72 @@ function formatModelName(model) {
   return map[name] || name;
 }
 
+function formatOpenClawVersion(value) {
+    const normalized = String(value || '').trim();
+    if (!normalized || normalized === 'unknown') return '—';
+    return normalized;
+}
+
+function normalizeUpdateStatus(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized) return 'unknown';
+    if (normalized.includes('success')) return 'success';
+    if (normalized.includes('fail') || normalized.includes('error')) return 'failed';
+    if (normalized.includes('run') || normalized.includes('progress') || normalized.includes('queue')) return 'running';
+    if (normalized.includes('pending')) return 'pending';
+    return normalized;
+}
+
+function updateStatusLabel(value) {
+    const normalized = normalizeUpdateStatus(value);
+    if (normalized === 'success') return 'Success';
+    if (normalized === 'failed') return 'Failed';
+    if (normalized === 'running') return 'Running';
+    if (normalized === 'pending') return 'Pending';
+    if (normalized === 'unknown') return 'Unknown';
+    return normalized;
+}
+
+function updateStatusColor(value) {
+    const normalized = normalizeUpdateStatus(value);
+    if (normalized === 'success') return 'var(--green)';
+    if (normalized === 'failed') return 'var(--red)';
+    if (normalized === 'running') return '#60a5fa';
+    if (normalized === 'pending') return 'var(--yellow)';
+    return 'var(--gray)';
+}
+
+function formatUpdateTime(value) {
+    if (!value) return '—';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return String(value);
+    return parsed.toLocaleString();
+}
+
+async function enrichBotsWithUpdateMetadata(bots) {
+    const rows = Array.isArray(bots) ? bots : [];
+    const adapter = window.OpenClawUpdatesAdapter;
+    if (!adapter || typeof adapter.getTenantVersions !== 'function') return rows;
+
+    try {
+        const payload = await adapter.getTenantVersions();
+        const tenants = Array.isArray(payload?.tenants) ? payload.tenants : [];
+        const map = new Map(tenants.map((tenant) => [tenant.tenantId, tenant]));
+        return rows.map((bot) => {
+            const metadata = map.get(bot.id) || {};
+            return {
+                ...bot,
+                openClawVersion: bot.openClawVersion || metadata.openClawVersion || null,
+                lastUpdateStatus: bot.lastUpdateStatus || metadata.lastUpdateStatus || null,
+                lastUpdateTime: bot.lastUpdateTime || metadata.lastUpdateTime || null,
+            };
+        });
+    } catch (err) {
+        console.warn('[dashboard] update metadata unavailable:', err.message);
+        return rows;
+    }
+}
+
 // Modal/Alert Functions (use modal.js toast system)
 function showAlert(message, type = 'info') {
     showToast(message, type);
@@ -136,7 +202,8 @@ async function loadDashboard(email) {
         const data = await res.json();
         
         if (data.bots) {
-            currentBots = data.bots;
+            const botsWithUpdates = await enrichBotsWithUpdateMetadata(data.bots);
+            currentBots = botsWithUpdates;
             currentMaxBots = data.maxBots || 3; // Store for quota check
             
             // Update header user info
@@ -147,10 +214,10 @@ async function loadDashboard(email) {
             updateBillingCard(data.plan, data.billing);
             
             // Update stats
-            updateStats(data);
+            updateStats({ ...data, bots: botsWithUpdates });
             
             // Render bots grid
-            renderBots(data.bots, data.maxBots);
+            renderBots(botsWithUpdates, data.maxBots);
             
             // Load usage chart
             loadUsageChart(email);
@@ -389,6 +456,10 @@ function createBotCard(bot) {
                        bot.health === 'unhealthy' ? 'var(--red)' : 'var(--yellow)';
     
     const lastActiveText = formatLastActive(bot.lastActive);
+    const openClawVersion = formatOpenClawVersion(bot.openClawVersion);
+    const lastUpdateStatus = updateStatusLabel(bot.lastUpdateStatus);
+    const lastUpdateColor = updateStatusColor(bot.lastUpdateStatus);
+    const lastUpdateTime = formatUpdateTime(bot.lastUpdateTime);
     
     card.innerHTML = `
         <div class="bot-header">
@@ -432,6 +503,20 @@ function createBotCard(bot) {
             <div class="bot-stat">
                 <div class="label">Health</div>
                 <div class="value" style="color:${healthColor};">${bot.health}</div>
+            </div>
+        </div>
+        <div class="bot-update-meta">
+            <div class="update-item">
+                <div class="update-label">OpenClaw Version</div>
+                <div class="update-value">v${escapeHtml(openClawVersion)}</div>
+            </div>
+            <div class="update-item">
+                <div class="update-label">Last Update Status</div>
+                <div class="update-value" style="color:${lastUpdateColor};">${escapeHtml(lastUpdateStatus)}</div>
+            </div>
+            <div class="update-item">
+                <div class="update-label">Last Update Time</div>
+                <div class="update-value">${escapeHtml(lastUpdateTime)}</div>
             </div>
         </div>
         
@@ -996,13 +1081,23 @@ async function handleLogout() {
 
 // Manage billing
 async function manageBilling() {
-    if (typeof switchTab === 'function') {
-        switchTab('billing');
+    try {
+        const res = await fetch('/api/billing/portal', {
+            method: 'POST',
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if (!res.ok || !data.url) {
+            throw new Error(data.error || 'Failed to open billing portal');
+        }
+        window.location.href = data.url;
+    } catch (err) {
+        console.error('Manage billing error:', err);
+        showToast(err.message || 'Failed to open billing portal', 'error');
     }
-    showToast('Opened billing tab. Stripe billing portal is coming soon.', 'info', 3000);
 }
 
-// Upgrade plan
 // Plan display names and pricing (client-side mirror of plans.json)
 const PLAN_DISPLAY = {
     free: { name: 'Free Plan', price: '$0/mo' },
@@ -1028,8 +1123,113 @@ function updateBillingCard(planId, billing) {
     }
 }
 
-function upgradePlan() {
-    window.location.href = '/#pricing';
+async function upgradePlan() {
+    const currentPlan = normalizePlanInput(window.__billingState?.plan || 'starter') || 'starter';
+    const options = ['starter', 'pro', 'business'].filter(p => PLAN_ORDER[p] > PLAN_ORDER[currentPlan]);
+    if (!options.length) {
+        showToast('You are already on the highest self-serve plan.', 'info');
+        return;
+    }
+
+    const choice = promptForPlan('Upgrade', options, options[0]);
+    if (!choice) return;
+    await submitPlanChange(choice, { action: 'upgrade' });
+}
+
+async function downgradePlan() {
+    const currentPlan = normalizePlanInput(window.__billingState?.plan || 'starter') || 'starter';
+    const options = ['starter', 'pro', 'business'].filter(p => PLAN_ORDER[p] < PLAN_ORDER[currentPlan]);
+    if (!options.length) {
+        showToast('No lower self-serve plan available.', 'info');
+        return;
+    }
+
+    const choice = promptForPlan('Downgrade', options, options[options.length - 1]);
+    if (!choice) return;
+    await submitPlanChange(choice, { action: 'downgrade' });
+}
+
+async function setUsagePolicy(mode) {
+    try {
+        const res = await fetch('/api/billing/usage-policy', {
+            method: 'POST',
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ mode })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+            throw new Error(data.error || 'Failed to update usage policy');
+        }
+        showToast(`Usage policy updated: ${mode}`, 'success');
+        if (typeof loadBillingTab === 'function') {
+            await loadBillingTab();
+        }
+    } catch (err) {
+        console.error('Set usage policy error:', err);
+        showToast(err.message || 'Failed to update usage policy', 'error');
+    }
+}
+
+const PLAN_ORDER = { free: 0, starter: 1, pro: 2, business: 3, enterprise: 4 };
+
+function normalizePlanInput(plan) {
+    if (!plan || typeof plan !== 'string') return null;
+    const value = plan.toLowerCase().trim();
+    if (value === 'professional') return 'pro';
+    if (value === 'team' || value === 'agency') return 'business';
+    return PLAN_ORDER[value] !== undefined ? value : null;
+}
+
+function promptForPlan(actionLabel, options, defaultValue) {
+    const readable = options.map((p) => `${p} (${PLAN_DISPLAY[p]?.price || 'Custom'})`).join(', ');
+    const input = window.prompt(
+        `${actionLabel} plan\nAvailable: ${readable}\nEnter plan id:`,
+        defaultValue
+    );
+    if (!input) return null;
+    const normalized = normalizePlanInput(input);
+    if (!normalized || !options.includes(normalized)) {
+        showToast('Invalid plan selected', 'error');
+        return null;
+    }
+    return normalized;
+}
+
+async function submitPlanChange(plan, opts = {}) {
+    try {
+        const body = { plan };
+        if (opts.action === 'downgrade') {
+            body.applyAt = 'next_cycle';
+        }
+        const res = await fetch('/api/billing/change-plan', {
+            method: 'POST',
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.error || 'Plan change failed');
+        }
+
+        if (data.url) {
+            window.location.href = data.url;
+            return;
+        }
+
+        showToast(
+            data.message || `Plan changed to ${plan.toUpperCase()}`,
+            'success'
+        );
+        if (typeof loadBillingTab === 'function') {
+            await loadBillingTab();
+        }
+        if (currentEmail) {
+            await loadDashboard(currentEmail);
+        }
+    } catch (err) {
+        console.error('Plan change error:', err);
+        showToast(err.message || 'Failed to change plan', 'error');
+    }
 }
 
 // Utility: Escape HTML

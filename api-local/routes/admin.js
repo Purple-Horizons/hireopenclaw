@@ -17,6 +17,7 @@
  *   POST /impersonate       — requireAdmin (in handler)
  *   POST /stop-impersonate  — requireAdmin (in handler)
  *   ALL  /secrets           — requireAdmin (in handler)
+ *   GET  /updates/version-catalog — requireAdmin (in handler)
  */
 const router = require('express').Router();
 const path = require('path');
@@ -26,6 +27,7 @@ const adminBots = require(path.join(__dirname, '..', 'admin', 'bots.js'));
 const adminImpersonate = require(path.join(__dirname, '..', 'admin', 'impersonate.js'));
 const { handleAdminBackup } = require(path.join(__dirname, '..', 'admin', 'backup.js'));
 const { handleAdminSecrets } = require(path.join(__dirname, '..', 'admin', 'secrets.js'));
+const adminUpdateVersionCatalog = require(path.join(__dirname, '..', 'admin', 'updates-version-catalog.js'));
 
 const wrap = (fn) => async (req, res) => {
   try { await fn(req, res); }
@@ -49,5 +51,6 @@ router.post('/bots/:tenantId/restore', wrap(handleAdminBackup));
 router.post('/impersonate', wrap(adminImpersonate));
 router.post('/stop-impersonate', (req, res, next) => { req.path = '/stop'; next(); }, wrap(adminImpersonate));
 router.all('/secrets', wrap(handleAdminSecrets));
+router.get('/updates/version-catalog', wrap(adminUpdateVersionCatalog));
 
 module.exports = router;

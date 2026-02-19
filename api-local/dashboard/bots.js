@@ -10,6 +10,8 @@ const { QueryCommand } = require('@aws-sdk/lib-dynamodb');
 const { client: dynamoClient, docClient, TABLES } = require('../util/dynamodb.js');
 const { requireAuth } = require('../auth/middleware.js');
 const { getUserPlan, getMaxBots: getMaxBotsForUser } = require('../auth/team-plan.js');
+const { PLAN_TOKEN_LIMITS } = require('../data/plans.js');
+const { normalizePlan } = require('../billing/stripe-plans.js');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -56,7 +58,10 @@ module.exports = async (req, res) => {
           lastActive: toTimestampMs(t.lastActive) || toTimestampMs(t.createdAt),
           createdAt: t.createdAt,
           endpoint: t.endpoint || null,
-          model: t.model || null
+          model: t.model || null,
+          openClawVersion: t.openClawVersion || t.openclawVersion || t.version || null,
+          lastUpdateStatus: t.lastUpdateStatus || t.updateStatus || null,
+          lastUpdateTime: t.lastUpdateTime || t.lastUpdateAt || t.lastUpdatedAt || null,
         };
       });
 
@@ -180,13 +185,10 @@ function toNumber(...values) {
 
 // Helper: Get token limit by plan
 function getTokenLimit(plan) {
-  const limits = {
-    starter: 500000,
-    pro: 2000000,
-    business: 5000000,
-    enterprise: 20000000
-  };
-  return limits[plan] || limits.starter;
+  const normalized = normalizePlan(plan) || 'starter';
+  const raw = PLAN_TOKEN_LIMITS[normalized];
+  if (!Number.isFinite(raw)) return 20_000_000;
+  return raw;
 }
 
 // Helper: Get max bots by plan

@@ -106,10 +106,19 @@ describe('Route smoke tests — every route returns non-404', () => {
     // Admin router
     { method: 'get', path: '/api/v1/admin/clients' },
     { method: 'get', path: '/api/admin/clients' },
+    { method: 'get', path: '/api/admin/updates/version-catalog' },
 
     // Dashboard router
     { method: 'get', path: '/api/v1/dashboard/bots' },
     { method: 'get', path: '/api/dashboard/bots' },
+
+    // Billing router
+    { method: 'post', path: '/api/v1/billing/portal' },
+    { method: 'post', path: '/api/billing/portal' },
+    { method: 'post', path: '/api/v1/billing/change-plan' },
+    { method: 'post', path: '/api/billing/change-plan' },
+    { method: 'post', path: '/api/v1/billing/usage-policy' },
+    { method: 'post', path: '/api/billing/usage-policy' },
 
     // Settings router
     { method: 'get', path: '/api/v1/settings/api-keys' },
