@@ -855,7 +855,12 @@
             <div style="margin-top:32px;">
                 <button id="hero-waitlist-toggle" class="cta-button" onclick="document.getElementById('hero-waitlist').style.display='flex';this.style.display='none';">Join the Waitlist →</button>
                 <form id="hero-waitlist" style="display:none;flex-direction:column;gap:8px;max-width:420px;margin:0 auto;" onsubmit="submitWaitlist(event, this)">
+                    <div style="display:flex;gap:8px;">
+                        <input type="text" name="firstName" placeholder="First name" required class="form-input" style="flex:1;" />
+                        <input type="text" name="lastName" placeholder="Last name" required class="form-input" style="flex:1;" />
+                    </div>
                     <input type="email" name="email" placeholder="you@company.com" required class="form-input" />
+                    <input type="tel" name="phone" placeholder="Phone (optional)" class="form-input" />
                     <button type="submit" class="cta-button" style="width:100%;">Get Early Access</button>
                     <p class="waitlist-msg" style="width:100%;margin:8px 0 0;font-size:14px;display:none;"></p>
                 </form>
@@ -1154,7 +1159,12 @@
             <div style="margin-top:24px;">
                 <button id="bottom-waitlist-toggle" class="cta-button" onclick="document.getElementById('bottom-waitlist').style.display='flex';this.style.display='none';">Join the Waitlist →</button>
                 <form id="bottom-waitlist" style="display:none;flex-direction:column;gap:8px;max-width:420px;margin:0 auto;" onsubmit="submitWaitlist(event, this)">
+                    <div style="display:flex;gap:8px;">
+                        <input type="text" name="firstName" placeholder="First name" required class="form-input" style="flex:1;" />
+                        <input type="text" name="lastName" placeholder="Last name" required class="form-input" style="flex:1;" />
+                    </div>
                     <input type="email" name="email" placeholder="you@company.com" required class="form-input" />
+                    <input type="tel" name="phone" placeholder="Phone (optional)" class="form-input" />
                     <button type="submit" class="cta-button" style="width:100%;">Get Early Access</button>
                     <p class="waitlist-msg" style="width:100%;margin:8px 0 0;font-size:14px;display:none;"></p>
                 </form>
@@ -1177,6 +1187,9 @@
             const btn = form.querySelector('button[type=submit]');
             const msg = form.querySelector('.waitlist-msg');
             const email = form.querySelector('input[name=email]').value;
+            const firstName = form.querySelector('input[name=firstName]').value;
+            const lastName = form.querySelector('input[name=lastName]').value;
+            const phone = form.querySelector('input[name=phone]')?.value || '';
 
             btn.disabled = true;
             btn.textContent = 'Submitting...';
@@ -1186,7 +1199,7 @@
                 const res = await fetch('/api/waitlist', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email })
+                    body: JSON.stringify({ email, firstName, lastName, phone })
                 });
                 const data = await res.json();
                 if (res.ok) {

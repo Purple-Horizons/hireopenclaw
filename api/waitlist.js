@@ -3,9 +3,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { email } = req.body || {};
+  const { email, firstName, lastName, phone } = req.body || {};
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.status(400).json({ error: 'Valid email required' });
+  }
+  if (!firstName || !lastName) {
+    return res.status(400).json({ error: 'First and last name required' });
   }
 
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -23,7 +26,12 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${RESEND_API_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ email })
+      body: JSON.stringify({
+        email,
+        first_name: firstName,
+        last_name: lastName,
+        unsubscribed: false
+      })
     });
 
     if (!addRes.ok) {
@@ -47,7 +55,7 @@ export default async function handler(req, res) {
         subject: "You're on the waitlist 🎉",
         html: `
           <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:500px;margin:0 auto;padding:32px;">
-            <h2 style="margin:0 0 16px;">You're in.</h2>
+            <h2 style="margin:0 0 16px;">You're in, ${firstName}.</h2>
             <p style="color:#555;line-height:1.6;">
               Thanks for signing up for early access to HireOpenClaw. We're onboarding companies in small batches to make sure every AI employee is set up right.
             </p>
@@ -78,8 +86,8 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         from: 'HireOpenClaw <hi@hireopenclaw.com>',
         to: ['hi@hireopenclaw.com'],
-        subject: `New waitlist signup: ${email}`,
-        html: `<p>New waitlist signup: <strong>${email}</strong></p><p>Time: ${new Date().toISOString()}</p>`
+        subject: `New waitlist signup: ${firstName} ${lastName}`,
+        html: `<p><strong>${firstName} ${lastName}</strong></p><p>Email: ${email}</p>${phone ? `<p>Phone: ${phone}</p>` : ''}<p>Time: ${new Date().toISOString()}</p>`
       })
     });
 
