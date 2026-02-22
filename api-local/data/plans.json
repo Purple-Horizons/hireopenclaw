@@ -1,7 +1,6 @@
 {
-  "free": { "name": "Free", "price": 0, "employees": 1, "interactions": 500 },
-  "starter": { "name": "Starter", "price": 29, "employees": 1, "interactions": 5000 },
-  "pro": { "name": "Pro", "price": 99, "employees": 3, "interactions": 25000 },
-  "business": { "name": "Business", "price": 299, "employees": 10, "interactions": 100000 },
-  "enterprise": { "name": "Enterprise", "price": null, "employees": null, "interactions": null, "custom": true }
+  "starter": { "name": "Starter", "price": 29, "employees": 1, "interactions": 5000, "models": ["sonnet"], "overageRate": 0.01 },
+  "pro": { "name": "Pro", "price": 99, "employees": 2, "interactions": 25000, "models": ["sonnet", "opus"], "overageRate": 0.008 },
+  "business": { "name": "Business", "price": 249, "employees": 5, "interactions": 75000, "models": ["sonnet", "opus"], "byok": true, "overageRate": 0.006, "priority": true },
+  "enterprise": { "name": "Enterprise", "price": null, "employees": null, "interactions": null, "models": ["sonnet", "opus"], "byok": true, "custom": true, "priority": true, "sla": true }
 }

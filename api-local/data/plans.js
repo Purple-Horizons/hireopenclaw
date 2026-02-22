@@ -9,7 +9,6 @@ const PLAN_PRICING = {};
 const PLAN_TOKEN_LIMITS = {};
 const PLAN_BOT_LIMITS = {};
 const PLAN_BUDGETS = {
-  free: 5.00,
   starter: 20.00,
   pro: 80.00,
   business: 180.00,
@@ -27,8 +26,29 @@ for (const [key, plan] of Object.entries(plans)) {
 
 const VALID_PLANS = new Set(Object.keys(plans));
 
+// Overage rate per interaction (beyond plan cap)
+const PLAN_OVERAGE_RATES = {};
+for (const [key, plan] of Object.entries(plans)) {
+  PLAN_OVERAGE_RATES[key] = plan.overageRate || 0.01;
+}
+
+// Model access per plan
+const PLAN_MODELS = {};
+for (const [key, plan] of Object.entries(plans)) {
+  PLAN_MODELS[key] = plan.models || ['sonnet'];
+}
+
 // Usage record TTL — 90 days (TASK-250)
-// Writers should set: expiresAt = Math.floor(Date.now() / 1000) + USAGE_TTL_SECONDS
 const USAGE_TTL_SECONDS = 90 * 24 * 60 * 60;
 
-module.exports = { plans, PLAN_PRICING, PLAN_TOKEN_LIMITS, PLAN_BOT_LIMITS, PLAN_BUDGETS, VALID_PLANS, USAGE_TTL_SECONDS };
+module.exports = {
+  plans,
+  PLAN_PRICING,
+  PLAN_TOKEN_LIMITS,
+  PLAN_BOT_LIMITS,
+  PLAN_BUDGETS,
+  VALID_PLANS,
+  PLAN_OVERAGE_RATES,
+  PLAN_MODELS,
+  USAGE_TTL_SECONDS
+};

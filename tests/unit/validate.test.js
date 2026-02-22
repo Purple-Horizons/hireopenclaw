@@ -86,7 +86,7 @@ describe('validateBotName', () => {
 
 describe('validatePlan', () => {
   test('accepts valid plans', () => {
-    expect(validatePlan('free')).toBe(true);
+    expect(validatePlan('free')).toBe(false);
     expect(validatePlan('starter')).toBe(true);
     expect(validatePlan('pro')).toBe(true);
     expect(validatePlan('business')).toBe(true);
