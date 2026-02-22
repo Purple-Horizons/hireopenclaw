@@ -68,7 +68,7 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'HireOpenClaw <hi@hireopenclaw.com>',
+        from: 'HireOpenClaw <noreply@mail.hireopenclaw.com>',
         to: [email],
         subject: "You're on the waitlist 🎉",
         html: `
@@ -102,8 +102,8 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'HireOpenClaw <hi@hireopenclaw.com>',
-        to: ['hi@hireopenclaw.com'],
+        from: 'HireOpenClaw <noreply@mail.hireopenclaw.com>',
+        to: ['admin+aws@purplehorizons.io'],
         subject: `New waitlist signup: ${firstName} ${lastName}`,
         html: `<p><strong>${firstName} ${lastName}</strong></p><p>Email: ${email}</p>${phone ? `<p>Phone: ${phone}</p>` : ''}<p>Time: ${new Date().toISOString()}</p>`
       })
