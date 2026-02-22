@@ -22,6 +22,21 @@ export default async function handler(req, res) {
   }
 
   try {
+    // 0. Save full record to DynamoDB (includes phone)
+    const { DynamoDBClient, PutItemCommand } = await import('@aws-sdk/client-dynamodb');
+    const dynamo = new DynamoDBClient({ region: process.env.AWS_DEFAULT_REGION || 'us-east-1' });
+    await dynamo.send(new PutItemCommand({
+      TableName: 'clawops-waitlist',
+      Item: {
+        email: { S: email },
+        firstName: { S: firstName },
+        lastName: { S: lastName },
+        phone: { S: phone },
+        createdAt: { S: new Date().toISOString() },
+        source: { S: 'website' }
+      }
+    })).catch(err => console.error('[Waitlist] DynamoDB save failed:', err.message));
+
     // 1. Add to audience (waitlist)
     const addRes = await fetch(`https://api.resend.com/audiences/${AUDIENCE_ID}/contacts`, {
       method: 'POST',
