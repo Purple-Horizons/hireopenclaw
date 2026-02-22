@@ -16,7 +16,8 @@ const PLAN_BUDGETS = {
 };
 
 // Token limits per plan (mapped from interactions)
-const TOKEN_MULTIPLIER = 100; // tokens per interaction (approx)
+// Avg interaction: ~1,000 tokens (500 in + 500 out). Conservative estimate.
+const TOKEN_MULTIPLIER = 1000;
 
 for (const [key, plan] of Object.entries(plans)) {
   PLAN_PRICING[key] = { price: plan.price, maxBots: plan.employees };
