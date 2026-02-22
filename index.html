@@ -345,7 +345,7 @@
         
         .comparison-row {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: 1.2fr 1fr 1fr 1fr;
             border-bottom: 1px solid var(--light-gray);
         }
         
@@ -878,7 +878,7 @@
                     <h3>3-Day Setup Hell</h3>
                     <p class="quote">"I've been going in circles for 3 days and I'm going to frisbee my mac off the fucking balcony"</p>
                     <p>Setting up AI is a nightmare. API keys, OAuth, YAML configs, random errors. Normal people give up.</p>
-                    <div class="solution">✓ We do all setup. You get a working bot in 48 hours.</div>
+                    <div class="solution">✓ We do all setup. Your AI employee is live in minutes.</div>
                 </div>
                 
                 <div class="pain-card">
@@ -952,80 +952,133 @@
         </div>
     </section>
     
-    <!-- Operating Model -->
-    <section class="team">
+    <!-- Role Templates -->
+    <section class="team" style="background:var(--bg-secondary);">
         <div class="container">
-            <h2>How we operate</h2>
-            <p class="subtitle">Choose speed with fully managed service, or Enterprise Deployment in your environment.</p>
-            <div class="pain-grid">
-                <div class="pain-card">
-                    <h3>Managed Service (Available Now)</h3>
-                    <p>We run and maintain the infrastructure and orchestration layer for you.</p>
-                    <ul style="margin: 12px 0 0 20px; color: #ccc;">
-                        <li>Onboarding, integrations, incident response, and upgrades handled by our team</li>
-                        <li>Operator support access available for troubleshooting</li>
-                        <li>Best for teams optimizing for speed, simplicity, and one accountable operator</li>
-                    </ul>
+            <h2>10 pre-built role templates</h2>
+            <p class="subtitle">Each comes with personality, workflows, tools, and boundaries pre-configured. Live in minutes.</p>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;max-width:900px;margin:0 auto;">
+                <div style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:12px;padding:20px;text-align:center;">
+                    <div style="font-size:28px;margin-bottom:8px;">📝</div>
+                    <strong>Content Writer</strong>
+                    <p style="color:var(--gray);font-size:13px;margin-top:4px;">Posts, blogs, newsletters</p>
                 </div>
-                <div class="pain-card">
-                    <h3>Enterprise Deployment (Pilot)</h3>
-                    <p>We deploy our infrastructure management system in your environment (on-prem or private cloud).</p>
-                    <ul style="margin: 12px 0 0 20px; color: #ccc;">
-                        <li>Dedicated operating boundaries in your own environment</li>
-                        <li>Day-2 operations can be customer-managed or co-managed based on your control requirements</li>
-                        <li>Restricted support access paths with customer-defined approvals</li>
-                        <li>Best for teams optimizing for control, compliance, and tighter isolation</li>
-                    </ul>
+                <div style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:12px;padding:20px;text-align:center;">
+                    <div style="font-size:28px;margin-bottom:8px;">📞</div>
+                    <strong>SDR</strong>
+                    <p style="color:var(--gray);font-size:13px;margin-top:4px;">Prospecting & outreach</p>
+                </div>
+                <div style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:12px;padding:20px;text-align:center;">
+                    <div style="font-size:28px;margin-bottom:8px;">📊</div>
+                    <strong>Marketing</strong>
+                    <p style="color:var(--gray);font-size:13px;margin-top:4px;">Campaigns & analytics</p>
+                </div>
+                <div style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:12px;padding:20px;text-align:center;">
+                    <div style="font-size:28px;margin-bottom:8px;">📅</div>
+                    <strong>Exec Assistant</strong>
+                    <p style="color:var(--gray);font-size:13px;margin-top:4px;">Calendar, email, tasks</p>
+                </div>
+                <div style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:12px;padding:20px;text-align:center;">
+                    <div style="font-size:28px;margin-bottom:8px;">🔬</div>
+                    <strong>Researcher</strong>
+                    <p style="color:var(--gray);font-size:13px;margin-top:4px;">Deep dives & reports</p>
+                </div>
+                <div style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:12px;padding:20px;text-align:center;">
+                    <div style="font-size:28px;margin-bottom:8px;">💬</div>
+                    <strong>Support</strong>
+                    <p style="color:var(--gray);font-size:13px;margin-top:4px;">Tickets & customer help</p>
+                </div>
+                <div style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:12px;padding:20px;text-align:center;">
+                    <div style="font-size:28px;margin-bottom:8px;">🤝</div>
+                    <strong>Customer Success</strong>
+                    <p style="color:var(--gray);font-size:13px;margin-top:4px;">Onboarding & retention</p>
+                </div>
+                <div style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:12px;padding:20px;text-align:center;">
+                    <div style="font-size:28px;margin-bottom:8px;">💰</div>
+                    <strong>Sales</strong>
+                    <p style="color:var(--gray);font-size:13px;margin-top:4px;">Pipeline & closing</p>
+                </div>
+                <div style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:12px;padding:20px;text-align:center;">
+                    <div style="font-size:28px;margin-bottom:8px;">🧾</div>
+                    <strong>Invoicing</strong>
+                    <p style="color:var(--gray);font-size:13px;margin-top:4px;">Billing & payments</p>
+                </div>
+                <div style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:12px;padding:20px;text-align:center;">
+                    <div style="font-size:28px;margin-bottom:8px;">✨</div>
+                    <strong>Custom</strong>
+                    <p style="color:var(--gray);font-size:13px;margin-top:4px;">Built for your workflows</p>
                 </div>
             </div>
-            <p style="text-align:center; margin-top: 28px;">
-                <a href="/pricing" style="color: var(--accent); text-decoration: none; font-weight: 600; font-size: 16px;">Compare Managed vs Enterprise Deployment →</a>
-            </p>
         </div>
     </section>
     
-    <!-- Comparison -->
+    <!-- 3-Column Comparison: DIY vs Managed vs Enterprise -->
     <section class="comparison">
         <div class="container">
-            <h2>Managed vs Enterprise Deployment</h2>
-            <div class="comparison-table">
+            <h2>Why not just self-host?</h2>
+            <div class="comparison-table" style="max-width:900px;">
                 <div class="comparison-row header">
                     <div class="comparison-cell"></div>
-                    <div class="comparison-cell">Managed Service (Now)</div>
-                    <div class="comparison-cell">Enterprise Deployment (Pilot)</div>
+                    <div class="comparison-cell">DIY (Self-Hosted)</div>
+                    <div class="comparison-cell" style="color:var(--accent);">HireOpenClaw (Managed)</div>
+                    <div class="comparison-cell">Enterprise (On-Prem)</div>
                 </div>
                 <div class="comparison-row">
-                    <div class="comparison-cell">Operating model</div>
-                    <div class="comparison-cell">We operate the platform for you</div>
-                    <div class="comparison-cell">Customer-hosted deployment in your environment; operations can be customer-managed or co-managed</div>
+                    <div class="comparison-cell">Setup time</div>
+                    <div class="comparison-cell bad">Hours to days</div>
+                    <div class="comparison-cell good">Minutes</div>
+                    <div class="comparison-cell">1-2 weeks (pilot)</div>
                 </div>
                 <div class="comparison-row">
-                    <div class="comparison-cell">Support access</div>
-                    <div class="comparison-cell">Operator support access for troubleshooting</div>
-                    <div class="comparison-cell">Customer-defined support access paths with optional co-managed runbooks</div>
+                    <div class="comparison-cell">Technical skill needed</div>
+                    <div class="comparison-cell bad">CLI, Docker, YAML, APIs</div>
+                    <div class="comparison-cell good">None — just chat</div>
+                    <div class="comparison-cell">Your ops team + our support</div>
                 </div>
                 <div class="comparison-row">
-                    <div class="comparison-cell">Isolation boundaries</div>
-                    <div class="comparison-cell">Logical + container-level isolation</div>
-                    <div class="comparison-cell">Dedicated boundaries in your environment</div>
+                    <div class="comparison-cell">Role templates</div>
+                    <div class="comparison-cell bad">Write from scratch</div>
+                    <div class="comparison-cell good">10 pre-built, ready to go</div>
+                    <div class="comparison-cell good">10 pre-built + custom</div>
                 </div>
                 <div class="comparison-row">
-                    <div class="comparison-cell">Key handling</div>
-                    <div class="comparison-cell">Platform-managed key protection</div>
-                    <div class="comparison-cell">Aligned to your internal key-control policy</div>
+                    <div class="comparison-cell">API keys</div>
+                    <div class="comparison-cell bad">You manage everything</div>
+                    <div class="comparison-cell good">Included in your plan</div>
+                    <div class="comparison-cell">Your keys, your control</div>
                 </div>
                 <div class="comparison-row">
-                    <div class="comparison-cell">Change management</div>
-                    <div class="comparison-cell">Fast managed updates by our team</div>
-                    <div class="comparison-cell">Rollout windows coordinated with your team</div>
+                    <div class="comparison-cell">Updates & patches</div>
+                    <div class="comparison-cell bad">Manual — you pull + debug</div>
+                    <div class="comparison-cell good">Automatic, zero downtime</div>
+                    <div class="comparison-cell">Coordinated rollout windows</div>
                 </div>
                 <div class="comparison-row">
-                    <div class="comparison-cell">Best for</div>
-                    <div class="comparison-cell">Speed, simplicity, and managed outcomes</div>
-                    <div class="comparison-cell">Control, compliance, and environment ownership</div>
+                    <div class="comparison-cell">Monitoring</div>
+                    <div class="comparison-cell bad">Set up your own</div>
+                    <div class="comparison-cell good">Built-in dashboard</div>
+                    <div class="comparison-cell good">Dashboard + your tools</div>
+                </div>
+                <div class="comparison-row">
+                    <div class="comparison-cell">Security & isolation</div>
+                    <div class="comparison-cell">Your responsibility</div>
+                    <div class="comparison-cell good">Container isolation, encrypted secrets</div>
+                    <div class="comparison-cell good">Your environment, your boundaries</div>
+                </div>
+                <div class="comparison-row">
+                    <div class="comparison-cell">Support</div>
+                    <div class="comparison-cell bad">Community / Discord</div>
+                    <div class="comparison-cell good">Email / Priority / Dedicated</div>
+                    <div class="comparison-cell good">24/7 + co-managed ops</div>
+                </div>
+                <div class="comparison-row">
+                    <div class="comparison-cell">Cost</div>
+                    <div class="comparison-cell">$0 + your time + API keys</div>
+                    <div class="comparison-cell good">$29-249/mo, everything included</div>
+                    <div class="comparison-cell">Custom pricing</div>
                 </div>
             </div>
-            <p style="margin-top:20px;color:var(--gray);text-align:center;">Need enterprise deployment details? Contact us for pilot scope, operating model, and rollout planning.</p>
+            <p style="margin-top:24px;text-align:center;color:var(--gray);font-size:15px;">Self-hosting is great if you love tinkering. We're for people who'd rather skip to the results.</p>
         </div>
     </section>
     
@@ -1064,50 +1117,9 @@
                 </a>
             </p>
             
-            <div class="pricing-grid">
-                <div class="pricing-card" data-plan="starter">
-                    <h3>Starter</h3>
-                    <div class="price" data-price="29">$29<span>/mo</span></div>
-                    <p class="description">One focused AI employee</p>
-                    <ul>
-                        <li>1 AI employee</li>
-                        <li>5,000 interactions/month</li>
-                        <li>Choose your role template</li>
-                        <li>Telegram or WhatsApp</li>
-                        <li>Email support</li>
-                    </ul>
-                    <a href="#apply" class="cta-button">Join Waitlist</a>
-                </div>
-
-                <div class="pricing-card featured" data-plan="pro">
-                    <h3>Pro</h3>
-                    <div class="price" data-price="99">$99<span>/mo</span></div>
-                    <p class="description">Most popular</p>
-                    <ul>
-                        <li>Up to 3 AI employees</li>
-                        <li>25,000 interactions/month</li>
-                        <li>All role templates</li>
-                        <li>All messaging channels</li>
-                        <li>Custom personalities</li>
-                        <li>Priority support</li>
-                    </ul>
-                    <a href="#apply" class="cta-button">Join Waitlist</a>
-                </div>
-
-                <div class="pricing-card" data-plan="business">
-                    <h3>Business</h3>
-                    <div class="price" data-price="299">$299<span>/mo</span></div>
-                    <p class="description">Scale your AI workforce</p>
-                    <ul>
-                        <li>Up to 10 AI employees</li>
-                        <li>100,000 interactions/month</li>
-                        <li>All messaging channels</li>
-                        <li>Custom personalities</li>
-                        <li>Dedicated support</li>
-                        <li>Team management</li>
-                    </ul>
-                    <a href="#apply" class="cta-button">Join Waitlist</a>
-                </div>
+            <div class="pricing-grid" id="homePricingGrid">
+                <!-- Rendered dynamically from /api/plans -->
+                <div style="grid-column:1/-1;text-align:center;color:var(--gray);padding:40px;">Loading plans...</div>
             </div>
             <div style="max-width:900px;margin:28px auto 0;padding:20px 28px;background:var(--bg-card);border:1px solid var(--light-gray);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:20px;">
                 <div>
@@ -1141,7 +1153,7 @@
                 </div>
                 <div class="faq-item">
                     <h3>"What's the catch with pricing?"</h3>
-                    <p>No catch. We make money by charging you a monthly fee. That's it. No hidden usage costs. No "gotcha" tier limits.</p>
+                    <p>No catch. Fixed monthly fee with generous interaction limits. If you go over, overage is transparent ($0.01/interaction on Starter). No "gotcha" surprises.</p>
                 </div>
                 <div class="faq-item">
                     <h3>"I could figure this out myself..."</h3>
@@ -1258,19 +1270,37 @@
         });
         window.validateEmail = validateEmail;
 
-        // Dynamic pricing (fetch from API if available, fallback to hardcoded)
-        fetch('/api/plans').then(r => r.json()).then(plans => {
-            if (!plans || !Array.isArray(plans)) return;
-            plans.forEach(function(plan) {
-                const card = document.querySelector('[data-plan="' + plan.id + '"]');
-                if (!card) return;
-                const priceEl = card.querySelector('[data-price]');
-                if (priceEl && plan.price != null) {
-                    priceEl.innerHTML = '$' + plan.price + '<span>/mo</span>';
-                    priceEl.setAttribute('data-price', plan.price);
-                }
+        // Dynamic homepage pricing from /api/plans
+        var HOME_PLAN_META = {
+            starter: { desc: 'One focused AI employee', featured: false, features: function(p) {
+                return [p.employees+' AI employee', p.interactions.toLocaleString()+' interactions/month', 'Claude Sonnet 4.5', 'Choose your role template', 'Telegram or WhatsApp', 'Email support'];
+            }},
+            pro: { desc: 'Most popular', featured: true, features: function(p) {
+                return ['Up to '+p.employees+' AI employees', p.interactions.toLocaleString()+' interactions/month', 'Claude Sonnet + Opus access', 'All role templates', 'All messaging channels', 'Custom personalities', 'Priority support'];
+            }},
+            business: { desc: 'Scale your AI workforce', featured: false, features: function(p) {
+                return ['Up to '+p.employees+' AI employees', p.interactions.toLocaleString()+' interactions/month', 'Claude Opus default model', 'Bring Your Own Key (BYOK)', 'Team management', 'Dedicated support'];
+            }}
+        };
+        fetch('/api/plans').then(function(r){return r.json()}).then(function(plans) {
+            var grid = document.getElementById('homePricingGrid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            ['starter','pro','business'].forEach(function(key) {
+                var plan = plans[key];
+                var meta = HOME_PLAN_META[key];
+                if (!plan || !meta) return;
+                var card = document.createElement('div');
+                card.className = 'pricing-card' + (meta.featured ? ' featured' : '');
+                card.dataset.plan = key;
+                var feats = meta.features(plan).map(function(f){return '<li>'+f+'</li>'}).join('');
+                card.innerHTML = '<h3>'+plan.name+'</h3><div class="price">$'+plan.price+'<span>/mo</span></div><p class="description">'+meta.desc+'</p><ul>'+feats+'</ul><a href="#apply" class="cta-button">Join Waitlist</a>';
+                grid.appendChild(card);
             });
-        }).catch(function() { /* use hardcoded prices */ });
+        }).catch(function(){
+            var grid = document.getElementById('homePricingGrid');
+            if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--gray);padding:40px;">Unable to load plans. <a href="/pricing" style="color:var(--accent);">View pricing →</a></div>';
+        });
     })();
     </script>
     <script src="/_vercel/insights/script.js" defer></script>
