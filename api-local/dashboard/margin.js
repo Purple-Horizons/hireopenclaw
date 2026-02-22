@@ -7,18 +7,24 @@ const { QueryCommand } = require('@aws-sdk/client-dynamodb');
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
 const { client: dynamodb, TABLES } = require('../util/dynamodb.js');
 
-// Model costs per 1M tokens (as of Feb 2026)
+// Model costs per 1M tokens via OpenRouter (as of Feb 2026)
 const MODEL_COSTS = {
+  // OpenRouter-proxied models (our default path)
+  'hireopenclaw/claude-sonnet-4-5': { input: 3.00, output: 15.00 },
+  'hireopenclaw/claude-opus-4-6': { input: 15.00, output: 75.00 },
+  'hireopenclaw/claude-haiku-3-5': { input: 0.80, output: 4.00 },
+  // Direct model names (legacy / BYOK)
   'gpt-4o': { input: 2.50, output: 10.00 },
   'gpt-4o-mini': { input: 0.15, output: 0.60 },
   'claude-opus-4': { input: 15.00, output: 75.00 },
   'claude-sonnet-4': { input: 3.00, output: 15.00 },
   'claude-haiku-4': { input: 0.80, output: 4.00 },
-  'default': { input: 2.50, output: 10.00 } // Assume GPT-4o if unknown
+  'default': { input: 3.00, output: 15.00 } // Default to Sonnet pricing
 };
 
-// Fargate costs (us-east-1, as of Feb 2026)
-const FARGATE_COST_PER_HOUR = 0.04048; // 0.25 vCPU + 0.5 GB memory
+// Fargate costs per bot (256 CPU / 512 MB, us-east-1)
+// 0.25 vCPU × $0.04048/hr + 0.5 GB × $0.004445/hr = ~$0.01234/hr = ~$9.01/mo
+const FARGATE_COST_PER_HOUR = 0.01234;
 
 // Plan pricing — from single source of truth (TASK-149)
 const { PLAN_PRICING } = require('../data/plans.js');
