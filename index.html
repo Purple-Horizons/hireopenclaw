@@ -900,43 +900,7 @@
         </div>
     </section>
     
-    <!-- Team -->
-    <section class="team">
-        <div class="container">
-            <h2>Meet your new AI employees.</h2>
-            <p class="subtitle">They show up Day 1 ready to work. No training required.</p>
-            
-            <div class="team-grid">
-                <div class="team-card">
-                    <img src="https://v3b.fal.media/files/b/0a8c7d15/cdE-CsM4D0oP8mfHNhM0R_A7q4Y7OC.png" alt="Morgan" width="200" height="200" loading="lazy">
-                    <h3>Morgan</h3>
-                    <div class="role">Content Creator</div>
-                    <p>Writes your posts, blogs, and newsletters. Sounds like you. You take the credit.</p>
-                </div>
-                
-                <div class="team-card">
-                    <img src="https://v3b.fal.media/files/b/0a8c7d16/JXvuWQSmpq-NdxH46adsO_b9hTnrxy.png" alt="Alex" width="200" height="200" loading="lazy">
-                    <h3>Alex</h3>
-                    <div class="role">SDR / Sales</div>
-                    <p>Finds leads. Writes outreach. Follows up until they reply. You just close.</p>
-                </div>
-                
-                <div class="team-card">
-                    <img src="https://v3b.fal.media/files/b/0a8c7d18/XtDyB-GyZg5YtWlgQG3Q__cCXoxXgf.png" alt="Casey" width="200" height="200" loading="lazy">
-                    <h3>Casey</h3>
-                    <div class="role">Executive Assistant</div>
-                    <p>Calendar. Email triage. Task tracking. Manages your chaos so you can make more.</p>
-                </div>
-
-                <div class="team-card">
-                    <div style="width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#ff8a5f);display:flex;align-items:center;justify-content:center;font-size:42px;margin:0 auto 16px;border:3px solid var(--light-gray);">✨</div>
-                    <h3>Custom Agent</h3>
-                    <div class="role">Built for You</div>
-                    <p>Tell us what you need. We deploy an agent tuned to your workflows, data boundaries, and operating model.</p>
-                </div>
-            </div>
-        </div>
-    </section>
+    <!-- (AI employees section removed — role templates section below covers this) -->
     
     <!-- Security Callout -->
     <section class="security-callout">
@@ -1011,70 +975,55 @@
         </div>
     </section>
     
-    <!-- 3-Column Comparison: DIY vs Managed vs Enterprise -->
-    <section class="comparison">
+    <!-- 3 Deployment Options — Card Layout -->
+    <section class="pain">
         <div class="container">
             <h2>Why not just self-host?</h2>
-            <div class="comparison-table" style="max-width:900px;">
-                <div class="comparison-row header">
-                    <div class="comparison-cell"></div>
-                    <div class="comparison-cell">DIY (Self-Hosted)</div>
-                    <div class="comparison-cell" style="color:var(--accent);">HireOpenClaw (Managed)</div>
-                    <div class="comparison-cell">Enterprise (On-Prem)</div>
+            <div class="pain-grid">
+                <div class="pain-card" style="border-top:3px solid #f87171;">
+                    <h3 style="color:#f87171;">DIY (Self-Hosted)</h3>
+                    <p style="color:var(--gray);margin-bottom:16px;">Free software. Your time. Your problem.</p>
+                    <ul style="list-style:none;padding:0;">
+                        <li style="padding:8px 0;border-bottom:1px solid var(--light-gray);font-size:14px;"><span style="color:#f87171;">⏱</span> Setup: <strong>Hours to days</strong></li>
+                        <li style="padding:8px 0;border-bottom:1px solid var(--light-gray);font-size:14px;"><span style="color:#f87171;">🛠</span> Skill: CLI, Docker, YAML, APIs</li>
+                        <li style="padding:8px 0;border-bottom:1px solid var(--light-gray);font-size:14px;"><span style="color:#f87171;">📝</span> Templates: Write from scratch</li>
+                        <li style="padding:8px 0;border-bottom:1px solid var(--light-gray);font-size:14px;"><span style="color:#f87171;">🔑</span> API keys: You manage everything</li>
+                        <li style="padding:8px 0;border-bottom:1px solid var(--light-gray);font-size:14px;"><span style="color:#f87171;">🔄</span> Updates: Manual pull + debug</li>
+                        <li style="padding:8px 0;border-bottom:1px solid var(--light-gray);font-size:14px;"><span style="color:#f87171;">📊</span> Monitoring: Set up your own</li>
+                        <li style="padding:8px 0;font-size:14px;"><span style="color:#f87171;">💬</span> Support: Community / Discord</li>
+                    </ul>
+                    <div style="margin-top:16px;padding:12px;background:var(--bg);border-radius:8px;text-align:center;color:var(--gray);font-size:14px;">$0 + your time + your API keys</div>
                 </div>
-                <div class="comparison-row">
-                    <div class="comparison-cell">Setup time</div>
-                    <div class="comparison-cell bad">Hours to days</div>
-                    <div class="comparison-cell good">Minutes</div>
-                    <div class="comparison-cell">1-2 weeks (pilot)</div>
+
+                <div class="pain-card" style="border-top:3px solid var(--accent);border-color:var(--accent);">
+                    <div style="display:inline-block;background:var(--accent);color:var(--bg);padding:4px 12px;font-size:11px;font-weight:700;border-radius:12px;margin-bottom:12px;">RECOMMENDED</div>
+                    <h3 style="color:var(--accent);">HireOpenClaw (Managed)</h3>
+                    <p style="color:var(--gray);margin-bottom:16px;">We run it. You use it. That's the deal.</p>
+                    <ul style="list-style:none;padding:0;">
+                        <li style="padding:8px 0;border-bottom:1px solid var(--light-gray);font-size:14px;"><span style="color:var(--green);">⚡</span> Setup: <strong style="color:var(--green);">Minutes</strong></li>
+                        <li style="padding:8px 0;border-bottom:1px solid var(--light-gray);font-size:14px;"><span style="color:var(--green);">💬</span> Skill: <strong style="color:var(--green);">None — just chat</strong></li>
+                        <li style="padding:8px 0;border-bottom:1px solid var(--light-gray);font-size:14px;"><span style="color:var(--green);">✅</span> Templates: <strong style="color:var(--green);">10 pre-built, ready to go</strong></li>
+                        <li style="padding:8px 0;border-bottom:1px solid var(--light-gray);font-size:14px;"><span style="color:var(--green);">✅</span> API keys: <strong style="color:var(--green);">Included in your plan</strong></li>
+                        <li style="padding:8px 0;border-bottom:1px solid var(--light-gray);font-size:14px;"><span style="color:var(--green);">✅</span> Updates: <strong style="color:var(--green);">Automatic, zero downtime</strong></li>
+                        <li style="padding:8px 0;border-bottom:1px solid var(--light-gray);font-size:14px;"><span style="color:var(--green);">✅</span> Monitoring: <strong style="color:var(--green);">Built-in dashboard</strong></li>
+                        <li style="padding:8px 0;font-size:14px;"><span style="color:var(--green);">✅</span> Support: <strong style="color:var(--green);">Email / Priority / Dedicated</strong></li>
+                    </ul>
+                    <div style="margin-top:16px;padding:12px;background:var(--accent-dim);border-radius:8px;text-align:center;color:var(--accent);font-weight:700;font-size:15px;">$29–249/mo — everything included</div>
                 </div>
-                <div class="comparison-row">
-                    <div class="comparison-cell">Technical skill needed</div>
-                    <div class="comparison-cell bad">CLI, Docker, YAML, APIs</div>
-                    <div class="comparison-cell good">None — just chat</div>
-                    <div class="comparison-cell">Your ops team + our support</div>
-                </div>
-                <div class="comparison-row">
-                    <div class="comparison-cell">Role templates</div>
-                    <div class="comparison-cell bad">Write from scratch</div>
-                    <div class="comparison-cell good">10 pre-built, ready to go</div>
-                    <div class="comparison-cell good">10 pre-built + custom</div>
-                </div>
-                <div class="comparison-row">
-                    <div class="comparison-cell">API keys</div>
-                    <div class="comparison-cell bad">You manage everything</div>
-                    <div class="comparison-cell good">Included in your plan</div>
-                    <div class="comparison-cell">Your keys, your control</div>
-                </div>
-                <div class="comparison-row">
-                    <div class="comparison-cell">Updates & patches</div>
-                    <div class="comparison-cell bad">Manual — you pull + debug</div>
-                    <div class="comparison-cell good">Automatic, zero downtime</div>
-                    <div class="comparison-cell">Coordinated rollout windows</div>
-                </div>
-                <div class="comparison-row">
-                    <div class="comparison-cell">Monitoring</div>
-                    <div class="comparison-cell bad">Set up your own</div>
-                    <div class="comparison-cell good">Built-in dashboard</div>
-                    <div class="comparison-cell good">Dashboard + your tools</div>
-                </div>
-                <div class="comparison-row">
-                    <div class="comparison-cell">Security & isolation</div>
-                    <div class="comparison-cell">Your responsibility</div>
-                    <div class="comparison-cell good">Container isolation, encrypted secrets</div>
-                    <div class="comparison-cell good">Your environment, your boundaries</div>
-                </div>
-                <div class="comparison-row">
-                    <div class="comparison-cell">Support</div>
-                    <div class="comparison-cell bad">Community / Discord</div>
-                    <div class="comparison-cell good">Email / Priority / Dedicated</div>
-                    <div class="comparison-cell good">24/7 + co-managed ops</div>
-                </div>
-                <div class="comparison-row">
-                    <div class="comparison-cell">Cost</div>
-                    <div class="comparison-cell">$0 + your time + API keys</div>
-                    <div class="comparison-cell good">$29-249/mo, everything included</div>
-                    <div class="comparison-cell">Custom pricing</div>
+
+                <div class="pain-card" style="border-top:3px solid #8b5cf6;">
+                    <h3 style="color:#8b5cf6;">Enterprise (On-Prem)</h3>
+                    <p style="color:var(--gray);margin-bottom:16px;">Our system, your environment, your control.</p>
+                    <ul style="list-style:none;padding:0;">
+                        <li style="padding:8px 0;border-bottom:1px solid var(--light-gray);font-size:14px;">⏱ Setup: <strong>1–2 week pilot</strong></li>
+                        <li style="padding:8px 0;border-bottom:1px solid var(--light-gray);font-size:14px;">🛠 Skill: Your ops team + our support</li>
+                        <li style="padding:8px 0;border-bottom:1px solid var(--light-gray);font-size:14px;"><span style="color:var(--green);">✅</span> Templates: 10 pre-built + custom</li>
+                        <li style="padding:8px 0;border-bottom:1px solid var(--light-gray);font-size:14px;">🔑 API keys: Your keys, your control</li>
+                        <li style="padding:8px 0;border-bottom:1px solid var(--light-gray);font-size:14px;"><span style="color:var(--green);">✅</span> Updates: Coordinated rollout windows</li>
+                        <li style="padding:8px 0;border-bottom:1px solid var(--light-gray);font-size:14px;"><span style="color:var(--green);">✅</span> Monitoring: Dashboard + your tools</li>
+                        <li style="padding:8px 0;font-size:14px;"><span style="color:var(--green);">✅</span> Support: 24/7 + co-managed ops</li>
+                    </ul>
+                    <div style="margin-top:16px;padding:12px;background:var(--bg);border-radius:8px;text-align:center;color:var(--gray);font-size:14px;">Custom pricing — <a href="mailto:hello@hireopenclaw.com" style="color:#8b5cf6;text-decoration:none;">contact us</a></div>
                 </div>
             </div>
             <p style="margin-top:24px;text-align:center;color:var(--gray);font-size:15px;">Self-hosting is great if you love tinkering. We're for people who'd rather skip to the results.</p>
