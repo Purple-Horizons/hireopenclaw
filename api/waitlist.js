@@ -10,6 +10,9 @@ export default async function handler(req, res) {
   if (!firstName || !lastName) {
     return res.status(400).json({ error: 'First and last name required' });
   }
+  if (!phone) {
+    return res.status(400).json({ error: 'Mobile phone required' });
+  }
 
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
   const AUDIENCE_ID = process.env.RESEND_AUDIENCE_ID;
