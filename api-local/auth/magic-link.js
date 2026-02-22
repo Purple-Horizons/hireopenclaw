@@ -74,7 +74,7 @@ async function sendMagicLinkEmail(email, magicLink) {
         'Authorization': `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: 'ClawOps <noreply@hireopenclaw.com>',
+        from: 'ClawOps <noreply@mail.hireopenclaw.com>',
         to: email,
         subject: 'Your ClawOps login link',
         html: `<p>Click here to sign in: <a href="${magicLink}">${magicLink}</a></p><p>This link expires in 15 minutes.</p>`,
