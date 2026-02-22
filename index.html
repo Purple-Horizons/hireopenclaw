@@ -810,14 +810,13 @@
                 grid-template-columns: 1fr;
             }
             
-            .comparison-row {
-                grid-template-columns: 1fr;
+            .comparison {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
             }
             
-            .comparison-cell:first-child {
-                font-weight: 600;
-                color: var(--white);
-                background: var(--light-gray);
+            .comparison-table {
+                min-width: 700px;
             }
             
             .form-grid {
