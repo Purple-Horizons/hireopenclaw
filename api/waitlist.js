@@ -103,7 +103,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         from: 'HireOpenClaw <noreply@mail.hireopenclaw.com>',
-        to: ['admin+aws@purplehorizons.io'],
+        to: ['hi@hireopenclaw.com'],
         subject: `New waitlist signup: ${firstName} ${lastName}`,
         html: `<p><strong>${firstName} ${lastName}</strong></p><p>Email: ${email}</p>${phone ? `<p>Phone: ${phone}</p>` : ''}<p>Time: ${new Date().toISOString()}</p>`
       })
