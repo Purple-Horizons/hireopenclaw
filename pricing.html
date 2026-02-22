@@ -661,97 +661,9 @@
     <!-- Pricing Cards -->
     <section class="pricing-section">
         <div class="container">
-            <div class="pricing-grid">
-                <div class="pricing-card" data-plan="starter">
-                    <h3>Starter</h3>
-                    <p class="description">Perfect for individuals testing AI delegation</p>
-                    <div class="price-monthly">
-                        <div class="price">$29<span>/mo</span></div>
-                    </div>
-                    <div class="price-annual">
-                        <div class="price">$23<span>/mo</span></div>
-                        <p class="period">Billed annually ($276/year)</p>
-                    </div>
-                    <ul>
-                        <li>1 AI employee</li>
-                        <li>5,000 interactions/month</li>
-                        <li>Claude Sonnet 4.5 model</li>
-                        <li>Choose your role template</li>
-                        <li>Telegram or WhatsApp</li>
-                        <li>Email support</li>
-                        <li>$0.01/interaction overage</li>
-                    </ul>
-                    <a href="/signup?plan=starter" class="cta-button">Get Started</a>
-                </div>
-
-                <div class="pricing-card featured" data-plan="pro">
-                    <h3>Pro</h3>
-                    <p class="description">For professionals who need multiple AI employees</p>
-                    <div class="price-monthly">
-                        <div class="price">$99<span>/mo</span></div>
-                    </div>
-                    <div class="price-annual">
-                        <div class="price">$79<span>/mo</span></div>
-                        <p class="period">Billed annually ($948/year)</p>
-                    </div>
-                    <ul>
-                        <li>Up to 2 AI employees</li>
-                        <li>25,000 interactions/month</li>
-                        <li>Claude Sonnet + Opus access</li>
-                        <li>All role templates</li>
-                        <li>All messaging channels</li>
-                        <li>Custom personalities</li>
-                        <li>Priority support</li>
-                        <li>$0.008/interaction overage</li>
-                    </ul>
-                    <a href="/signup?plan=pro" class="cta-button">Get Started</a>
-                </div>
-
-                <div class="pricing-card" data-plan="business">
-                    <h3>Business</h3>
-                    <p class="description">Scale your AI workforce across your team</p>
-                    <div class="price-monthly">
-                        <div class="price">$249<span>/mo</span></div>
-                    </div>
-                    <div class="price-annual">
-                        <div class="price">$199<span>/mo</span></div>
-                        <p class="period">Billed annually ($2,388/year)</p>
-                    </div>
-                    <ul>
-                        <li>Up to 5 AI employees</li>
-                        <li>75,000 interactions/month</li>
-                        <li>Claude Opus default model</li>
-                        <li>Bring Your Own Key (BYOK)</li>
-                        <li>All messaging channels</li>
-                        <li>Custom personalities</li>
-                        <li>Team management</li>
-                        <li>Dedicated support</li>
-                        <li>$0.006/interaction overage</li>
-                    </ul>
-                    <a href="/signup?plan=business" class="cta-button">Get Started</a>
-                </div>
-
-                <div class="pricing-card" data-plan="enterprise">
-                    <h3>Enterprise</h3>
-                    <p class="description">Pilot deployments for large organizations</p>
-                    <div class="price-monthly">
-                        <div class="price" style="font-size: 36px;">Custom</div>
-                    </div>
-                    <div class="price-annual">
-                        <div class="price" style="font-size: 36px;">Custom</div>
-                    </div>
-                    <ul>
-                        <li>Unlimited AI employees</li>
-                        <li>Custom interaction limits</li>
-                        <li>Dedicated infrastructure</li>
-                        <li>Deployment in your environment (on-prem/private cloud)</li>
-                        <li>Customer-managed or co-managed day-2 operations</li>
-                        <li>White-glove onboarding</li>
-                        <li>24/7 priority support</li>
-                        <li>SLA guarantees</li>
-                    </ul>
-                    <a href="mailto:hello@hireopenclaw.com?subject=Enterprise Inquiry" class="cta-button secondary">Contact Us</a>
-                </div>
+            <div class="pricing-grid" id="pricingGrid">
+                <!-- Rendered dynamically from /api/plans -->
+                <div style="grid-column: 1/-1; text-align:center; color:var(--gray); padding:40px;">Loading plans...</div>
             </div>
         </div>
     </section>
@@ -817,126 +729,8 @@
         <div class="container">
             <h2>Compare all features</h2>
             
-            <div class="comparison-table">
-                <div class="comparison-header">
-                    <div>Feature</div>
-                    <div>Starter</div>
-                    <div>Pro</div>
-                    <div>Business</div>
-                    <div>Enterprise</div>
-                </div>
-                
-                <div class="comparison-row">
-                    <div>AI Employees</div>
-                    <div class="value">1</div>
-                    <div class="value">2</div>
-                    <div class="value">5</div>
-                    <div class="value">Unlimited</div>
-                </div>
-                
-                <div class="comparison-row">
-                    <div>Interactions/month</div>
-                    <div class="value">5K</div>
-                    <div class="value">25K</div>
-                    <div class="value">75K</div>
-                    <div class="value">Custom</div>
-                </div>
-                
-                <div class="comparison-row">
-                    <div>Claude Sonnet 4.5</div>
-                    <div class="check">✓</div>
-                    <div class="check">✓</div>
-                    <div class="check">✓</div>
-                    <div class="check">✓</div>
-                </div>
-                
-                <div class="comparison-row">
-                    <div>Claude Opus 4.6</div>
-                    <div class="cross">—</div>
-                    <div class="check">✓</div>
-                    <div class="check">✓ (default)</div>
-                    <div class="check">✓</div>
-                </div>
-                
-                <div class="comparison-row">
-                    <div>Bring Your Own Key (BYOK)</div>
-                    <div class="cross">—</div>
-                    <div class="cross">—</div>
-                    <div class="check">✓</div>
-                    <div class="check">✓</div>
-                </div>
-                
-                <div class="comparison-row">
-                    <div>Telegram & WhatsApp</div>
-                    <div class="check">✓</div>
-                    <div class="check">✓</div>
-                    <div class="check">✓</div>
-                    <div class="check">✓</div>
-                </div>
-                
-                <div class="comparison-row">
-                    <div>Discord & Slack</div>
-                    <div class="cross">—</div>
-                    <div class="check">✓</div>
-                    <div class="check">✓</div>
-                    <div class="check">✓</div>
-                </div>
-                
-                <div class="comparison-row">
-                    <div>Voice chat (OpenClaw Voice)</div>
-                    <div class="check">✓</div>
-                    <div class="check">✓</div>
-                    <div class="check">✓</div>
-                    <div class="check">✓</div>
-                </div>
-                
-                <div class="comparison-row">
-                    <div>Custom personalities</div>
-                    <div class="cross">—</div>
-                    <div class="check">✓</div>
-                    <div class="check">✓</div>
-                    <div class="check">✓</div>
-                </div>
-                
-                <div class="comparison-row">
-                    <div>Team management</div>
-                    <div class="cross">—</div>
-                    <div class="cross">—</div>
-                    <div class="check">✓</div>
-                    <div class="check">✓</div>
-                </div>
-                
-                <div class="comparison-row">
-                    <div>Custom integrations</div>
-                    <div class="cross">—</div>
-                    <div class="cross">—</div>
-                    <div class="cross">—</div>
-                    <div class="check">✓</div>
-                </div>
-                
-                <div class="comparison-row">
-                    <div>Dedicated infrastructure</div>
-                    <div class="cross">—</div>
-                    <div class="cross">—</div>
-                    <div class="cross">—</div>
-                    <div class="check">✓</div>
-                </div>
-                
-                <div class="comparison-row">
-                    <div>SLA guarantees</div>
-                    <div class="cross">—</div>
-                    <div class="cross">—</div>
-                    <div class="cross">—</div>
-                    <div class="check">✓</div>
-                </div>
-                
-                <div class="comparison-row">
-                    <div>Support</div>
-                    <div class="value">Email</div>
-                    <div class="value">Priority</div>
-                    <div class="value">Dedicated</div>
-                    <div class="value">24/7</div>
-                </div>
+            <div class="comparison-table" id="comparisonTable">
+                <!-- Rendered dynamically from /api/plans -->
             </div>
         </div>
     </section>
@@ -1041,6 +835,172 @@
     </footer>
 
     <script>
+        // ─── Dynamic Pricing from /api/plans ───
+        const PLAN_META = {
+            starter: {
+                description: 'Perfect for individuals testing AI delegation',
+                featured: false,
+                features: [
+                    p => `${p.employees} AI employee`,
+                    p => `${(p.interactions).toLocaleString()} interactions/month`,
+                    'Claude Sonnet 4.5 model',
+                    'Choose your role template',
+                    'Telegram or WhatsApp',
+                    'Email support',
+                    p => `$${p.overageRate}/interaction overage`
+                ],
+                cta: { text: 'Get Started', href: '/signup?plan=starter' },
+                annualDiscount: 0.2
+            },
+            pro: {
+                description: 'For professionals who need multiple AI employees',
+                featured: true,
+                features: [
+                    p => `Up to ${p.employees} AI employees`,
+                    p => `${(p.interactions).toLocaleString()} interactions/month`,
+                    'Claude Sonnet + Opus access',
+                    'All role templates',
+                    'All messaging channels',
+                    'Custom personalities',
+                    'Priority support',
+                    p => `$${p.overageRate}/interaction overage`
+                ],
+                cta: { text: 'Get Started', href: '/signup?plan=pro' },
+                annualDiscount: 0.2
+            },
+            business: {
+                description: 'Scale your AI workforce across your team',
+                featured: false,
+                features: [
+                    p => `Up to ${p.employees} AI employees`,
+                    p => `${(p.interactions).toLocaleString()} interactions/month`,
+                    'Claude Opus default model',
+                    'Bring Your Own Key (BYOK)',
+                    'All messaging channels',
+                    'Custom personalities',
+                    'Team management',
+                    'Dedicated support',
+                    p => `$${p.overageRate}/interaction overage`
+                ],
+                cta: { text: 'Get Started', href: '/signup?plan=business' },
+                annualDiscount: 0.2
+            },
+            enterprise: {
+                description: 'Pilot deployments for large organizations',
+                featured: false,
+                features: [
+                    'Unlimited AI employees',
+                    'Custom interaction limits',
+                    'Dedicated infrastructure',
+                    'Deployment in your environment',
+                    'Customer-managed or co-managed ops',
+                    'White-glove onboarding',
+                    '24/7 priority support',
+                    'SLA guarantees'
+                ],
+                cta: { text: 'Contact Us', href: 'mailto:hello@hireopenclaw.com?subject=Enterprise Inquiry', secondary: true },
+                annualDiscount: 0
+            }
+        };
+
+        const COMPARISON_FEATURES = [
+            { label: 'AI Employees', key: p => p.employees ? String(p.employees) : 'Unlimited', type: 'value' },
+            { label: 'Interactions/month', key: p => p.interactions ? (p.interactions >= 1000 ? (p.interactions/1000)+'K' : p.interactions) : 'Custom', type: 'value' },
+            { label: 'Claude Sonnet 4.5', key: p => p.models?.includes('sonnet'), type: 'bool' },
+            { label: 'Claude Opus 4.6', key: (p, k) => k === 'business' ? '✓ (default)' : p.models?.includes('opus'), type: 'mixed' },
+            { label: 'Bring Your Own Key (BYOK)', key: p => !!p.byok, type: 'bool' },
+            { label: 'Telegram & WhatsApp', key: () => true, type: 'bool' },
+            { label: 'Discord & Slack', key: (p, k) => k !== 'starter', type: 'bool' },
+            { label: 'Voice chat', key: () => true, type: 'bool' },
+            { label: 'Custom personalities', key: (p, k) => k !== 'starter', type: 'bool' },
+            { label: 'Team management', key: (p, k) => k === 'business' || k === 'enterprise', type: 'bool' },
+            { label: 'Custom integrations', key: (p, k) => k === 'enterprise', type: 'bool' },
+            { label: 'Dedicated infrastructure', key: (p, k) => k === 'enterprise', type: 'bool' },
+            { label: 'SLA guarantees', key: p => !!p.sla, type: 'bool' },
+            { label: 'Support', key: (p, k) => ({ starter: 'Email', pro: 'Priority', business: 'Dedicated', enterprise: '24/7' }[k]), type: 'value' }
+        ];
+
+        function renderPricingCards(plans) {
+            const grid = document.getElementById('pricingGrid');
+            grid.innerHTML = '';
+
+            for (const [key, plan] of Object.entries(plans)) {
+                const meta = PLAN_META[key];
+                if (!meta) continue;
+
+                const card = document.createElement('div');
+                card.className = 'pricing-card' + (meta.featured ? ' featured' : '');
+                card.dataset.plan = key;
+
+                const monthly = plan.price;
+                const annual = monthly ? Math.round(monthly * (1 - meta.annualDiscount)) : null;
+                const annualTotal = annual ? annual * 12 : null;
+
+                const featuresHtml = meta.features.map(f => {
+                    const text = typeof f === 'function' ? f(plan) : f;
+                    return `<li>${text}</li>`;
+                }).join('');
+
+                const priceHtml = monthly !== null
+                    ? `<div class="price-monthly"><div class="price">$${monthly}<span>/mo</span></div></div>
+                       <div class="price-annual"><div class="price">$${annual}<span>/mo</span></div><p class="period">Billed annually ($${annualTotal.toLocaleString()}/year)</p></div>`
+                    : `<div class="price-monthly"><div class="price" style="font-size:36px">Custom</div></div>
+                       <div class="price-annual"><div class="price" style="font-size:36px">Custom</div></div>`;
+
+                const ctaClass = meta.cta.secondary ? 'cta-button secondary' : 'cta-button';
+
+                card.innerHTML = `
+                    <h3>${plan.name}</h3>
+                    <p class="description">${meta.description}</p>
+                    ${priceHtml}
+                    <ul>${featuresHtml}</ul>
+                    <a href="${meta.cta.href}" class="${ctaClass}">${meta.cta.text}</a>
+                `;
+
+                grid.appendChild(card);
+            }
+        }
+
+        function renderComparisonTable(plans) {
+            const table = document.getElementById('comparisonTable');
+            const keys = Object.keys(plans);
+            const names = keys.map(k => plans[k].name);
+
+            let html = '<div class="comparison-header"><div>Feature</div>';
+            names.forEach(n => html += `<div>${n}</div>`);
+            html += '</div>';
+
+            COMPARISON_FEATURES.forEach(feat => {
+                html += '<div class="comparison-row"><div>' + feat.label + '</div>';
+                keys.forEach(k => {
+                    const val = feat.key(plans[k], k);
+                    if (feat.type === 'bool') {
+                        html += val ? '<div class="check">✓</div>' : '<div class="cross">—</div>';
+                    } else if (feat.type === 'mixed') {
+                        if (typeof val === 'string') html += `<div class="check">${val}</div>`;
+                        else html += val ? '<div class="check">✓</div>' : '<div class="cross">—</div>';
+                    } else {
+                        html += `<div class="value">${val}</div>`;
+                    }
+                });
+                html += '</div>';
+            });
+
+            table.innerHTML = html;
+        }
+
+        fetch('/api/plans')
+            .then(r => r.json())
+            .then(plans => {
+                renderPricingCards(plans);
+                renderComparisonTable(plans);
+            })
+            .catch(err => {
+                console.error('Failed to load plans:', err);
+                document.getElementById('pricingGrid').innerHTML =
+                    '<div style="grid-column:1/-1;text-align:center;color:var(--gray);padding:40px;">Unable to load plans. Please refresh.</div>';
+            });
+
         // FAQ Accordion
         document.querySelectorAll('.faq-question').forEach(button => {
             button.addEventListener('click', () => {

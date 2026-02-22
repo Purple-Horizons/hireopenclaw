@@ -11,12 +11,18 @@ describe('TASK-206: CORS Configuration', () => {
     expect(server).toContain('ALLOWED_ORIGINS');
   });
 
-  test('Vercel API files do not use wildcard CORS', () => {
+  test('Vercel API files do not use wildcard CORS (except public endpoints)', () => {
     const result = execSync(
       `grep -rl "Access-Control-Allow-Origin.*\\*" ${ROOT}/api/ 2>/dev/null || true`,
       { encoding: 'utf8' }
     ).trim();
-    expect(result).toBe('');
+    // Public read-only endpoints may use wildcard CORS
+    const PUBLIC_ENDPOINTS = ['api/plans.js'];
+    const violations = result.split('\n').filter(f => {
+      if (!f) return false;
+      return !PUBLIC_ENDPOINTS.some(pub => f.endsWith(pub));
+    });
+    expect(violations).toEqual([]);
   });
 });
 
