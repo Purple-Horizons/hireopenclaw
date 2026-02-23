@@ -224,7 +224,18 @@
                     || '').trim();
                 let billingEmail = email;
                 if (!billingEmail) {
-                    billingEmail = window.prompt('Enter billing email to continue checkout:');
+                    // Show inline email input instead of window.prompt
+                    const existing = document.getElementById('billing-email-inline');
+                    if (existing) existing.remove();
+                    const wrapper = document.createElement('div');
+                    wrapper.id = 'billing-email-inline';
+                    wrapper.style.cssText = 'margin:16px 0;display:flex;gap:8px;align-items:center;justify-content:center;';
+                    wrapper.innerHTML = '<input type="email" id="billing-email-input" placeholder="your@email.com" style="padding:10px 14px;border:1px solid var(--border,#333);border-radius:8px;background:var(--card-bg,#1a1a1a);color:var(--white,#fff);font-size:14px;width:260px;" /><button onclick="submitBillingEmail()" style="padding:10px 16px;border:none;border-radius:8px;background:var(--accent,#ff6b35);color:#fff;font-weight:600;cursor:pointer;font-size:14px;">Continue</button>';
+                    btn.parentNode.insertBefore(wrapper, btn);
+                    document.getElementById('billing-email-input').focus();
+                    btn.disabled = false;
+                    btn.textContent = 'Continue to Payment →';
+                    return;
                 }
                 if (!billingEmail) {
                     throw new Error('Billing email is required');
@@ -247,6 +258,20 @@
                 btn.disabled = false;
                 btn.textContent = 'Continue to Payment →';
             }
+        }
+
+        function submitBillingEmail() {
+            const input = document.getElementById('billing-email-input');
+            const email = (input ? input.value : '').trim();
+            if (!email || !email.includes('@')) {
+                input.style.borderColor = '#ef4444';
+                input.placeholder = 'Please enter a valid email';
+                return;
+            }
+            localStorage.setItem('clawops_email', email);
+            const wrapper = document.getElementById('billing-email-inline');
+            if (wrapper) wrapper.remove();
+            continueToPayment();
         }
     </script>
 </body>

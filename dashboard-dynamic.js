@@ -1131,7 +1131,7 @@ async function upgradePlan() {
         return;
     }
 
-    const choice = promptForPlan('Upgrade', options, options[0]);
+    const choice = await promptForPlan('Upgrade', options, options[0]);
     if (!choice) return;
     await submitPlanChange(choice, { action: 'upgrade' });
 }
@@ -1144,7 +1144,7 @@ async function downgradePlan() {
         return;
     }
 
-    const choice = promptForPlan('Downgrade', options, options[options.length - 1]);
+    const choice = await promptForPlan('Downgrade', options, options[options.length - 1]);
     if (!choice) return;
     await submitPlanChange(choice, { action: 'downgrade' });
 }
@@ -1181,18 +1181,64 @@ function normalizePlanInput(plan) {
 }
 
 function promptForPlan(actionLabel, options, defaultValue) {
-    const readable = options.map((p) => `${p} (${PLAN_DISPLAY[p]?.price || 'Custom'})`).join(', ');
-    const input = window.prompt(
-        `${actionLabel} plan\nAvailable: ${readable}\nEnter plan id:`,
-        defaultValue
-    );
-    if (!input) return null;
-    const normalized = normalizePlanInput(input);
-    if (!normalized || !options.includes(normalized)) {
-        showToast('Invalid plan selected', 'error');
-        return null;
-    }
-    return normalized;
+    return new Promise((resolve) => {
+        // Remove any existing inline plan picker
+        const existing = document.getElementById('inline-plan-picker');
+        if (existing) existing.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'inline-plan-picker';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000;';
+
+        const card = document.createElement('div');
+        card.style.cssText = 'background:var(--card-bg,#1a1a1a);border:1px solid var(--border,#333);border-radius:12px;padding:24px;min-width:300px;max-width:400px;';
+
+        const title = document.createElement('h3');
+        title.textContent = `${actionLabel} Plan`;
+        title.style.cssText = 'margin:0 0 16px;color:var(--white,#fff);font-size:16px;';
+        card.appendChild(title);
+
+        const select = document.createElement('select');
+        select.style.cssText = 'width:100%;padding:10px;border:1px solid var(--border,#333);border-radius:8px;background:var(--bg,#0a0a0a);color:var(--white,#fff);font-size:14px;margin-bottom:16px;';
+        options.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p;
+            opt.textContent = `${p} (${PLAN_DISPLAY[p]?.price || 'Custom'})`;
+            if (p === defaultValue) opt.selected = true;
+            select.appendChild(opt);
+        });
+        card.appendChild(select);
+
+        const btnRow = document.createElement('div');
+        btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.style.cssText = 'padding:8px 16px;border:1px solid var(--border,#333);border-radius:8px;background:transparent;color:var(--muted,#888);cursor:pointer;font-size:13px;';
+        cancelBtn.onclick = () => { overlay.remove(); resolve(null); };
+        btnRow.appendChild(cancelBtn);
+
+        const confirmBtn = document.createElement('button');
+        confirmBtn.textContent = 'Confirm';
+        confirmBtn.style.cssText = 'padding:8px 16px;border:none;border-radius:8px;background:var(--accent,#ff6b35);color:#fff;cursor:pointer;font-weight:600;font-size:13px;';
+        confirmBtn.onclick = () => {
+            const val = normalizePlanInput(select.value);
+            overlay.remove();
+            if (!val || !options.includes(val)) {
+                showToast('Invalid plan selected', 'error');
+                resolve(null);
+            } else {
+                resolve(val);
+            }
+        };
+        btnRow.appendChild(confirmBtn);
+        card.appendChild(btnRow);
+
+        overlay.appendChild(card);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) { overlay.remove(); resolve(null); } });
+        document.body.appendChild(overlay);
+        select.focus();
+    });
 }
 
 async function submitPlanChange(plan, opts = {}) {
