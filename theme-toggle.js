@@ -59,6 +59,7 @@ function setTheme(theme, animate = true) {
         root.style.setProperty('--white', '#0a0a0a');
         root.style.setProperty('--gray', '#666666');
         root.style.setProperty('--light-gray', '#dddddd');
+        root.style.setProperty('--accent', '#df5929'); // PH-079: darker orange for light bg (matches admin)
     } else {
         root.style.setProperty('--bg', '#0a0a0a');
         root.style.setProperty('--bg-card', '#1a1a1a');
@@ -66,6 +67,7 @@ function setTheme(theme, animate = true) {
         root.style.setProperty('--white', '#ffffff');
         root.style.setProperty('--gray', '#888888');
         root.style.setProperty('--light-gray', '#333333');
+        root.style.setProperty('--accent', '#ff6b35'); // PH-079: original orange for dark bg
     }
     
     // Remove transition after animation
