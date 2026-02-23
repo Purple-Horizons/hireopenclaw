@@ -104,6 +104,7 @@ async function getMonthlyUsage(email) {
       TableName: TABLES.USAGE,
       KeyConditionExpression: 'tenantId = :tid',
       ExpressionAttributeValues: { ':tid': { S: tenant.tenantId } },
+      Limit: 10000, // PH-104: Bound query
     }));
 
     for (const raw of (usageResult.Items || [])) {

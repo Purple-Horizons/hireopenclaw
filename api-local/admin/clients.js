@@ -577,6 +577,7 @@ async function queryByOrgEmail(tableName, orgEmail) {
         TableName: tableName,
         FilterExpression: 'orgEmail = :email',
         ExpressionAttributeValues: { ':email': orgEmail },
+        Limit: 100, // PH-104: Bound scan
       }));
       return scanned.Items || [];
     } catch {

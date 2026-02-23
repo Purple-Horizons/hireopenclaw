@@ -103,7 +103,8 @@ async function getMonthlyUsage(tenantIds) {
         KeyConditionExpression: 'tenantId = :tid',
         ExpressionAttributeValues: {
           ':tid': { S: tenantId },
-        }
+        },
+        Limit: 10000, // PH-104: Bound query
       }));
 
       let tokens = 0, messages = 0;

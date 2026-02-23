@@ -130,7 +130,8 @@ async function handleEmailUsage(req, res, email) {
         KeyConditionExpression: 'tenantId = :tid',
         ExpressionAttributeValues: {
           ':tid': { S: tenant.tenantId },
-        }
+        },
+        Limit: 10000, // PH-104: Bound query to prevent unbounded reads
       }));
       
       for (const item of (result.Items || [])) {
