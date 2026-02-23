@@ -337,7 +337,7 @@ app.use(globalErrorHandler);
 // Start server
 module.exports = app;
 
-if (require.main === module) {
+if (require.main === module && !process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log('');
     console.log('========================================');
