@@ -520,26 +520,7 @@ function createBotCard(bot) {
             </div>
         </div>
         
-        <div class="bot-cost" id="cost-${bot.id}" style="margin-top:16px;padding:12px;background:rgba(0,180,216,0.1);border-radius:8px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <div style="font-size:11px;color:var(--gray);">💰 Usage Cost</div>
-                <div style="font-size:14px;font-weight:600;color:var(--primary);" id="cost-value-${bot.id}">Loading...</div>
-            </div>
-            <div style="display:flex;gap:12px;font-size:11px;margin-bottom:8px;">
-                <div style="flex:1;">
-                    <div style="color:var(--gray);">Today</div>
-                    <div style="color:var(--white);font-weight:500;" id="cost-today-${bot.id}">--</div>
-                </div>
-                <div style="flex:1;">
-                    <div style="color:var(--gray);">This month</div>
-                    <div style="color:var(--white);font-weight:500;" id="cost-month-${bot.id}">--</div>
-                </div>
-            </div>
-            <div style="background:rgba(255,255,255,0.1);border-radius:4px;height:6px;overflow:hidden;">
-                <div class="budget-bar" id="budget-bar-${bot.id}" style="height:100%;background:var(--green);transition:width 0.3s ease,background 0.3s ease;width:0%;"></div>
-            </div>
-            <div style="font-size:10px;color:var(--gray);margin-top:4px;" id="budget-text-${bot.id}">0% of budget used</div>
-        </div>
+        <!-- Usage cost moved to Usage tab (PH-024) -->
         
         <!-- Gateway token hidden — managed server-side for security -->
         

@@ -12,9 +12,9 @@ describe('GET /api/plans', () => {
   test('returns plan list with 200', async () => {
     const res = await request(app).get('/api/plans');
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('free');
     expect(res.body).toHaveProperty('starter');
     expect(res.body).toHaveProperty('pro');
+    expect(res.body).toHaveProperty('business');
   });
 
   test('supports ETag / 304', async () => {
@@ -29,6 +29,6 @@ describe('GET /api/plans', () => {
   test('v1 alias works', async () => {
     const res = await request(app).get('/api/v1/plans');
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('free');
+    expect(res.body).toHaveProperty('starter');
   });
 });
