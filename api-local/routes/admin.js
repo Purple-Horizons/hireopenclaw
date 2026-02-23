@@ -37,6 +37,7 @@ const {
   handleAdminWaitlistReject,
 } = require(path.join(__dirname, '..', 'admin', 'waitlist.js'));
 const adminHealth = require(path.join(__dirname, '..', 'admin', 'health.js'));
+const adminRevenue = require(path.join(__dirname, '..', 'admin', 'revenue.js'));
 
 const wrap = (fn) => async (req, res) => {
   try { await fn(req, res); }
@@ -65,5 +66,6 @@ router.get('/waitlist', wrap(handleAdminWaitlistList));
 router.post('/waitlist/activate', wrap(handleAdminWaitlistActivate));
 router.post('/waitlist/reject', wrap(handleAdminWaitlistReject));
 router.get('/health', wrap(adminHealth));
+router.get('/revenue', wrap(adminRevenue));
 
 module.exports = router;
