@@ -103,4 +103,10 @@ describe('admin.html integrity', () => {
   test('has client-side auth check', () => {
     expect(content).toContain('clawops_session_token');
   });
+
+  test('includes waitlist admin nav + section shell', () => {
+    expect(content).toContain('data-section="waitlist"');
+    expect(content).toContain('id="adminWaitlistBlock"');
+    expect(content).toContain('id="waitlistList"');
+  });
 });

@@ -18,6 +18,8 @@ let updatesMode = 'easy';
 let easyDryRunState = null;
 let easyDryRunPollTimer = null;
 let versionCatalogState = null;
+let waitlistEntries = [];
+let hasLoadedWaitlist = false;
 
 // Auth helper — adds Bearer token from localStorage
 function authHeaders(extra = {}) {
@@ -219,24 +221,31 @@ function openModal(title, mode = 'text') {
 function switchAdminSection(sectionName) {
     activeAdminSection = sectionName || 'tenants';
     const tenantsVisible = activeAdminSection === 'tenants';
+    const waitlistVisible = activeAdminSection === 'waitlist';
     const updatesVisible = activeAdminSection === 'updates';
     const secretsVisible = activeAdminSection === 'secrets';
 
     const searchBar = document.getElementById('adminTenantsSearchBar');
     const resultsInfo = document.getElementById('resultsInfo');
     const clientList = document.getElementById('clientList');
+    const waitlistBlock = document.getElementById('adminWaitlistBlock');
     const updatesBlock = document.getElementById('openclawUpdatesRoot');
     const secretsBlock = document.getElementById('adminSecretsBlock');
 
     if (searchBar) searchBar.style.display = tenantsVisible ? 'flex' : 'none';
     if (resultsInfo) resultsInfo.style.display = tenantsVisible ? 'block' : 'none';
     if (clientList) clientList.style.display = tenantsVisible ? 'block' : 'none';
+    if (waitlistBlock) waitlistBlock.classList.toggle('admin-section-hidden', !waitlistVisible);
     if (updatesBlock) updatesBlock.classList.toggle('admin-section-hidden', !updatesVisible);
     if (secretsBlock) secretsBlock.classList.toggle('admin-section-hidden', !secretsVisible);
 
     document.querySelectorAll('#adminNav .nav-btn').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.section === activeAdminSection);
     });
+
+    if (waitlistVisible && !hasLoadedWaitlist) {
+        loadWaitlist().catch(() => {});
+    }
 }
 
 function initAdminSectionNav() {
@@ -382,6 +391,184 @@ function filterClients() {
     if (status === 'none') filtered = filtered.filter(c => c.activeBots === 0);
     
     renderClients(filtered);
+}
+
+function normalizeWaitlistStatus(status) {
+    const value = String(status || '').trim().toLowerCase();
+    if (value === 'activated') return 'activated';
+    if (value === 'rejected') return 'rejected';
+    return 'pending';
+}
+
+function renderWaitlistStatusBadge(status) {
+    const normalized = normalizeWaitlistStatus(status);
+    if (normalized === 'activated') {
+        return '<span class="status-chip activated">Activated</span>';
+    }
+    if (normalized === 'rejected') {
+        return '<span class="status-chip rejected">Rejected</span>';
+    }
+    return '<span class="status-chip pending-review">Pending</span>';
+}
+
+function formatWaitlistDate(value) {
+    if (!value) return '—';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return String(value);
+    return parsed.toLocaleString();
+}
+
+function inlinePlanPicker(containerEl, initialPlan = 'starter') {
+    return new Promise((resolve) => {
+        if (!containerEl) {
+            resolve(null);
+            return;
+        }
+
+        const originalHtml = containerEl.innerHTML;
+        const initial = PLAN_OPTIONS.includes(initialPlan) ? initialPlan : 'starter';
+        const optionsHtml = PLAN_OPTIONS.map((plan) => (
+            `<option value="${plan}" ${plan === initial ? 'selected' : ''}>${plan.toUpperCase()}</option>`
+        )).join('');
+
+        containerEl.innerHTML = `
+            <span class="inline-plan-picker">
+                <span class="label">Plan</span>
+                <select>${optionsHtml}</select>
+                <button class="activate" type="button">Activate</button>
+                <button class="cancel" type="button">Cancel</button>
+            </span>
+        `;
+
+        const selectEl = containerEl.querySelector('select');
+        const activateBtn = containerEl.querySelector('.activate');
+        const cancelBtn = containerEl.querySelector('.cancel');
+        const finish = (selectedPlan) => {
+            containerEl.innerHTML = originalHtml;
+            resolve(selectedPlan);
+        };
+
+        activateBtn?.addEventListener('click', () => {
+            finish(selectEl?.value || initial);
+        });
+        cancelBtn?.addEventListener('click', () => finish(null));
+    });
+}
+
+function renderWaitlist(entries) {
+    const waitlistEl = document.getElementById('waitlistList');
+    const resultsEl = document.getElementById('waitlistResultsInfo');
+    if (!waitlistEl) return;
+
+    if (resultsEl) {
+        resultsEl.textContent = `${entries.length} waitlist entr${entries.length === 1 ? 'y' : 'ies'}`;
+    }
+
+    if (!entries.length) {
+        waitlistEl.innerHTML = '<p style="color:var(--gray);font-size:13px;">No waitlist entries found.</p>';
+        return;
+    }
+
+    waitlistEl.innerHTML = entries.map((entry) => {
+        const normalizedStatus = normalizeWaitlistStatus(entry.status);
+        const rowId = safeId(entry.email);
+        const canReview = normalizedStatus === 'pending';
+        const encodedEmail = encodeURIComponent(entry.email || '');
+        const name = entry.name || [entry.firstName, entry.lastName].filter(Boolean).join(' ').trim() || '—';
+        const phone = entry.phone || '—';
+        const createdAt = formatWaitlistDate(entry.createdAt);
+        return `
+            <div class="waitlist-row">
+                <div class="waitlist-main">
+                    <div class="waitlist-name">${escapeHtml(name)}</div>
+                    <div class="waitlist-email">${escapeHtml(entry.email || '—')}</div>
+                </div>
+                <div class="waitlist-col">${escapeHtml(phone)}</div>
+                <div class="waitlist-col">${escapeHtml(createdAt)}<br>${renderWaitlistStatusBadge(normalizedStatus)}</div>
+                <div class="waitlist-actions" id="waitlist-actions-${rowId}">
+                    ${canReview ? `
+                        <button class="btn btn-primary" style="padding:6px 10px;font-size:11px;" onclick="startWaitlistActivation('${encodedEmail}', '${rowId}')">Activate</button>
+                        <button class="btn btn-danger" style="padding:6px 10px;font-size:11px;" onclick="rejectWaitlistEntry('${encodedEmail}', '${rowId}')">Reject</button>
+                    ` : '<span style="color:var(--gray);font-size:12px;">No actions</span>'}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function loadWaitlist() {
+    const waitlistEl = document.getElementById('waitlistList');
+    const resultsEl = document.getElementById('waitlistResultsInfo');
+    try {
+        if (waitlistEl && !hasLoadedWaitlist) {
+            waitlistEl.innerHTML = '<p style="color:var(--gray);font-size:13px;">Loading waitlist...</p>';
+        }
+
+        const res = await authFetch('/api/admin/waitlist');
+        if (res.status === 403) {
+            if (waitlistEl) waitlistEl.innerHTML = '<p style="color:var(--red);font-size:13px;">Admin access required.</p>';
+            return;
+        }
+        if (res.status === 401) {
+            if (waitlistEl) waitlistEl.innerHTML = '<p style="color:var(--red);font-size:13px;">Not authenticated. <a href="/?login=true" style="color:var(--primary);">Log in</a></p>';
+            return;
+        }
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) throw new Error(data.error || `Request failed (${res.status})`);
+        waitlistEntries = Array.isArray(data.waitlist) ? data.waitlist : [];
+        hasLoadedWaitlist = true;
+        renderWaitlist(waitlistEntries);
+    } catch (err) {
+        if (waitlistEl) waitlistEl.innerHTML = `<p style="color:var(--red);font-size:13px;">Failed to load waitlist: ${escapeHtml(err.message)}</p>`;
+        if (resultsEl) resultsEl.textContent = 'Waitlist unavailable';
+    }
+}
+
+async function startWaitlistActivation(encodedEmail, rowId) {
+    const email = decodeURIComponent(encodedEmail);
+    const actionEl = document.getElementById(`waitlist-actions-${rowId}`);
+    const selectedPlan = await inlinePlanPicker(actionEl, 'starter');
+    if (!selectedPlan) return;
+
+    try {
+        const res = await authFetch('/api/admin/waitlist/activate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, plan: selectedPlan }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to activate waitlist entry');
+        showToast(`Activated ${email} on ${selectedPlan.toUpperCase()}`, 'success');
+        await loadWaitlist();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+async function rejectWaitlistEntry(encodedEmail, rowId) {
+    const email = decodeURIComponent(encodedEmail);
+    const actionEl = document.getElementById(`waitlist-actions-${rowId}`);
+    if (!actionEl) {
+        showToast('Action panel unavailable', 'error');
+        return;
+    }
+    const confirmed = await inlineConfirm(actionEl, `Reject ${email}?`);
+    if (!confirmed) return;
+
+    try {
+        const res = await authFetch('/api/admin/waitlist/reject', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to reject waitlist entry');
+        showToast(`Rejected ${email}`, 'success');
+        await loadWaitlist();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
 }
 
 // ─── Bot actions ───

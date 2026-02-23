@@ -107,6 +107,12 @@ describe('Route smoke tests — every route returns non-404', () => {
     { method: 'get', path: '/api/v1/admin/clients' },
     { method: 'get', path: '/api/admin/clients' },
     { method: 'get', path: '/api/admin/updates/version-catalog' },
+    { method: 'get', path: '/api/v1/admin/waitlist' },
+    { method: 'get', path: '/api/admin/waitlist' },
+    { method: 'post', path: '/api/v1/admin/waitlist/activate' },
+    { method: 'post', path: '/api/admin/waitlist/activate' },
+    { method: 'post', path: '/api/v1/admin/waitlist/reject' },
+    { method: 'post', path: '/api/admin/waitlist/reject' },
 
     // Dashboard router
     { method: 'get', path: '/api/v1/dashboard/bots' },

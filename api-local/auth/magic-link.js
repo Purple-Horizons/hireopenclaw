@@ -92,7 +92,7 @@ async function sendMagicLinkEmail(email, magicLink) {
 
 const { rateLimit, setRateLimitHeaders } = require('./rate-limit.js');
 
-module.exports = async (req, res) => {
+const magicLinkHandler = async (req, res) => {
   const { action } = req.query;
   
   // Generate magic link
@@ -212,3 +212,7 @@ module.exports = async (req, res) => {
   
   return res.status(405).json({ error: 'Method not allowed' });
 };
+
+module.exports = magicLinkHandler;
+module.exports.createMagicLink = createMagicLink;
+module.exports.sendMagicLinkEmail = sendMagicLinkEmail;

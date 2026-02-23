@@ -18,6 +18,9 @@
  *   POST /stop-impersonate  — requireAdmin (in handler)
  *   ALL  /secrets           — requireAdmin (in handler)
  *   GET  /updates/version-catalog — requireAdmin (in handler)
+ *   GET  /waitlist          — requireAdmin (in handler)
+ *   POST /waitlist/activate — requireAdmin (in handler)
+ *   POST /waitlist/reject   — requireAdmin (in handler)
  */
 const router = require('express').Router();
 const path = require('path');
@@ -28,6 +31,11 @@ const adminImpersonate = require(path.join(__dirname, '..', 'admin', 'impersonat
 const { handleAdminBackup } = require(path.join(__dirname, '..', 'admin', 'backup.js'));
 const { handleAdminSecrets } = require(path.join(__dirname, '..', 'admin', 'secrets.js'));
 const adminUpdateVersionCatalog = require(path.join(__dirname, '..', 'admin', 'updates-version-catalog.js'));
+const {
+  handleAdminWaitlistList,
+  handleAdminWaitlistActivate,
+  handleAdminWaitlistReject,
+} = require(path.join(__dirname, '..', 'admin', 'waitlist.js'));
 
 const wrap = (fn) => async (req, res) => {
   try { await fn(req, res); }
@@ -52,5 +60,8 @@ router.post('/impersonate', wrap(adminImpersonate));
 router.post('/stop-impersonate', (req, res, next) => { req.path = '/stop'; next(); }, wrap(adminImpersonate));
 router.all('/secrets', wrap(handleAdminSecrets));
 router.get('/updates/version-catalog', wrap(adminUpdateVersionCatalog));
+router.get('/waitlist', wrap(handleAdminWaitlistList));
+router.post('/waitlist/activate', wrap(handleAdminWaitlistActivate));
+router.post('/waitlist/reject', wrap(handleAdminWaitlistReject));
 
 module.exports = router;

@@ -196,6 +196,37 @@
         .inline-confirm button { padding: 4px 10px; border-radius: 4px; border: none; cursor: pointer; font-size: 11px; font-weight: 600; }
         .inline-confirm .yes { background: var(--red); color: #fff; }
         .inline-confirm .no { background: var(--surface-subtle); color: var(--gray); }
+        .inline-plan-picker { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .inline-plan-picker .label { color: var(--gray); font-size: 11px; text-transform: uppercase; letter-spacing: 0.02em; }
+        .inline-plan-picker select {
+            background: var(--surface-subtle);
+            border: 1px solid var(--line-subtle);
+            border-radius: 6px;
+            color: var(--white);
+            font-size: 12px;
+            padding: 4px 8px;
+            min-width: 110px;
+        }
+        .inline-plan-picker button { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--btn-secondary-border); font-size: 11px; font-weight: 600; cursor: pointer; }
+        .inline-plan-picker .activate { background: var(--btn-primary-bg); border-color: var(--btn-primary-bg); color: var(--btn-primary-text); }
+        .inline-plan-picker .cancel { background: var(--btn-secondary-bg); color: var(--btn-secondary-text); }
+
+        /* Waitlist */
+        .waitlist-shell { margin: 0 24px 20px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .waitlist-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+        .waitlist-title-row h2 { font-size: 18px; }
+        .waitlist-subtitle { color: var(--gray); font-size: 12px; margin-top: 3px; }
+        .waitlist-meta { color: var(--gray); font-size: 12px; margin-bottom: 12px; }
+        .waitlist-list { display: grid; gap: 10px; }
+        .waitlist-row { border: 1px solid var(--line-subtle); border-radius: 10px; padding: 12px; background: var(--surface-subtle); display: grid; grid-template-columns: 2fr 1.3fr 1fr auto; gap: 10px; align-items: center; }
+        .waitlist-main { min-width: 0; }
+        .waitlist-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .waitlist-email { font-size: 12px; color: var(--gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .waitlist-col { font-size: 12px; color: var(--gray); }
+        .waitlist-actions { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+        .status-chip.rejected { background: rgba(255,82,82,0.16); color: var(--red); }
+        .status-chip.activated { background: rgba(0,200,83,0.16); color: var(--green); }
+        .status-chip.pending-review { background: rgba(255,193,7,0.16); color: var(--yellow); }
 
         /* OpenClaw updates */
         .updates-shell { margin: 0 24px 20px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
@@ -351,6 +382,9 @@
             .detail-grid { grid-template-columns: 1fr; }
             .crud-table { display: block; overflow-x: auto; }
             .updates-shell { margin: 0 12px 14px; padding: 14px; }
+            .waitlist-shell { margin: 0 12px 14px; padding: 14px; }
+            .waitlist-row { grid-template-columns: 1fr; align-items: flex-start; }
+            .waitlist-actions { justify-content: flex-start; width: 100%; }
             .updates-grid { grid-template-columns: 1fr; }
             .updates-form-grid, .rollback-grid { grid-template-columns: 1fr; }
             .updates-drawer { width: 100%; }
@@ -385,6 +419,7 @@
 
 <div class="admin-nav" id="adminNav">
     <button class="nav-btn active" data-section="tenants">Tenants</button>
+    <button class="nav-btn" data-section="waitlist">Waitlist</button>
     <button class="nav-btn" data-section="updates">OpenClaw Updates</button>
     <button class="nav-btn" data-section="secrets">Platform Secrets</button>
 </div>
@@ -398,6 +433,21 @@
     </select>
 </div>
 <div id="resultsInfo" style="padding:0 24px 14px;color:var(--gray);font-size:12px;">Loading clients…</div>
+
+<!-- Waitlist -->
+<div class="waitlist-shell admin-section-hidden" id="adminWaitlistBlock">
+    <div class="waitlist-title-row">
+        <div>
+            <h2>📋 Waitlist Management</h2>
+            <div class="waitlist-subtitle">Review signups, activate accounts with a plan, or reject entries.</div>
+        </div>
+        <button class="btn btn-secondary" onclick="loadWaitlist()">Refresh</button>
+    </div>
+    <div class="waitlist-meta" id="waitlistResultsInfo">Loading waitlist…</div>
+    <div class="waitlist-list" id="waitlistList">
+        <p style="color:var(--gray);font-size:13px;">Loading waitlist...</p>
+    </div>
+</div>
 
 <!-- Platform Secrets -->
 <div style="padding:0 24px 20px;" id="adminSecretsBlock" class="admin-section-hidden">

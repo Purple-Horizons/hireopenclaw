@@ -227,6 +227,17 @@ jest.mock('@aws-sdk/lib-dynamodb', () => {
 
 // Mock @aws-sdk/util-dynamodb
 jest.mock('@aws-sdk/util-dynamodb', () => ({
+  marshall: (obj) => {
+    const item = {};
+    for (const [k, v] of Object.entries(obj || {})) {
+      if (typeof v === 'string') item[k] = { S: v };
+      else if (typeof v === 'number') item[k] = { N: String(v) };
+      else if (typeof v === 'boolean') item[k] = { BOOL: v };
+      else if (v === null || v === undefined) continue;
+      else item[k] = v;
+    }
+    return item;
+  },
   unmarshall: (item) => {
     const obj = {};
     for (const [k, v] of Object.entries(item)) {
@@ -362,6 +373,20 @@ function seedTeam(ownerId, opts = {}) {
     updatedAt: opts.updatedAt || new Date().toISOString(),
   });
   mockDB.set(`clawops-teams:${teamId}`, item);
+}
+
+function seedWaitlist(email, opts = {}) {
+  const [firstName = '', lastName = ''] = String(opts.name || '').split(' ');
+  const item = mockDynamoItem({
+    email,
+    firstName: opts.firstName || firstName || 'Test',
+    lastName: opts.lastName || lastName || 'User',
+    phone: opts.phone || '+1 555 0100',
+    createdAt: opts.createdAt || new Date().toISOString(),
+    status: opts.status || 'pending',
+    source: opts.source || 'website',
+  });
+  mockDB.set(`clawops-waitlist:${email}`, item);
 }
 
 async function createSession(email) {
@@ -842,6 +867,93 @@ describe('GET /api/admin/clients', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/cursor/i);
+  });
+});
+
+describe('/api/admin/waitlist management', () => {
+  test('lists waitlist entries for admin', async () => {
+    const sessionToken = await createSession('g@purplehorizons.io');
+    seedWaitlist('lead1@example.com', { firstName: 'Lead', lastName: 'One' });
+    seedWaitlist('lead2@example.com', { firstName: 'Lead', lastName: 'Two', status: 'rejected' });
+
+    const res = await request(app)
+      .get('/api/admin/waitlist')
+      .set('Cookie', `session=${sessionToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(Array.isArray(res.body.waitlist)).toBe(true);
+    expect(res.body.waitlist.length).toBe(2);
+  });
+
+  test('activates waitlist entry and creates team with selected plan', async () => {
+    const sessionToken = await createSession('g@purplehorizons.io');
+    seedWaitlist('activate-me@example.com', { status: 'pending' });
+
+    const res = await request(app)
+      .post('/api/admin/waitlist/activate')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({ email: 'activate-me@example.com', plan: 'pro' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.plan).toBe('pro');
+
+    const teamRow = mockDB.get('clawops-teams:team-activate-me-example-com');
+    expect(teamRow).toBeDefined();
+    expect(teamRow.plan?.S).toBe('pro');
+
+    const waitlistRow = mockDB.get('clawops-waitlist:activate-me@example.com');
+    expect(waitlistRow.status?.S).toBe('activated');
+    expect(waitlistRow.plan?.S).toBe('pro');
+  });
+
+  test('rejects waitlist entry', async () => {
+    const sessionToken = await createSession('g@purplehorizons.io');
+    seedWaitlist('reject-me@example.com', { status: 'pending' });
+
+    const res = await request(app)
+      .post('/api/admin/waitlist/reject')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({ email: 'reject-me@example.com' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.status).toBe('rejected');
+    const waitlistRow = mockDB.get('clawops-waitlist:reject-me@example.com');
+    expect(waitlistRow.status?.S).toBe('rejected');
+  });
+
+  test('waitlist endpoints require admin', async () => {
+    seedWaitlist('lead@example.com');
+    const sessionToken = await createSession('not-admin@example.com');
+
+    const listRes = await request(app)
+      .get('/api/admin/waitlist')
+      .set('Cookie', `session=${sessionToken}`);
+    expect(listRes.status).toBe(403);
+
+    const activateRes = await request(app)
+      .post('/api/admin/waitlist/activate')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({ email: 'lead@example.com', plan: 'starter' });
+    expect(activateRes.status).toBe(403);
+
+    const rejectRes = await request(app)
+      .post('/api/admin/waitlist/reject')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({ email: 'lead@example.com' });
+    expect(rejectRes.status).toBe(403);
+  });
+
+  test('activate validates payload', async () => {
+    const sessionToken = await createSession('g@purplehorizons.io');
+    const res = await request(app)
+      .post('/api/admin/waitlist/activate')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({ email: 'bad-email', plan: 'not-a-plan' });
+
+    expect(res.status).toBe(400);
   });
 });
 
