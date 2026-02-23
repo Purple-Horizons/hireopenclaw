@@ -4,6 +4,7 @@
  *   ALL  /api-keys      — requireAuth (in handler via session check)
  *   ALL  /team          — requireAuth (in handler via session check)
  *   ALL  /preferences   — requireAuth (in handler via session check)
+ *   ALL  /profile       — requireAuth (in handler via session check)
  *   ALL  /backup        — requireAuth (handleClientBackup checks session)
  *   POST /restore       — requireAuth (handleClientBackup checks session)
  *   ALL  /secrets       — requireAuth (handleClientSecrets checks session)
@@ -33,6 +34,7 @@ router.use(async (req, res, next) => {
 router.all('/api-keys', wrapHandler(path.join(base, 'api-keys.js')));
 router.all('/team', wrapHandler(path.join(base, 'team.js')));
 router.all('/preferences', wrapHandler(path.join(base, 'preferences.js')));
+router.all('/profile', wrapHandler(path.join(base, 'profile.js')));
 
 // Backup/restore (settings context)
 const { handleClientBackup } = require(path.join(__dirname, '..', 'admin', 'backup.js'));

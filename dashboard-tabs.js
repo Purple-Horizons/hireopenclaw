@@ -490,23 +490,54 @@ async function loadSettingsTab() {
     // Fetch current API keys and team members
     let apiKeys = [];
     let teamMembers = [];
+    let profileData = { name: '', company: '', slug: '', email: currentEmail };
     
     try {
-        const [keysRes, teamRes] = await Promise.all([
+        const [keysRes, teamRes, profileRes] = await Promise.all([
             fetch(`/api/settings/api-keys?email=${encodeURIComponent(currentEmail)}`, { headers: authHeaders() }),
-            fetch(`/api/settings/team?email=${encodeURIComponent(currentEmail)}`, { headers: authHeaders() })
+            fetch(`/api/settings/team?email=${encodeURIComponent(currentEmail)}`, { headers: authHeaders() }),
+            fetch('/api/settings/profile', { headers: authHeaders() })
         ]);
         
         const keysData = await keysRes.json();
         const teamData = await teamRes.json();
+        const profile = await profileRes.json();
         
         if (keysData.ok) apiKeys = keysData.keys || [];
         if (teamData.ok) teamMembers = teamData.members || [];
+        if (profile && !profile.error) {
+            profileData = {
+                name: profile.name || '',
+                company: profile.company || '',
+                slug: profile.slug || '',
+                email: profile.email || currentEmail
+            };
+        }
     } catch (err) {
         console.error('Failed to load settings data:', err);
     }
     
     container.innerHTML = `
+        <div class="settings-section">
+            <h3>Profile</h3>
+            <p style="color:#aaa;margin-bottom:16px;">Update your public team profile and workspace URL.</p>
+            <div class="settings-form">
+                <label>Name</label>
+                <input type="text" id="profile-name" placeholder="Your full name" style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:12px;color:var(--white);width:100%;margin-bottom:12px;">
+
+                <label>Company</label>
+                <input type="text" id="profile-company" placeholder="Acme Inc." style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:12px;color:var(--white);width:100%;margin-bottom:12px;">
+
+                <label>Team Slug</label>
+                <input type="text" id="profile-slug" placeholder="acme-inc" style="background:var(--bg-card);border:1px solid var(--light-gray);border-radius:8px;padding:12px;color:var(--white);width:100%;margin-bottom:8px;">
+                <div style="font-size:12px;color:var(--gray);margin-bottom:14px;">
+                    Workspace URL: <code id="profile-slug-preview">hireopenclaw.com/t/your-team-slug</code>
+                </div>
+
+                <button id="profile-save-btn" class="btn btn-primary" onclick="saveProfileSettings()">Save Profile</button>
+            </div>
+        </div>
+
         <div class="settings-section">
             <h3>Account Settings</h3>
             <div class="settings-form">
@@ -582,9 +613,71 @@ async function loadSettingsTab() {
         </div>
     `;
 
+    const nameEl = document.getElementById('profile-name');
+    const companyEl = document.getElementById('profile-company');
+    const slugEl = document.getElementById('profile-slug');
+    if (nameEl) nameEl.value = profileData.name || '';
+    if (companyEl) companyEl.value = profileData.company || '';
+    if (slugEl) {
+        slugEl.value = profileData.slug || '';
+        slugEl.addEventListener('input', updateProfileSlugPreview);
+    }
+    updateProfileSlugPreview();
+
     // Load client secrets and preferences after render
     loadClientSecrets();
     loadPreferences();
+}
+
+function updateProfileSlugPreview() {
+    const preview = document.getElementById('profile-slug-preview');
+    const slugInput = document.getElementById('profile-slug');
+    if (!preview || !slugInput) return;
+    const slug = (slugInput.value || '').trim().toLowerCase();
+    preview.textContent = `hireopenclaw.com/t/${slug || 'your-team-slug'}`;
+}
+
+async function saveProfileSettings() {
+    const nameInput = document.getElementById('profile-name');
+    const companyInput = document.getElementById('profile-company');
+    const slugInput = document.getElementById('profile-slug');
+    const saveBtn = document.getElementById('profile-save-btn');
+    if (!nameInput || !companyInput || !slugInput || !saveBtn) return;
+
+    const payload = {
+        name: (nameInput.value || '').trim(),
+        company: (companyInput.value || '').trim(),
+        slug: (slugInput.value || '').trim().toLowerCase()
+    };
+
+    const originalLabel = saveBtn.textContent;
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+
+    try {
+        const res = await fetch('/api/settings/profile', {
+            method: 'POST',
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+            showToast(data.error || 'Failed to save profile', 'error');
+            return;
+        }
+
+        if (typeof data.slug === 'string') {
+            slugInput.value = data.slug;
+            updateProfileSlugPreview();
+        }
+        showToast('Profile saved', 'success');
+    } catch (err) {
+        console.error('Failed to save profile:', err);
+        showToast('Failed to save profile', 'error');
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalLabel;
+    }
 }
 
 async function loadPreferences() {

@@ -84,6 +84,7 @@ app.get('/api/auth/csrf', async (req, res) => {
 const authRouter = require(path.join(__dirname, 'api-local', 'routes', 'auth.js'));
 const adminRouter = require(path.join(__dirname, 'api-local', 'routes', 'admin.js'));
 const dashboardRouter = require(path.join(__dirname, 'api-local', 'routes', 'dashboard.js'));
+// Includes /api/settings/profile (PH-081)
 const settingsRouter = require(path.join(__dirname, 'api-local', 'routes', 'settings.js'));
 const billingRouter = require(path.join(__dirname, 'api-local', 'routes', 'billing.js'));
 

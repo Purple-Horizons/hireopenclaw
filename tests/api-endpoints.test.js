@@ -367,6 +367,8 @@ function seedTeam(ownerId, opts = {}) {
     teamId,
     ownerId,
     name: opts.name || 'Client Team',
+    company: opts.company,
+    slug: opts.slug,
     plan: opts.plan || 'starter',
     seats: opts.seats || 1,
     createdAt: opts.createdAt || new Date().toISOString(),
@@ -1078,6 +1080,121 @@ describe('/api/settings/* auth + ownership', () => {
   test('requires session for API key list', async () => {
     const res = await request(app).get('/api/settings/api-keys');
     expect(res.status).toBe(401);
+  });
+
+  test('returns profile from teams table', async () => {
+    seedTeam('owner@example.com', {
+      name: 'Jane Doe',
+      company: 'Acme Labs',
+      slug: 'acme-labs',
+    });
+    const sessionToken = await createSession('owner@example.com');
+
+    const res = await request(app)
+      .get('/api/settings/profile')
+      .set('Cookie', `session=${sessionToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      name: 'Jane Doe',
+      company: 'Acme Labs',
+      slug: 'acme-labs',
+      email: 'owner@example.com',
+    });
+  });
+
+  test('updates profile with explicit slug', async () => {
+    const teamId = 'team-owner-example-com';
+    seedTeam('owner@example.com', {
+      teamId,
+      name: 'Old Name',
+      company: 'Old Co',
+      slug: 'old-co',
+    });
+    const sessionToken = await createSession('owner@example.com');
+
+    const res = await request(app)
+      .post('/api/settings/profile')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({
+        name: 'New Name',
+        company: 'New Company',
+        slug: 'new-company',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.slug).toBe('new-company');
+
+    const row = mockDB.get(`clawops-teams:${teamId}`);
+    expect(row.name?.S).toBe('New Name');
+    expect(row.company?.S).toBe('New Company');
+    expect(row.slug?.S).toBe('new-company');
+  });
+
+  test('auto-generates slug from company when omitted', async () => {
+    seedTeam('owner@example.com', {
+      teamId: 'team-owner-example-com',
+      name: 'Owner',
+      company: 'Legacy Name',
+    });
+    const sessionToken = await createSession('owner@example.com');
+
+    const res = await request(app)
+      .post('/api/settings/profile')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({
+        name: 'Owner',
+        company: 'Blue Rocket Labs',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.slug).toBe('blue-rocket-labs');
+  });
+
+  test('rejects invalid slug', async () => {
+    seedTeam('owner@example.com', { teamId: 'team-owner-example-com' });
+    const sessionToken = await createSession('owner@example.com');
+
+    const res = await request(app)
+      .post('/api/settings/profile')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({
+        name: 'Owner',
+        company: 'Acme',
+        slug: 'ab',
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/slug/i);
+  });
+
+  test('rejects duplicate slug', async () => {
+    seedTeam('owner@example.com', {
+      teamId: 'team-owner-example-com',
+      name: 'Owner',
+      company: 'Acme',
+      slug: 'owner-acme',
+    });
+    seedTeam('other@example.com', {
+      teamId: 'team-other-example-com',
+      name: 'Other',
+      company: 'Other Co',
+      slug: 'taken-slug',
+    });
+    const sessionToken = await createSession('owner@example.com');
+
+    const res = await request(app)
+      .post('/api/settings/profile')
+      .set('Cookie', `session=${sessionToken}`)
+      .send({
+        name: 'Owner',
+        company: 'Acme',
+        slug: 'taken-slug',
+      });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatch(/already in use/i);
   });
 
   test('rejects revoking API key owned by another user', async () => {

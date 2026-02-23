@@ -131,6 +131,8 @@ describe('Route smoke tests — every route returns non-404', () => {
     { method: 'get', path: '/api/settings/api-keys' },
     { method: 'get', path: '/api/v1/settings/team' },
     { method: 'get', path: '/api/v1/settings/preferences' },
+    { method: 'get', path: '/api/v1/settings/profile' },
+    { method: 'get', path: '/api/settings/profile' },
     { method: 'get', path: '/api/v1/settings/backup' },
     { method: 'get', path: '/api/v1/settings/secrets' },
 

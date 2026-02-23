@@ -14,6 +14,36 @@ const { PLAN_BOT_LIMITS, PLAN_TOKEN_LIMITS, VALID_PLANS } = require('../data/pla
 
 const TEAMS_TABLE = TABLES.TEAMS || 'clawops-teams';
 
+function slugify(input) {
+  return String(input || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function normalizeSlug(input) {
+  const slug = slugify(input);
+  if (!slug) return '';
+  return slug.slice(0, 32).replace(/^-+|-+$/g, '');
+}
+
+function slugFromEmailDomain(email) {
+  const domain = String(email || '').split('@')[1] || '';
+  const candidate = normalizeSlug(domain);
+  if (candidate.length >= 3) return candidate;
+
+  const local = normalizeSlug(String(email || '').split('@')[0] || '');
+  if (local.length >= 3) return local;
+  return 'team';
+}
+
+function resolveRequestedSlug(options) {
+  if (typeof options === 'string') return options;
+  if (options && typeof options === 'object' && typeof options.slug === 'string') return options.slug;
+  return '';
+}
+
 /**
  * Get team by owner email (most common lookup)
  * Returns: { teamId, ownerId, plan, name, createdAt, ... } or null
@@ -92,15 +122,17 @@ async function userExists(email) {
  * Create a team for a new user (called during signup/first provision)
  * Returns the created team object
  */
-async function createTeam(email, plan = 'starter', name = null) {
+async function createTeam(email, plan = 'starter', name = null, slug = null) {
   const teamId = `team-${email.replace(/[^a-z0-9]/gi, '-').toLowerCase()}`;
   const now = new Date().toISOString();
+  const normalizedSlug = normalizeSlug(slug) || slugFromEmailDomain(email);
 
   const item = {
     teamId,
     ownerId: email,
     plan: VALID_PLANS.has(plan) ? plan : 'starter',
     name: name || email.split('@')[0],
+    slug: normalizedSlug,
     createdAt: now,
     updatedAt: now,
   };
@@ -141,15 +173,22 @@ async function updatePlan(email, newPlan) {
  * Ensure team exists for email — creates if missing
  * Called during provision to auto-create team on first bot
  */
-async function ensureTeam(email, plan = 'starter') {
+async function ensureTeam(email, plan = 'starter', options = {}) {
+  const requestedSlug = resolveRequestedSlug(options);
+  const fallbackSlug = normalizeSlug(requestedSlug) || slugFromEmailDomain(email);
   const existing = await getTeamByOwner(email);
-  if (existing) return existing;
+  if (existing) {
+    if (existing.slug) return existing;
+    return { ...existing, slug: fallbackSlug };
+  }
   try {
-    return await createTeam(email, plan);
+    return await createTeam(email, plan, null, fallbackSlug);
   } catch (err) {
     if (err.name === 'ConditionalCheckFailedException') {
       // Race condition — team was created between check and create
-      return await getTeamByOwner(email);
+      const raceTeam = await getTeamByOwner(email);
+      if (raceTeam?.slug) return raceTeam;
+      return raceTeam ? { ...raceTeam, slug: fallbackSlug } : raceTeam;
     }
     throw err;
   }
