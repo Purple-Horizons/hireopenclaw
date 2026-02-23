@@ -111,6 +111,46 @@ app.use('/api/settings', settingsRouter);
 app.use('/api/billing', billingRouter);
 app.get('/api/plans', plansHandler);
 
+// PH-093: Parity routes — these were only in Vercel serverless, now in Express
+// Waitlist
+app.post('/api/waitlist', async (req, res) => {
+  try {
+    const { email, firstName, lastName, phone } = req.body;
+    if (!email || !firstName) return res.status(400).json({ error: 'Email and first name required' });
+    
+    const { PutItemCommand } = require('@aws-sdk/client-dynamodb');
+    const { client: dynamodb, TABLES } = require(path.join(__dirname, 'api-local', 'util', 'dynamodb.js'));
+    
+    await dynamodb.send(new PutItemCommand({
+      TableName: 'clawops-waitlist',
+      Item: {
+        email: { S: email },
+        firstName: { S: firstName || '' },
+        lastName: { S: lastName || '' },
+        phone: { S: phone || '' },
+        status: { S: 'pending' },
+        createdAt: { S: new Date().toISOString() },
+      },
+    }));
+    
+    res.json({ ok: true, message: `Welcome, ${firstName}! You're on the list.` });
+  } catch (err) {
+    console.error('[Waitlist] Error:', err.message);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+
+// Checkout (Stripe)
+app.post('/api/checkout', async (req, res) => {
+  try {
+    const checkoutHandler = require(path.join(__dirname, 'api-local', 'billing', 'checkout.js'));
+    await checkoutHandler(req, res);
+  } catch (err) {
+    console.error('[Checkout] Error:', err.message);
+    res.status(500).json({ error: 'Checkout failed' });
+  }
+});
+
 console.log('✓ Loaded Express Router modules with /api/v1/ versioning');
 
 // Remaining individual routes (signup, team, keys, analytics)
