@@ -12,6 +12,8 @@
     { "source": "/faq", "destination": "/faq.html" },
     { "source": "/success", "destination": "/success.html" },
     { "source": "/onboarding", "destination": "/onboarding.html" },
+    { "source": "/t/:slug", "destination": "/dashboard.html" },
+    { "source": "/t/:slug/:path*", "destination": "/api/index.js" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

@@ -152,6 +152,41 @@ app.post('/api/checkout', async (req, res) => {
   }
 });
 
+// PH-082: Slug resolution endpoint for path-based tenant URLs
+app.get('/api/resolve-slug/:slug', async (req, res) => {
+  try {
+    const { ScanCommand } = require('@aws-sdk/lib-dynamodb');
+    const { docClient, TABLES } = require(path.join(__dirname, 'api-local', 'util', 'dynamodb.js'));
+    const slug = req.params.slug.toLowerCase();
+    
+    // Find team with this slug
+    const result = await docClient.send(new ScanCommand({
+      TableName: TABLES.TEAMS || 'clawops-teams',
+      FilterExpression: 'slug = :slug',
+      ExpressionAttributeValues: { ':slug': slug },
+      Limit: 10,
+    }));
+    
+    const team = (result.Items || [])[0];
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+    
+    res.json({ ok: true, teamId: team.teamId, slug: team.slug, name: team.name });
+  } catch (err) {
+    console.error('[Slug] Resolution error:', err.message);
+    res.status(500).json({ error: 'Failed to resolve team' });
+  }
+});
+
+// PH-082: Serve dashboard for /t/:slug paths
+app.get('/t/:slug', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard.html'));
+});
+app.get('/t/:slug/*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard.html'));
+});
+
 console.log('✓ Loaded Express Router modules with /api/v1/ versioning');
 
 // Remaining individual routes (signup, team, keys, analytics)
